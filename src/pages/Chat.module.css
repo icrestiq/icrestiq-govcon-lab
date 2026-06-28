@@ -1,0 +1,233 @@
+.shell {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ── Room list ── */
+.roomList {
+  width: 200px;
+  flex-shrink: 0;
+  background: var(--surface-2);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.roomListHeader {
+  padding: var(--sp-4) var(--sp-4) var(--sp-2);
+  flex-shrink: 0;
+}
+
+.roomItem {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-4);
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-family: var(--font-display);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  transition: all 0.12s;
+  border-radius: 0;
+}
+
+.roomItem:hover {
+  background: var(--surface-3);
+  color: var(--text-secondary);
+}
+
+.roomActive {
+  color: var(--text-primary) !important;
+  background: var(--surface-3) !important;
+}
+
+.roomName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Chat area ── */
+.chatArea {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* ── Header ── */
+.chatHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--sp-4) var(--sp-6);
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-1);
+  flex-shrink: 0;
+  gap: var(--sp-4);
+}
+
+.chatHeaderLeft {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+.chatRoomName {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.9375rem;
+  color: var(--text-primary);
+}
+
+.chatRoomDesc {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.onlineIndicator {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--green);
+  background: var(--green-muted);
+  padding: 4px 12px;
+  border-radius: 100px;
+  border: 1px solid rgba(0,255,135,0.15);
+  flex-shrink: 0;
+}
+
+/* ── Messages ── */
+.messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--sp-5) var(--sp-6);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.emptyState {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: var(--sp-12);
+  color: var(--text-muted);
+}
+
+.emptyTitle {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: var(--sp-2);
+}
+
+.emptySub { font-size: 0.875rem; }
+
+/* ── Message ── */
+.message {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-3);
+  padding: 3px 0;
+}
+
+.messageOwn { flex-direction: row-reverse; }
+
+.messageBubble {
+  display: flex;
+  flex-direction: column;
+  max-width: 75%;
+}
+
+.messageOwn .messageBubble { align-items: flex-end; }
+
+.messageMeta {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  margin-bottom: 4px;
+}
+
+.messageUser {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.8125rem;
+  color: var(--text-primary);
+}
+
+.messageTime {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  color: var(--text-muted);
+}
+
+.messageText {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  border-top-left-radius: var(--r-sm);
+  padding: var(--sp-3) var(--sp-4);
+  font-size: 0.9375rem;
+  color: var(--text-primary);
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.messageTextOwn {
+  background: var(--green-muted);
+  border-color: rgba(0,255,135,0.2);
+  border-top-right-radius: var(--r-sm);
+  border-top-left-radius: var(--r-lg);
+}
+
+/* ── Input ── */
+.inputArea {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-4) var(--sp-6);
+  border-top: 1px solid var(--border);
+  background: var(--surface-1);
+  flex-shrink: 0;
+}
+
+.chatInput {
+  flex: 1;
+  background: var(--surface-2);
+}
+
+.sendBtn {
+  flex-shrink: 0;
+  padding: var(--sp-3) var(--sp-4);
+}
+
+/* ── Mobile ── */
+@media (max-width: 768px) {
+  .roomList {
+    width: 160px;
+  }
+
+  .chatHeader { padding: var(--sp-3) var(--sp-4); }
+  .messages { padding: var(--sp-4); }
+  .inputArea { padding: var(--sp-3) var(--sp-4); }
+  .messageBubble { max-width: 85%; }
+}
+
+@media (max-width: 480px) {
+  .roomList { display: none; }
+}
