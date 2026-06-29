@@ -1,11 +1,10 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-import { ShoppingCart, Package, Filter, Search } from 'lucide-react'
+import { ShoppingCart, Package, Search } from 'lucide-react'
 import styles from './Store.module.css'
 import CartDrawer from '../components/store/CartDrawer'
 import { useCart } from '../hooks/useCart'
-
 
 const CATEGORY_COLORS = {
   'Playbooks': { bg: '#EBF4FF', color: '#2B6CB0', border: '#BEE3F8' },
@@ -17,70 +16,9 @@ const CATEGORY_COLORS = {
 
 const CATEGORIES = ['All', 'Playbooks', 'Templates', 'Tools', 'Courses', 'Bundles']
 
-// Fallback demo products if no DB products yet
-const DEMO_PRODUCTS = [
-  {
-    id: 'hw-fasteners',
-    title: 'Hardware & Fasteners Niche Playbook',
-    price: 97,
-    category: 'Playbooks',
-    badge: 'Bestseller',
-    badgeType: 'green',
-    description: 'Complete sourcing guide for DIBBS hardware and fastener categories. NSN lookup strategies, vendor qualification, and pricing frameworks.',
-    tag_line: '70+ pages · Full appendix suite',
-  },
-  {
-    id: 'jan-san',
-    title: 'Janitorial & Sanitation Playbook',
-    price: 97,
-    category: 'Playbooks',
-    badge: 'New',
-    badgeType: 'blue',
-    description: 'End-to-end playbook for janitorial supply contracting. Category breakdowns, approved vendor types, and margin targets by NSN class.',
-    tag_line: '65+ pages · Supplier appendix',
-  },
-  {
-    id: 'safety-ppe',
-    title: 'Safety & PPE Niche Playbook',
-    price: 97,
-    category: 'Playbooks',
-    badge: null,
-    description: 'OSHA-aligned PPE sourcing for government buyers. MIL-SPEC compliance checkpoints and approved product equivalents.',
-    tag_line: '60+ pages · Compliance checklist',
-  },
-  {
-    id: 'mro-industrial',
-    title: 'MRO & Industrial Parts Playbook',
-    price: 97,
-    category: 'Playbooks',
-    badge: null,
-    description: 'Industrial parts and MRO sourcing strategy with NSN deep dives, OEM cross-reference techniques, and pricing band analysis.',
-    tag_line: '75+ pages · NSN reference guide',
-  },
-  {
-    id: 'mil-spec-bible',
-    title: 'MIL-SPEC Packaging Bible™',
-    price: 147,
-    category: 'Tools',
-    badge: 'Popular',
-    badgeType: 'amber',
-    description: 'The definitive guide to military packaging compliance. MIL-STD-2073, marking requirements, and the complete Bid & Quote Tool™ workbook.',
-    tag_line: 'Guide + Excel Bid & Quote Tool™',
-  },
-  {
-    id: 'govcon-mastery',
-    title: 'GovCon Mastery Foundation Course',
-    price: 0,
-    category: 'Courses',
-    badge: 'Free',
-    badgeType: 'green',
-    description: '23-lesson free foundation course covering LLC setup, SAM registration, DIBBS navigation, and basic sourcing workflows.',
-    tag_line: '23 lessons · 5 phases · Lifetime access',
-  },
-]
-
 export default function Store() {
-  const [products, setProducts] = useState(DEMO_PRODUCTS)
+  const [products, setProducts] = useState([])
+  const [loading, setLoading] = useState(true)
   const [category, setCategory] = useState('All')
   const [search, setSearch] = useState('')
   const [cartOpen, setCartOpen] = useState(false)
@@ -92,10 +30,16 @@ export default function Store() {
 
   async function loadProducts() {
     try {
-      const { data } = await supabase.from('products').select('*').eq('active', true).order('created_at', { ascending: false })
-      if (data && data.length > 0) setProducts(data)
-    } catch {
-      // Use demo products as fallback
+      const { data } = await supabase
+        .from('products')
+        .select('*')
+        .eq('active', true)
+        .order('created_at', { ascending: false })
+      if (data) setProducts(data)
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -146,10 +90,15 @@ export default function Store() {
 
       {/* Products grid */}
       <div className={styles.grid}>
-        {filtered.length === 0 && (
+        {loading && (
+          <div className={styles.empty}>
+            <p>Loading products...</p>
+          </div>
+        )}
+        {!loading && filtered.length === 0 && (
           <div className={styles.empty}>
             <Package size={32} style={{ color: 'var(--text-muted)', marginBottom: 'var(--sp-3)' }} />
-            <p>No products match your search.</p>
+            <p>No products available yet.</p>
           </div>
         )}
         {filtered.map(product => (
@@ -163,7 +112,6 @@ export default function Store() {
         ))}
       </div>
 
-      {/* Cart drawer */}
       <CartDrawer
         open={cartOpen}
         onClose={() => setCartOpen(false)}
@@ -187,7 +135,7 @@ function ProductCard({ product, inCart, onAddToCart, onRemove }) {
 
   return (
     <div className={`card card-hover ${styles.productCard}`}>
-      {/* Top */}
+      {/* Badges */}
       <div className={styles.productTop}>
         <span style={{
           display: 'inline-flex', alignItems: 'center',
@@ -198,7 +146,7 @@ function ProductCard({ product, inCart, onAddToCart, onRemove }) {
           background: catColor.bg, color: catColor.color, border: `1px solid ${catColor.border}`
         }}>{product.category}</span>
         {product.badge && (() => {
-          const bc = BADGE_COLORS[product.badgeType || 'green']
+          const bc = BADGE_COLORS[product.badge_type || 'green']
           return (
             <span style={{
               display: 'inline-flex', alignItems: 'center',
@@ -212,7 +160,7 @@ function ProductCard({ product, inCart, onAddToCart, onRemove }) {
         })()}
       </div>
 
-     {/* Thumbnail */}
+      {/* Thumbnail */}
       {product.thumbnail_url && (
         <div style={{ margin: '12px 0', borderRadius: 8, overflow: 'hidden', aspectRatio: '4/3' }}>
           <img
@@ -224,7 +172,7 @@ function ProductCard({ product, inCart, onAddToCart, onRemove }) {
       )}
 
       {/* Content */}
-         <h3 className={styles.productTitle}>{product.title}</h3>
+      <h3 className={styles.productTitle}>{product.title}</h3>
       <p className={styles.productDesc}>{product.description}</p>
 
       {product.tag_line && (
