@@ -254,16 +254,22 @@ function ProductForm({ product, onSave, onCancel }) {
     setUploadError('')
     setUploading(true)
     try {
-      const ext = file.name.split('.').pop()
-      const fileName = `products/${Date.now()}.${ext}`
-      const { error } = await supabase.storage
-        .from('product-images')
-        .upload(fileName, file, { upsert: true })
-      if (error) throw error
-      const { data: urlData } = supabase.storage
-        .from('product-images')
-        .getPublicUrl(fileName)
-      setForm(f => ({ ...f, thumbnail_url: urlData.publicUrl }))
+      // Validate file size (max 2MB)
+      if (file.size > 2 * 1024 * 1024) {
+        throw new Error('File too large. Max size is 2MB.')
+      }
+      // Use server-side API to upload (bypasses storage RLS issues)
+      const res = await fetch('/api/upload/image', {
+        method: 'POST',
+        headers: { 'Content-Type': file.type },
+        body: file,
+      })
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.error || 'Upload failed')
+      }
+      const { url } = await res.json()
+      setForm(f => ({ ...f, thumbnail_url: url }))
     } catch (err) {
       setUploadError('Upload failed: ' + err.message)
     } finally {
@@ -275,15 +281,28 @@ function ProductForm({ product, onSave, onCancel }) {
     e.preventDefault()
     setSaving(true)
     try {
-      const payload = { ...form, price: Number(form.price) }
+      const payload = {
+        title: form.title,
+        description: form.description,
+        long_description: form.long_description,
+        tag_line: form.tag_line,
+        price: Number(form.price),
+        category: form.category,
+        active: form.active,
+        badge: form.badge,
+        thumbnail_url: form.thumbnail_url,
+      }
       if (product?.id) {
-        await supabase.from('products').update(payload).eq('id', product.id)
+        const { error } = await supabase.from('products').update(payload).eq('id', product.id)
+        if (error) throw error
       } else {
-        await supabase.from('products').insert({ ...payload, created_at: new Date().toISOString() })
+        const { error } = await supabase.from('products').insert({ ...payload, created_at: new Date().toISOString() })
+        if (error) throw error
       }
       onSave()
     } catch (err) {
-      console.error(err)
+      console.error('Save error:', err)
+      alert('Save failed: ' + err.message)
     } finally {
       setSaving(false)
     }

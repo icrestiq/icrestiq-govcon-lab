@@ -41,7 +41,10 @@ export default function Layout() {
       <header className={styles.mobileHeader}>
         <div className={styles.mobileLogo}>
           <div className={styles.logoMark}>iQ</div>
-          <span className={styles.logoText}>iCrestiQ GovCon Lab</span>
+          <div>
+            <span className={styles.logoText}>GovCon Lab</span>
+            <span className={styles.logoSub}> by iCrestiQ</span>
+          </div>
         </div>
         <button className={styles.menuBtn} onClick={() => setMobileOpen(!mobileOpen)}>
           {mobileOpen ? <X size={20} /> : <Menu size={20} />}
@@ -55,7 +58,7 @@ export default function Layout() {
         <div className={styles.logo}>
           <div className={styles.logoMark}>iQ</div>
           <div>
-            <div className={styles.logoText}>iCrestiQ GovCon Lab</div>
+            <div className={styles.logoText}>GovCon Lab</div>
             <div className={styles.logoSub}>by iCrestiQ</div>
           </div>
         </div>

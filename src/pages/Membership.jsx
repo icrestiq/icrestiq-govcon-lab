@@ -37,6 +37,7 @@ const TIERS = [
     iconColor: '#4F6BED', iconBg: '#EBF4FF',
     badge: 'Most Popular',
     badgeType: 'navy',
+    badgeColor: '#1B2A4A', badgeBg: '#E8ECF5',
     description: 'Full access for serious operators.',
     features: [
       'Everything in Free',
@@ -61,6 +62,7 @@ const TIERS = [
     iconColor: '#6B46C1', iconBg: '#FAF5FF',
     badge: 'Best Value',
     badgeType: 'amber',
+    badgeColor: '#92620A', badgeBg: '#FFF0CC',
     description: 'For operators scaling fast.',
     features: [
       'Everything in Lab Member',
@@ -181,13 +183,24 @@ export default function Membership() {
           </div>
         )}
 
-        {/* Payment method badges */}
+        {/* Payment method badges — colored */}
         <div className={styles.payBadges}>
-          <span className={styles.payBadge}>Visa / MC / Amex</span>
-          <span className={styles.payBadge}>Klarna — Pay in 4</span>
-          <span className={styles.payBadge}>Affirm — Installments</span>
-          <span className={styles.payBadge}>Apple Pay</span>
-          <span className={styles.payBadge}>Google Pay</span>
+          {[
+            { label: 'Visa',        color: '#1A1F71', bg: '#EEF0FF' },
+            { label: 'Mastercard',  color: '#EB001B', bg: '#FFF0F0' },
+            { label: 'Amex',        color: '#2E77BC', bg: '#EBF4FF' },
+            { label: 'Klarna',      color: '#FF6CA0', bg: '#FFF0F6' },
+            { label: 'Affirm',      color: '#4A3728', bg: '#FFF8F0' },
+            { label: 'Apple Pay',   color: '#1B2A4A', bg: '#F0F2F8' },
+            { label: 'Google Pay',  color: '#4285F4', bg: '#EBF4FF' },
+          ].map(({ label, color, bg }) => (
+            <span key={label} className={styles.payBadge} style={{
+              background: bg,
+              color,
+              border: `1px solid ${color}30`,
+              fontWeight: 700,
+            }}>{label}</span>
+          ))}
         </div>
       </div>
 
@@ -209,7 +222,21 @@ export default function Membership() {
             <div key={tier.name} className={`${styles.tierCard} ${tier.highlight ? styles.tierHighlight : ''}`}>
               {tier.badge && (
                 <div className={styles.tierBadgeWrap}>
-                  <span className={`badge badge-${tier.badgeType}`}>{tier.badge}</span>
+                  <span style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    padding: '4px 12px',
+                    borderRadius: '100px',
+                    fontSize: '0.6875rem',
+                    fontWeight: 800,
+                    fontFamily: 'var(--font-display)',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.06em',
+                    background: tier.badgeBg || '#E8ECF5',
+                    color: tier.badgeColor || '#1B2A4A',
+                    border: `1.5px solid ${tier.badgeColor || '#1B2A4A'}40`,
+                    boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
+                  }}>{tier.badge}</span>
                 </div>
               )}
 
