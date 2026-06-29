@@ -345,3 +345,11 @@ select.input { cursor: pointer; }
 /* ── Responsive ── */
 @media (max-width: 768px) { .hide-mobile { display: none !important; } }
 @media (min-width: 769px) { .hide-desktop { display: none !important; } }
+
+/* ── Extended color badges ── */
+.badge-purple { background: #FAF5FF; color: #6B46C1; border: 1px solid #D6BCFA; }
+.badge-teal   { background: #E6FFFA; color: #234E52; border: 1px solid #81E6D9; }
+.badge-orange { background: #FFFAF0; color: #C05621; border: 1px solid #FBD38D; }
+.badge-green  { background: #F0FFF4; color: #276749; border: 1px solid #9AE6B4; }
+.badge-blue   { background: #EBF4FF; color: #2B6CB0; border: 1px solid #BEE3F8; }
+.badge-red    { background: #FFF5F5; color: #C53030; border: 1px solid #FEB2B2; }

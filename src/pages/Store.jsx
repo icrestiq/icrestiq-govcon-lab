@@ -6,6 +6,15 @@ import styles from './Store.module.css'
 import CartDrawer from '../components/store/CartDrawer'
 import { useCart } from '../hooks/useCart'
 
+
+const CATEGORY_COLORS = {
+  'Playbooks': { bg: '#EBF4FF', color: '#2B6CB0', border: '#BEE3F8' },
+  'Templates': { bg: '#F0FFF4', color: '#276749', border: '#9AE6B4' },
+  'Tools':     { bg: '#FAF5FF', color: '#6B46C1', border: '#D6BCFA' },
+  'Courses':   { bg: '#FFFAF0', color: '#C05621', border: '#FBD38D' },
+  'Bundles':   { bg: '#FFF5F5', color: '#C53030', border: '#FEB2B2' },
+}
+
 const CATEGORIES = ['All', 'Playbooks', 'Templates', 'Tools', 'Courses', 'Bundles']
 
 // Fallback demo products if no DB products yet
@@ -167,15 +176,40 @@ export default function Store() {
 
 function ProductCard({ product, inCart, onAddToCart, onRemove }) {
   const isFree = product.price === 0
+  const catColor = CATEGORY_COLORS[product.category] || CATEGORY_COLORS['Playbooks']
+
+  const BADGE_COLORS = {
+    'green':  { bg: '#F0FFF4', color: '#276749', border: '#9AE6B4' },
+    'blue':   { bg: '#EBF4FF', color: '#2B6CB0', border: '#BEE3F8' },
+    'amber':  { bg: '#FFFAF0', color: '#C05621', border: '#FBD38D' },
+    'red':    { bg: '#FFF5F5', color: '#C53030', border: '#FEB2B2' },
+  }
 
   return (
     <div className={`card card-hover ${styles.productCard}`}>
       {/* Top */}
       <div className={styles.productTop}>
-        <span className="badge badge-blue">{product.category}</span>
-        {product.badge && (
-          <span className={`badge badge-${product.badgeType || 'green'}`}>{product.badge}</span>
-        )}
+        <span style={{
+          display: 'inline-flex', alignItems: 'center',
+          padding: '3px 10px', borderRadius: '100px',
+          fontSize: '0.6875rem', fontWeight: 700,
+          fontFamily: 'var(--font-display)', textTransform: 'uppercase',
+          letterSpacing: '0.05em',
+          background: catColor.bg, color: catColor.color, border: `1px solid ${catColor.border}`
+        }}>{product.category}</span>
+        {product.badge && (() => {
+          const bc = BADGE_COLORS[product.badgeType || 'green']
+          return (
+            <span style={{
+              display: 'inline-flex', alignItems: 'center',
+              padding: '3px 10px', borderRadius: '100px',
+              fontSize: '0.6875rem', fontWeight: 700,
+              fontFamily: 'var(--font-display)', textTransform: 'uppercase',
+              letterSpacing: '0.05em',
+              background: bc.bg, color: bc.color, border: `1px solid ${bc.border}`
+            }}>{product.badge}</span>
+          )
+        })()}
       </div>
 
       {/* Content */}

@@ -7,12 +7,12 @@ import { formatDistanceToNow } from 'date-fns'
 import styles from './Chat.module.css'
 
 const DEFAULT_ROOMS = [
-  { id: 'general',    name: 'General',       desc: 'Open discussion for all members' },
-  { id: 'rfq-help',  name: 'RFQ Help',       desc: 'Get eyes on your quotes and bids' },
-  { id: 'vendor-intel', name: 'Vendor Intel', desc: 'Share and discover supplier leads' },
-  { id: 'wins',      name: 'Wins',            desc: 'Post your awards and milestones' },
-  { id: 'dibbs',     name: 'DIBBS',           desc: 'DIBBS-specific sourcing talk' },
-  { id: 'tools',     name: 'Tools & Automation', desc: 'Make.com, AI, workflow talk' },
+  { id: 'general',      name: 'General',          desc: 'Open discussion for all members',    color: '#4F6BED' },
+  { id: 'rfq-help',     name: 'RFQ Help',          desc: 'Get eyes on your quotes and bids',   color: '#38A169' },
+  { id: 'vendor-intel', name: 'Vendor Intel',       desc: 'Share and discover supplier leads',  color: '#C05621' },
+  { id: 'wins',         name: 'Wins',               desc: 'Post your awards and milestones',    color: '#C9A84C' },
+  { id: 'dibbs',        name: 'DIBBS',              desc: 'DIBBS-specific sourcing talk',       color: '#6B46C1' },
+  { id: 'tools',        name: 'Tools & Automation', desc: 'Make.com, AI, workflow talk',        color: '#C53030' },
 ]
 
 export default function Chat() {
@@ -121,7 +121,11 @@ export default function Chat() {
             className={`${styles.roomItem} ${activeRoom === room.id ? styles.roomActive : ''}`}
             onClick={() => navigate(`/chat/${room.id}`)}
           >
-            <Hash size={14} />
+            <span style={{
+              width: 8, height: 8, borderRadius: '50%',
+              background: room.color, flexShrink: 0,
+              opacity: activeRoom === room.id ? 1 : 0.5,
+            }} />
             <span className={styles.roomName}>{room.name}</span>
           </button>
         ))}

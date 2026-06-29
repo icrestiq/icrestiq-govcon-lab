@@ -7,31 +7,37 @@ const FEATURES = [
     icon: MessageSquare,
     title: 'Live Community Rooms',
     desc: 'Real-time chat with active GovCon operators. RFQ help, vendor intel, win announcements — the inner circle.',
+    color: '#4F6BED', bg: '#EBF4FF',
   },
   {
     icon: ShoppingBag,
     title: 'GovCon Playbook Store',
     desc: 'Niche-specific sourcing playbooks, bid tools, and templates built from real DIBBS and SAM.gov experience.',
+    color: '#38A169', bg: '#F0FFF4',
   },
   {
     icon: TrendingUp,
     title: 'Courses & Training',
     desc: 'Step-by-step curriculum from entity setup through AI-powered RFQ pipelines. Learn the system, run the system.',
+    color: '#C05621', bg: '#FFFAF0',
   },
   {
     icon: Zap,
     title: 'AI-Powered Workflows',
     desc: 'Automation blueprints for Make.com, HubSpot CRM routing, and PDF-to-quote pipelines.',
+    color: '#C9A84C', bg: '#FFFFF0',
   },
   {
     icon: Shield,
     title: 'Compliance Framework',
     desc: 'MIL-SPEC packaging guides, DFARS compliance checklists, and vendor qualification templates.',
+    color: '#6B46C1', bg: '#FAF5FF',
   },
   {
     icon: Lock,
     title: 'Members-Only Intel',
     desc: 'Insider sourcing channels, vendor lists, and niche category breakdowns not available anywhere else.',
+    color: '#C53030', bg: '#FFF5F5',
   },
 ]
 
@@ -118,9 +124,9 @@ export default function Landing() {
           <h2 className={styles.sectionTitle}>Everything you need to run a lean GovCon operation</h2>
         </div>
         <div className={styles.featureGrid}>
-          {FEATURES.map(({ icon: Icon, title, desc }) => (
+          {FEATURES.map(({ icon: Icon, title, desc, color, bg }) => (
             <div key={title} className={`card card-hover ${styles.featureCard}`}>
-              <div className={styles.featureIcon}>
+              <div className={styles.featureIcon} style={{ background: bg, border: `1px solid ${color}30`, color }}>
                 <Icon size={22} />
               </div>
               <h3 className={styles.featureTitle}>{title}</h3>
