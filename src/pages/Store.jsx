@@ -212,7 +212,19 @@ function ProductCard({ product, inCart, onAddToCart, onRemove }) {
         })()}
       </div>
 
+     {/* Thumbnail */}
+      {product.thumbnail_url && (
+        <div style={{ margin: '12px 0', borderRadius: 8, overflow: 'hidden', aspectRatio: '4/3' }}>
+          <img
+            src={product.thumbnail_url}
+            alt={product.title}
+            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+          />
+        </div>
+      )}
+
       {/* Content */}
+      <h3 className={styles.productTitle}>{product.title}</h3> {/* Content */}
       <h3 className={styles.productTitle}>{product.title}</h3>
       <p className={styles.productDesc}>{product.description}</p>
 
