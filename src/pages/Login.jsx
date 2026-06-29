@@ -31,10 +31,10 @@ export default function Login() {
         <div className={styles.header}>
           <Link to="/" className={styles.logo}>
             <div className={styles.logoMark}>iQ</div>
-            <span className={styles.logoText}>GovCon Lab</span>
+            <span className={styles.logoText}>iCrestiQ GovCon Lab</span>
           </Link>
           <h1 className={styles.title}>Welcome back</h1>
-          <p className={styles.sub}>Sign in to your GovCon Lab account</p>
+          <p className={styles.sub}>Sign in to your iCrestiQ GovCon Lab account</p>
         </div>
 
         {error && <div className="alert alert-error">{error}</div>}

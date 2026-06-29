@@ -3,13 +3,14 @@ import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../lib/AuthContext'
 import {
   LayoutDashboard, MessageSquare, ShoppingBag,
-  Settings, LogOut, Menu, X, Shield, ChevronRight, CreditCard
+  LogOut, Menu, X, Shield, ChevronRight, CreditCard
 } from 'lucide-react'
+import Footer from './Footer'
 import styles from './Layout.module.css'
 
 const NAV = [
-  { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/chat',      icon: MessageSquare,   label: 'Community' },
+  { to: '/dashboard',  icon: LayoutDashboard, label: 'Dashboard' },
+  { to: '/chat',       icon: MessageSquare,   label: 'Community' },
   { to: '/store',      icon: ShoppingBag,     label: 'Store' },
   { to: '/membership', icon: CreditCard,      label: 'Membership' },
 ]
@@ -24,40 +25,41 @@ export default function Layout() {
     navigate('/')
   }
 
-  const initials = profile?.username
-    ? profile.username.slice(0, 2).toUpperCase()
-    : '??'
+  const initials = profile?.first_name && profile?.last_name
+    ? (profile.first_name[0] + profile.last_name[0]).toUpperCase()
+    : profile?.username
+      ? profile.username.slice(0, 2).toUpperCase()
+      : '??'
+
+  const displayName = profile?.first_name
+    ? `${profile.first_name} ${profile.last_name || ''}`.trim()
+    : profile?.username || 'Member'
 
   return (
     <div className={styles.shell}>
       {/* Mobile header */}
       <header className={styles.mobileHeader}>
         <div className={styles.mobileLogo}>
-          <span className={styles.logoMark}>iQ</span>
-          <span className={styles.logoText}>GovCon Lab</span>
+          <div className={styles.logoMark}>iQ</div>
+          <span className={styles.logoText}>iCrestiQ GovCon Lab</span>
         </div>
         <button className={styles.menuBtn} onClick={() => setMobileOpen(!mobileOpen)}>
           {mobileOpen ? <X size={20} /> : <Menu size={20} />}
         </button>
       </header>
 
-      {/* Overlay */}
-      {mobileOpen && (
-        <div className={styles.overlay} onClick={() => setMobileOpen(false)} />
-      )}
+      {mobileOpen && <div className={styles.overlay} onClick={() => setMobileOpen(false)} />}
 
       {/* Sidebar */}
       <aside className={`${styles.sidebar} ${mobileOpen ? styles.sidebarOpen : ''}`}>
-        {/* Logo */}
         <div className={styles.logo}>
           <div className={styles.logoMark}>iQ</div>
           <div>
-            <div className={styles.logoText}>GovCon Lab</div>
+            <div className={styles.logoText}>iCrestiQ GovCon Lab</div>
             <div className={styles.logoSub}>by iCrestiQ</div>
           </div>
         </div>
 
-        {/* Nav */}
         <nav className={styles.nav}>
           <div className={styles.navLabel}>Navigation</div>
           {NAV.map(({ to, icon: Icon, label }) => (
@@ -93,13 +95,12 @@ export default function Layout() {
           )}
         </nav>
 
-        {/* User */}
         <div className={styles.userSection}>
           <div className={styles.userInfo}>
             <div className="avatar">{initials}</div>
             <div className={styles.userMeta}>
-              <div className={styles.userName}>{profile?.username || 'Member'}</div>
-              <div className={styles.userRole}>{profile?.role || 'member'}</div>
+              <div className={styles.userName}>{displayName}</div>
+              <div className={styles.userRole}>{profile?.membership_tier || profile?.role || 'member'}</div>
             </div>
           </div>
           <button className={styles.signOutBtn} onClick={handleSignOut} title="Sign out">
@@ -108,10 +109,13 @@ export default function Layout() {
         </div>
       </aside>
 
-      {/* Main content */}
-      <main className={styles.main}>
-        <Outlet />
-      </main>
+      {/* Main content + footer */}
+      <div className={styles.mainWrap}>
+        <main className={styles.main}>
+          <Outlet />
+        </main>
+        <Footer />
+      </div>
     </div>
   )
 }

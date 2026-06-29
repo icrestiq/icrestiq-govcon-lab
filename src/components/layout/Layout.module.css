@@ -164,11 +164,20 @@
 }
 .signOutBtn:hover { color: var(--red); }
 
+/* ── Main wrap ── */
+.mainWrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow-y: auto;
+}
+
 /* ── Main ── */
 .main {
   flex: 1;
-  overflow-y: auto;
   min-width: 0;
+  padding-bottom: 0;
 }
 
 /* ── Mobile ── */
@@ -216,4 +225,22 @@
   .sidebarOpen { left: 0; }
   .shell { flex-direction: column; }
   .main { min-height: calc(100vh - 57px); }
+}
+
+.mainWrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow-y: auto;
+}
+
+.main {
+  flex: 1;
+}
+
+.mobileLogo {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
 }

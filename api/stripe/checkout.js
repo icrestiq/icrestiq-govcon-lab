@@ -39,12 +39,12 @@ const PRODUCT_MAP = {
   },
   'lab-monthly': {
     priceId: process.env.STRIPE_PRICE_LAB_MONTHLY || 'price_REPLACE_lab_monthly',
-    name: 'GovCon Lab — $47/mo',
+    name: 'iCrestiQ GovCon Lab — $57/mo',
     mode: 'subscription',
   },
   'lab-pro-monthly': {
     priceId: process.env.STRIPE_PRICE_LAB_PRO || 'price_REPLACE_lab_pro_monthly',
-    name: 'GovCon Lab Pro — $97/mo',
+    name: 'iCrestiQ GovCon Lab Pro — $107/mo',
     mode: 'subscription',
   },
 }

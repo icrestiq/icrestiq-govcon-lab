@@ -18,7 +18,7 @@ function ProtectedRoute({ children }) {
   if (loading) return (
     <div className="loading-screen">
       <div className="spinner" />
-      <span className="mono">Loading GovCon Lab...</span>
+      <span className="mono">Loading iCrestiQ GovCon Lab...</span>
     </div>
   )
   return user ? children : <Navigate to="/login" replace />

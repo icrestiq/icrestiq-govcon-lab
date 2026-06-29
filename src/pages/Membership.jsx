@@ -13,6 +13,7 @@ const TIERS = [
     price: '$0',
     period: 'forever',
     icon: Star,
+    iconColor: '#C9A84C', iconBg: '#FFFFF0',
     badge: null,
     description: 'Get started with the foundation.',
     features: [
@@ -33,6 +34,7 @@ const TIERS = [
     price: '$57',
     period: '/month',
     icon: Zap,
+    iconColor: '#4F6BED', iconBg: '#EBF4FF',
     badge: 'Most Popular',
     badgeType: 'navy',
     description: 'Full access for serious operators.',
@@ -56,6 +58,7 @@ const TIERS = [
     price: '$107',
     period: '/month',
     icon: Crown,
+    iconColor: '#6B46C1', iconBg: '#FAF5FF',
     badge: 'Best Value',
     badgeType: 'amber',
     description: 'For operators scaling fast.',
@@ -210,7 +213,7 @@ export default function Membership() {
                 </div>
               )}
 
-              <div className={styles.tierIcon}>
+              <div className={styles.tierIcon} style={{ background: tier.iconBg, border: `1px solid ${tier.iconColor}30`, color: tier.iconColor }}>
                 <Icon size={22} />
               </div>
 

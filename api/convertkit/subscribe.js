@@ -37,7 +37,7 @@ module.exports = async function handler(req, res) {
           first_name: firstName,
           fields: {
             last_name: lastName || '',
-            source: 'GovCon Lab Signup',
+            source: 'iCrestiQ GovCon Lab Signup',
             membership_tier: 'free',
           },
           tags: ['govcon-lab', 'new-member', 'free-tier'],

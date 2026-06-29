@@ -60,7 +60,7 @@ export default function Register() {
         <div className={styles.header}>
           <Link to="/" className={styles.logo}>
             <div className={styles.logoMark}>iQ</div>
-            <span className={styles.logoText}>GovCon Lab</span>
+            <span className={styles.logoText}>iCrestiQ GovCon Lab</span>
           </Link>
           <h1 className={styles.title}>Join the Lab</h1>
           <p className={styles.sub}>Create your iCrestiQ GovCon Lab account</p>

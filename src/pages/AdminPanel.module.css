@@ -11,68 +11,46 @@
   gap: var(--sp-4);
 }
 
-.title {
-  font-size: 2rem;
-  color: var(--text-primary);
-  margin-bottom: var(--sp-2);
-}
+.title { font-size: 2rem; color: var(--navy); margin-bottom: var(--sp-2); }
+.sub { font-size: 0.875rem; color: var(--text-secondary); }
 
-.sub {
-  font-size: 0.875rem;
-  color: var(--text-secondary);
-}
-
-/* ── Tabs ── */
 .tabs {
   display: flex;
   gap: var(--sp-2);
   border-bottom: 1px solid var(--border);
   margin-bottom: var(--sp-6);
+  flex-wrap: wrap;
 }
 
 .tab {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-2);
+  display: flex; align-items: center; gap: var(--sp-2);
   padding: var(--sp-3) var(--sp-4);
-  background: none;
-  border: none;
+  background: none; border: none;
   border-bottom: 2px solid transparent;
   color: var(--text-secondary);
   font-family: var(--font-display);
-  font-size: 0.875rem;
-  font-weight: 500;
-  cursor: pointer;
-  margin-bottom: -1px;
+  font-size: 0.875rem; font-weight: 500;
+  cursor: pointer; margin-bottom: -1px;
   transition: all 0.12s;
 }
+.tab:hover { color: var(--navy); }
+.tabActive { color: var(--navy) !important; border-bottom-color: var(--navy); font-weight: 600; }
 
-.tab:hover { color: var(--text-primary); }
-
-.tabActive {
-  color: var(--green) !important;
-  border-bottom-color: var(--green);
-}
-
-/* ── Tab content ── */
 .tabActions {
-  display: flex;
-  align-items: center;
+  display: flex; align-items: center;
   justify-content: space-between;
   margin-bottom: var(--sp-5);
 }
 
-.tabTitle {
-  font-size: 1.125rem;
-  color: var(--text-primary);
-}
+.tabTitle { font-size: 1.125rem; color: var(--navy); font-weight: 600; }
 
 /* ── Table ── */
 .table {
-  background: var(--surface-1);
+  background: #FFFFFF;
   border: 1px solid var(--border);
   border-radius: var(--r-lg);
   overflow: hidden;
+  box-shadow: 0 1px 4px rgba(27,42,74,0.06);
 }
 
 .tableRow {
@@ -83,7 +61,6 @@
   padding: var(--sp-4) var(--sp-5);
   border-bottom: 1px solid var(--border);
 }
-
 .tableRow:last-child { border-bottom: none; }
 
 .tableHead {
@@ -105,36 +82,77 @@
 
 .cellTitle {
   font-family: var(--font-display);
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: var(--text-primary);
-  display: flex;
-  align-items: center;
+  font-size: 0.875rem; font-weight: 500;
+  color: var(--navy);
+  display: flex; align-items: center;
   gap: var(--sp-3);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+.cellCode {
+  font-family: var(--font-mono);
+  font-size: 0.875rem; font-weight: 600;
+  color: var(--navy);
+  background: var(--surface-2);
+  padding: 3px 8px;
+  border-radius: var(--r-sm);
+  display: inline-block;
+}
+
 .cellPrice {
   font-family: var(--font-mono);
   font-size: 0.875rem;
-  color: var(--green);
-  font-weight: 600;
+  color: var(--gold-dim); font-weight: 600;
 }
 
-.cellActions {
-  display: flex;
-  gap: var(--sp-2);
-}
+.cellActions { display: flex; gap: var(--sp-2); }
 
 .comingSoon {
   text-align: center;
   padding: var(--sp-16);
   color: var(--text-secondary);
+  display: flex; flex-direction: column;
+  align-items: center;
+}
+
+/* ── Upload button ── */
+.uploadBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-3) var(--sp-4);
+  background: var(--navy);
+  color: #FFFFFF;
+  border-radius: var(--r-md);
+  font-family: var(--font-display);
+  font-size: 0.875rem; font-weight: 600;
+  cursor: pointer;
+  transition: background 0.12s;
+  margin-bottom: var(--sp-4);
+}
+.uploadBtn:hover { background: var(--navy-light); }
+
+/* ── Upload guide ── */
+.uploadGuide {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: var(--sp-4);
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+  line-height: 1.8;
+}
+
+.uploadGuide strong { color: var(--navy); }
+
+.uploadGuide ul {
+  list-style: none;
+  margin-top: var(--sp-2);
   display: flex;
   flex-direction: column;
-  align-items: center;
+  gap: var(--sp-1);
 }
 
 @media (max-width: 768px) {
@@ -142,6 +160,4 @@
   .tableRow { grid-template-columns: 1fr 80px 80px; }
   .tableRow > span:nth-child(2),
   .tableRow > span:nth-child(4) { display: none; }
-  .tableHead > span:nth-child(2),
-  .tableHead > span:nth-child(4) { display: none; }
 }

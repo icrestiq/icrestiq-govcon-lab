@@ -48,6 +48,16 @@ const NICHES = [
   'Office & Facilities', 'IT & Electronics',
 ]
 
+const PAY_METHODS = [
+  { label: 'Visa',       color: '#1A1F71', bg: '#EEF0FF' },
+  { label: 'Mastercard', color: '#EB001B', bg: '#FFF0F0' },
+  { label: 'Amex',       color: '#2E77BC', bg: '#EBF4FF' },
+  { label: 'Klarna',     color: '#FF6CA0', bg: '#FFF0F6' },
+  { label: 'Affirm',     color: '#4A3728', bg: '#FFF8F0' },
+  { label: 'Apple Pay',  color: '#1B2A4A', bg: '#F0F0F0' },
+  { label: 'Google Pay', color: '#4285F4', bg: '#EBF4FF' },
+]
+
 export default function Landing() {
   return (
     <div className={styles.page}>
@@ -56,8 +66,8 @@ export default function Landing() {
         <div className={styles.navLogo}>
           <div className={styles.logoMark}>iQ</div>
           <div>
-            <div className={styles.logoText}>GovCon Lab</div>
-            <div className={styles.logoSub}>by iCrestiQ</div>
+            <div className={styles.logoText}>iCrestiQ GovCon Lab</div>
+            <div className={styles.logoSub}>by iCrestiQ LLC</div>
           </div>
         </div>
         <div className={styles.navActions}>
@@ -79,8 +89,12 @@ export default function Landing() {
             <span className={styles.heroAccent}>It might as well be from us.</span>
           </h1>
           <p className={styles.heroSub}>
-            iCrestiQ GovCon Lab is the private community and resource hub for serious government
-            contracting operators. Real playbooks. Real automation. Real results.
+            iCrestiQ GovCon Lab is the private community and resource hub for the average,
+            everyday folk who are interested in getting into Government Contracting (GovCon)
+            and powerful enough for serious government contracting operators.
+          </p>
+          <p className={styles.heroSubAccent}>
+            Real playbooks. Real automation. Real results.
           </p>
           <div className={styles.heroActions}>
             <Link to="/register" className="btn btn-primary" style={{ fontSize: '1rem', padding: '14px 28px' }}>
@@ -107,13 +121,18 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* Niche ticker */}
+      {/* Auto-scrolling niche ticker */}
       <div className={styles.ticker}>
         <div className={styles.tickerLabel}>ACTIVE NICHES</div>
-        <div className={styles.tickerItems}>
-          {[...NICHES, ...NICHES].map((n, i) => (
-            <span key={i} className={styles.tickerItem}>• {n}</span>
-          ))}
+        <div className={styles.tickerTrack}>
+          <div className={styles.tickerInner}>
+            {[...NICHES, ...NICHES, ...NICHES].map((n, i) => (
+              <span key={i} className={styles.tickerItem}>
+                <span className={styles.tickerDot} />
+                {n}
+              </span>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -126,7 +145,7 @@ export default function Landing() {
         <div className={styles.featureGrid}>
           {FEATURES.map(({ icon: Icon, title, desc, color, bg }) => (
             <div key={title} className={`card card-hover ${styles.featureCard}`}>
-              <div className={styles.featureIcon} style={{ background: bg, border: `1px solid ${color}30`, color }}>
+              <div className={styles.featureIcon} style={{ background: bg, border: `1px solid ${color}35`, color }}>
                 <Icon size={22} />
               </div>
               <h3 className={styles.featureTitle}>{title}</h3>
@@ -136,12 +155,26 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* Payment methods */}
+      <section className={styles.paySection}>
+        <div className={styles.paySectionInner}>
+          <div className={styles.payLabel}>Accepted payment methods</div>
+          <div className={styles.payPills}>
+            {PAY_METHODS.map(({ label, color, bg }) => (
+              <span key={label} className={styles.payPill} style={{ background: bg, color, border: `1px solid ${color}30` }}>
+                {label}
+              </span>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* CTA */}
       <section className={styles.cta}>
         <div className={styles.ctaInner}>
           <h2 className={styles.ctaTitle}>Stop watching. Start sourcing.</h2>
           <p className={styles.ctaSub}>
-            Join the GovCon Lab and get immediate access to the community, store, and growing course library.
+            Join iCrestiQ GovCon Lab and get immediate access to the community, store, and growing course library.
           </p>
           <Link to="/register" className="btn btn-gold" style={{ fontSize: '1rem', padding: '14px 32px' }}>
             Create Your Account →
@@ -149,7 +182,7 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* Contact */}
+      {/* Contact + Footer */}
       <section className={styles.contact}>
         <div className={styles.contactInner}>
           <div>
@@ -168,18 +201,17 @@ export default function Landing() {
           </div>
           <div>
             <div className={styles.contactLabel}>Email</div>
-            <a href="mailto:keith@icrestiq.com" className={styles.contactLink}>
+            <a href="mailto:hello@icrestiq.com" className={styles.contactLink}>
               <Mail size={14} style={{ display: 'inline', marginRight: 6, color: 'var(--gold)' }} />
-              keith@icrestiq.com
+              hello@icrestiq.com
             </a>
           </div>
         </div>
       </section>
 
-      {/* Footer */}
       <footer className={styles.footer}>
         <div className={styles.footerLogo}>
-          <div className={styles.logoMark} style={{ background: 'rgba(255,255,255,0.15)', color: '#FFFFFF' }}>iQ</div>
+          <div className={styles.logoMarkSmall}>iQ</div>
           <span className={styles.footerText}>© 2025 iCrestiQ LLC · Easley, South Carolina · All rights reserved.</span>
         </div>
         <div className={styles.footerRight}>govconlab.com</div>

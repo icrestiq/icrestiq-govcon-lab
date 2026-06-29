@@ -174,3 +174,20 @@ CREATE INDEX IF NOT EXISTS idx_profiles_stripe_customer
 ALTER TABLE profiles
   ADD COLUMN IF NOT EXISTS first_name TEXT,
   ADD COLUMN IF NOT EXISTS last_name  TEXT;
+
+-- ════════════════════════════════════════════════════════════
+-- STORAGE BUCKET FOR PRODUCT IMAGES
+-- Run in Supabase SQL Editor
+-- ════════════════════════════════════════════════════════════
+
+-- Add thumbnail_url column to products
+ALTER TABLE products
+  ADD COLUMN IF NOT EXISTS thumbnail_url TEXT;
+
+-- Create storage bucket (run in Supabase Dashboard → Storage → New Bucket)
+-- Name: product-images
+-- Public: YES (so images display on the site)
+
+-- Storage policy — allow admin uploads
+-- In Supabase Dashboard → Storage → product-images → Policies → Add policy:
+-- Allow uploads for authenticated users with role = admin

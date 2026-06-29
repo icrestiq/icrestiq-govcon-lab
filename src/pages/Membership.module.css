@@ -114,16 +114,14 @@
 }
 
 .tierIcon {
-  width: 44px;
-  height: 44px;
-  background: rgba(27,42,74,0.07);
-  border: 1px solid rgba(27,42,74,0.12);
+  width: 48px;
+  height: 48px;
   border-radius: var(--r-md);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--navy);
   margin-bottom: var(--sp-4);
+  flex-shrink: 0;
 }
 
 .tierName {
