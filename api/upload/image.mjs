@@ -1,16 +1,11 @@
-// api/upload/image.js
-// Server-side image upload handler for GovCon Lab (v7)
-// Uses Supabase service role key to bypass RLS for storage
-// Handles multipart/form-data from <input type="file"> / FormData
-
-const { createClient } = require('@supabase/supabase-js')
+// api/upload/image.mjs
+import { createClient } from '@supabase/supabase-js'
 
 const supabase = createClient(
   process.env.VITE_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
 
-// Minimal multipart parser — extracts the first file part from a multipart/form-data body
 function parseMultipart(buffer, boundary) {
   const boundaryBuf = Buffer.from('--' + boundary)
   const parts = []
@@ -53,7 +48,7 @@ function getExt(contentType) {
   return 'jpg'
 }
 
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*')
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-File-Name')
