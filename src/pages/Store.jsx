@@ -224,8 +224,7 @@ function ProductCard({ product, inCart, onAddToCart, onRemove }) {
       )}
 
       {/* Content */}
-      <h3 className={styles.productTitle}>{product.title}</h3> {/* Content */}
-      <h3 className={styles.productTitle}>{product.title}</h3>
+         <h3 className={styles.productTitle}>{product.title}</h3>
       <p className={styles.productDesc}>{product.description}</p>
 
       {product.tag_line && (
