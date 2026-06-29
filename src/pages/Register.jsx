@@ -7,13 +7,29 @@ import styles from './Auth.module.css'
 export default function Register() {
   const { signUp } = useAuth()
   const navigate = useNavigate()
-  const [form, setForm] = useState({ username: '', email: '', password: '', confirm: '' })
+  const [form, setForm] = useState({
+    firstName: '',
+    lastName: '',
+    username: '',
+    email: '',
+    password: '',
+    confirm: '',
+  })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+
+  function set(field) {
+    return e => setForm(f => ({ ...f, [field]: e.target.value }))
+  }
 
   async function handleSubmit(e) {
     e.preventDefault()
     setError('')
+
+    if (!form.firstName.trim()) {
+      setError('First name is required.')
+      return
+    }
     if (form.password !== form.confirm) {
       setError('Passwords do not match.')
       return
@@ -22,9 +38,14 @@ export default function Register() {
       setError('Password must be at least 8 characters.')
       return
     }
+
     setLoading(true)
     try {
-      await signUp(form.email, form.password, form.username)
+      await signUp(form.email, form.password, {
+        username: form.username || `${form.firstName.toLowerCase()}${form.lastName ? '_' + form.lastName.toLowerCase() : ''}`,
+        firstName: form.firstName.trim(),
+        lastName: form.lastName.trim(),
+      })
       navigate('/dashboard')
     } catch (err) {
       setError(err.message || 'Registration failed. Please try again.')
@@ -45,21 +66,50 @@ export default function Register() {
           <p className={styles.sub}>Create your iCrestiQ GovCon Lab account</p>
         </div>
 
-        {error && <div className="alert alert-error" style={{ marginBottom: 'var(--sp-5)' }}>{error}</div>}
+        {error && (
+          <div className="alert alert-error" style={{ marginBottom: 'var(--sp-5)' }}>
+            {error}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit}>
+          {/* First & Last Name row */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--sp-3)' }}>
+            <div className="field">
+              <label className="label">First Name</label>
+              <input
+                type="text"
+                className="input"
+                placeholder="Keith"
+                value={form.firstName}
+                onChange={set('firstName')}
+                required
+              />
+            </div>
+            <div className="field">
+              <label className="label">Last Name</label>
+              <input
+                type="text"
+                className="input"
+                placeholder="Atkinson"
+                value={form.lastName}
+                onChange={set('lastName')}
+              />
+            </div>
+          </div>
+
           <div className="field">
             <label className="label">Username</label>
             <input
               type="text"
               className="input"
-              placeholder="your_handle"
+              placeholder="your_handle (optional)"
               value={form.username}
-              onChange={e => setForm(f => ({ ...f, username: e.target.value }))}
-              required
+              onChange={set('username')}
               minLength={3}
             />
           </div>
+
           <div className="field">
             <label className="label">Email</label>
             <input
@@ -67,10 +117,11 @@ export default function Register() {
               className="input"
               placeholder="you@example.com"
               value={form.email}
-              onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
+              onChange={set('email')}
               required
             />
           </div>
+
           <div className="field">
             <label className="label">Password</label>
             <input
@@ -78,10 +129,11 @@ export default function Register() {
               className="input"
               placeholder="Min. 8 characters"
               value={form.password}
-              onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
+              onChange={set('password')}
               required
             />
           </div>
+
           <div className="field">
             <label className="label">Confirm Password</label>
             <input
@@ -89,10 +141,11 @@ export default function Register() {
               className="input"
               placeholder="Repeat your password"
               value={form.confirm}
-              onChange={e => setForm(f => ({ ...f, confirm: e.target.value }))}
+              onChange={set('confirm')}
               required
             />
           </div>
+
           <button
             type="submit"
             className="btn btn-primary w-full"
@@ -106,6 +159,18 @@ export default function Register() {
         <p className={styles.switchLink}>
           Already have an account?{' '}
           <Link to="/login">Sign in →</Link>
+        </p>
+
+        <p style={{
+          textAlign: 'center',
+          fontSize: '0.6875rem',
+          color: 'var(--text-muted)',
+          marginTop: 'var(--sp-4)',
+          fontFamily: 'var(--font-mono)',
+          lineHeight: 1.5,
+        }}>
+          By creating an account you agree to receive emails from iCrestiQ GovCon Lab.
+          Unsubscribe anytime.
         </p>
       </div>
     </div>

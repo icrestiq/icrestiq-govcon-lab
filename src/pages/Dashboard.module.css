@@ -15,7 +15,7 @@
 .greeting {
   font-family: var(--font-mono);
   font-size: 0.8125rem;
-  color: var(--green);
+  color: var(--gold);
   text-transform: uppercase;
   letter-spacing: 0.08em;
   margin-bottom: var(--sp-1);
@@ -23,7 +23,7 @@
 
 .name {
   font-size: 2rem;
-  color: var(--text-primary);
+  color: var(--navy);
   margin-bottom: var(--sp-2);
 }
 
@@ -38,16 +38,15 @@
   align-items: center;
   gap: var(--sp-2);
   padding: var(--sp-2) var(--sp-4);
-  background: var(--green-muted);
-  border: 1px solid rgba(0,255,135,0.15);
+  background: rgba(56,161,105,0.08);
+  border: 1px solid rgba(56,161,105,0.2);
   border-radius: 100px;
   font-family: var(--font-mono);
   font-size: 0.75rem;
-  color: var(--green);
+  color: #276749;
   flex-shrink: 0;
 }
 
-/* ── Quick links ── */
 .quickLinks {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
@@ -60,19 +59,19 @@
   align-items: center;
   gap: var(--sp-4);
   text-decoration: none;
-  color: var(--text-primary);
+  color: var(--navy);
 }
 
 .quickIcon {
   width: 48px;
   height: 48px;
-  background: var(--green-muted);
-  border: 1px solid rgba(0,255,135,0.15);
+  background: rgba(27,42,74,0.07);
+  border: 1px solid rgba(27,42,74,0.12);
   border-radius: var(--r-md);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--green);
+  color: var(--navy);
   flex-shrink: 0;
 }
 
@@ -82,7 +81,7 @@
   font-family: var(--font-display);
   font-weight: 600;
   font-size: 0.9375rem;
-  color: var(--text-primary);
+  color: var(--navy);
   margin-bottom: 2px;
 }
 
@@ -98,32 +97,28 @@
 }
 .quickCard:hover .quickArrow {
   transform: translateX(4px);
-  color: var(--green);
+  color: var(--gold);
 }
 
-/* ── Principle ── */
 .principle {
   display: flex;
   align-items: flex-start;
   gap: var(--sp-4);
   padding: var(--sp-5) var(--sp-6);
-  background: var(--surface-2);
+  background: #FFFFFF;
   border: 1px solid var(--border);
-  border-left: 3px solid var(--green);
+  border-left: 3px solid var(--gold);
   border-radius: var(--r-lg);
   margin-bottom: var(--sp-8);
+  box-shadow: 0 1px 4px rgba(27,42,74,0.06);
 }
 
-.principleIcon {
-  color: var(--green);
-  flex-shrink: 0;
-  margin-top: 2px;
-}
+.principleIcon { color: var(--gold); flex-shrink: 0; margin-top: 2px; }
 
 .principleLabel {
   font-family: var(--font-mono);
   font-size: 0.6875rem;
-  color: var(--green);
+  color: var(--gold-dim);
   text-transform: uppercase;
   letter-spacing: 0.08em;
   margin-bottom: var(--sp-2);
@@ -135,7 +130,6 @@
   line-height: 1.6;
 }
 
-/* ── Section ── */
 .section { margin-bottom: var(--sp-10); }
 
 .sectionHead {
@@ -149,7 +143,7 @@
 .sectionTitle {
   font-size: 1rem;
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--navy);
 }
 
 .resourceGrid {
@@ -171,7 +165,7 @@
   font-family: var(--font-display);
   font-size: 0.875rem;
   font-weight: 500;
-  color: var(--text-primary);
+  color: var(--navy);
 }
 
 @media (max-width: 768px) {

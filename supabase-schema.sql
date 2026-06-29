@@ -167,3 +167,10 @@ CREATE INDEX IF NOT EXISTS idx_profiles_stripe_customer
 --   'One-time purchase. Lifetime Lab Pro access. First 25 spots only.',
 --   297.00, 'Bundles', 'Limited', 'amber', true
 -- );
+
+-- ════════════════════════════════════════════════════════════
+-- NAME FIELDS ADDITION — Run this in Supabase SQL Editor
+-- ════════════════════════════════════════════════════════════
+ALTER TABLE profiles
+  ADD COLUMN IF NOT EXISTS first_name TEXT,
+  ADD COLUMN IF NOT EXISTS last_name  TEXT;

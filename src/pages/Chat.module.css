@@ -8,7 +8,7 @@
 .roomList {
   width: 200px;
   flex-shrink: 0;
-  background: var(--surface-2);
+  background: #FFFFFF;
   border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
@@ -70,7 +70,7 @@
   justify-content: space-between;
   padding: var(--sp-4) var(--sp-6);
   border-bottom: 1px solid var(--border);
-  background: var(--surface-1);
+  background: #FFFFFF;
   flex-shrink: 0;
   gap: var(--sp-4);
 }
@@ -177,7 +177,7 @@
 }
 
 .messageText {
-  background: var(--surface-2);
+  background: #FFFFFF;
   border: 1px solid var(--border);
   border-radius: var(--r-lg);
   border-top-left-radius: var(--r-sm);
@@ -202,13 +202,13 @@
   gap: var(--sp-3);
   padding: var(--sp-4) var(--sp-6);
   border-top: 1px solid var(--border);
-  background: var(--surface-1);
+  background: #FFFFFF;
   flex-shrink: 0;
 }
 
 .chatInput {
   flex: 1;
-  background: var(--surface-2);
+  background: #FFFFFF;
 }
 
 .sendBtn {

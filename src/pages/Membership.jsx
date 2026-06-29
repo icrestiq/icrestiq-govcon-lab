@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../lib/AuthContext'
 import { createCheckoutSession } from '../lib/stripe'
-import { Check, Zap, Crown, Star } from 'lucide-react'
+import { Check, Zap, Crown, Star, Tag } from 'lucide-react'
 import styles from './Membership.module.css'
 
 const TIERS = [
@@ -17,23 +17,24 @@ const TIERS = [
     description: 'Get started with the foundation.',
     features: [
       'GovCon Mastery Foundation Course (23 lessons)',
-      'Public community feed (read-only)',
+      'Public community feed — read only',
       'Sample playbook chapter',
       'Weekly GovCon intel email',
       'Access to merch store',
     ],
-    cta: 'Current Plan',
-    disabled: true,
+    cta: 'Get Started Free',
+    ctaLink: '/register',
+    disabled: false,
   },
   {
     id: 'lab-monthly',
     productId: 'lab-monthly',
     name: 'Lab Member',
-    price: '$47',
+    price: '$57',
     period: '/month',
     icon: Zap,
     badge: 'Most Popular',
-    badgeType: 'green',
+    badgeType: 'navy',
     description: 'Full access for serious operators.',
     features: [
       'Everything in Free',
@@ -42,7 +43,7 @@ const TIERS = [
       'Complete course library access',
       'Members-only vendor intel threads',
       'Win board + peer accountability',
-      'New playbook drops (quarterly)',
+      'New playbook drops quarterly',
       'Cancel anytime',
     ],
     cta: 'Join the Lab',
@@ -52,15 +53,15 @@ const TIERS = [
     id: 'lab-pro-monthly',
     productId: 'lab-pro-monthly',
     name: 'Lab Pro',
-    price: '$97',
+    price: '$107',
     period: '/month',
     icon: Crown,
     badge: 'Best Value',
-    badgeType: 'blue',
+    badgeType: 'amber',
     description: 'For operators scaling fast.',
     features: [
       'Everything in Lab Member',
-      'Monthly live Q&A / office hours with Keith',
+      'Monthly live Q&A with Keith',
       'Priority support in chat',
       'Early access to new tools + automations',
       'Make.com workflow library',
@@ -80,8 +81,8 @@ const FOUNDING = {
   period: 'one-time · lifetime access',
   description: 'Lock in everything — forever. No monthly fees, ever. First 25 spots only.',
   features: [
-    'Lifetime Lab Pro access',
-    'Name in the Founding Members wall',
+    'Lifetime Lab Pro access — never pay monthly',
+    'Name on the Founding Members wall',
     'Direct input on product roadmap',
     'All future course drops included',
     'Founding badge in community',
@@ -93,6 +94,35 @@ export default function Membership() {
   const navigate = useNavigate()
   const [loading, setLoading] = useState(null)
   const [error, setError] = useState('')
+  const [discountCode, setDiscountCode] = useState('')
+  const [codeApplied, setCodeApplied] = useState(false)
+  const [codeError, setCodeError] = useState('')
+
+  // Valid discount codes — add more in Stripe dashboard
+  const DISCOUNT_CODES = {
+    'GOVCON10': 10,
+    'LAUNCH10': 10,
+    'ICRESTIQ10': 10,
+  }
+
+  function applyCode() {
+    setCodeError('')
+    const code = discountCode.trim().toUpperCase()
+    if (DISCOUNT_CODES[code]) {
+      setCodeApplied(true)
+      setCodeError('')
+    } else {
+      setCodeApplied(false)
+      setCodeError('Invalid code. Try again.')
+    }
+  }
+
+  function getDiscountedPrice(price) {
+    if (!codeApplied || price === '$0') return price
+    const num = parseInt(price.replace('$', ''))
+    const discounted = Math.round(num * 0.90)
+    return `$${discounted}`
+  }
 
   async function handleCheckout(productId) {
     if (!user) { navigate('/register'); return }
@@ -103,6 +133,8 @@ export default function Membership() {
         productId,
         userId: user.id,
         userEmail: user.email,
+        // Stripe coupon applied at checkout level
+        discountCode: codeApplied ? discountCode.trim().toUpperCase() : null,
       })
       window.location.href = url
     } catch (err) {
@@ -115,11 +147,36 @@ export default function Membership() {
     <div className={styles.page}>
       {/* Header */}
       <div className={styles.header}>
-        <div className="badge badge-green">Membership</div>
+        <span className="badge badge-navy">Membership</span>
         <h1 className={styles.title}>Choose your level</h1>
         <p className={styles.sub}>
           The government is always purchasing. The only question is whether it's from you.
         </p>
+
+        {/* Discount code box */}
+        <div className={styles.discountBox}>
+          <Tag size={15} style={{ color: 'var(--gold)', flexShrink: 0 }} />
+          <input
+            className={styles.discountInput}
+            placeholder="Have a promo code? Enter it here"
+            value={discountCode}
+            onChange={e => { setDiscountCode(e.target.value); setCodeApplied(false); setCodeError('') }}
+            onKeyDown={e => e.key === 'Enter' && applyCode()}
+          />
+          <button className="btn btn-primary" style={{ padding: '8px 16px', fontSize: '0.875rem' }} onClick={applyCode}>
+            Apply
+          </button>
+        </div>
+        {codeApplied && (
+          <div className="alert alert-success" style={{ maxWidth: 480, margin: '0 auto var(--sp-4)', textAlign: 'center' }}>
+            ✓ Code applied — 10% off your membership
+          </div>
+        )}
+        {codeError && (
+          <div className="alert alert-error" style={{ maxWidth: 480, margin: '0 auto var(--sp-4)', textAlign: 'center' }}>
+            {codeError}
+          </div>
+        )}
 
         {/* Payment method badges */}
         <div className={styles.payBadges}>
@@ -143,6 +200,7 @@ export default function Membership() {
           const Icon = tier.icon
           const isLoading = loading === tier.productId
           const isCurrent = profile?.membership_tier === tier.id
+          const displayPrice = codeApplied ? getDiscountedPrice(tier.price) : tier.price
 
           return (
             <div key={tier.name} className={`${styles.tierCard} ${tier.highlight ? styles.tierHighlight : ''}`}>
@@ -158,7 +216,10 @@ export default function Membership() {
 
               <div className={styles.tierName}>{tier.name}</div>
               <div className={styles.tierPriceRow}>
-                <span className={styles.tierPrice}>{tier.price}</span>
+                {codeApplied && tier.price !== '$0' && (
+                  <span className={styles.tierPriceOriginal}>{tier.price}</span>
+                )}
+                <span className={styles.tierPrice}>{displayPrice}</span>
                 <span className={styles.tierPeriod}>{tier.period}</span>
               </div>
               <p className={styles.tierDesc}>{tier.description}</p>
@@ -166,19 +227,30 @@ export default function Membership() {
               <ul className={styles.featureList}>
                 {tier.features.map(f => (
                   <li key={f} className={styles.featureItem}>
-                    <Check size={14} style={{ color: 'var(--green)', flexShrink: 0 }} />
+                    <Check size={14} style={{ color: 'var(--navy)', flexShrink: 0 }} />
                     <span>{f}</span>
                   </li>
                 ))}
               </ul>
 
-              <button
-                className={`btn ${tier.highlight ? 'btn-primary' : 'btn-ghost'} ${styles.tierCta}`}
-                disabled={tier.disabled || isCurrent || isLoading}
-                onClick={() => tier.productId && handleCheckout(tier.productId)}
-              >
-                {isLoading ? <div className="spinner" /> : isCurrent ? 'Current Plan' : tier.cta}
-              </button>
+              {/* CTA */}
+              {tier.ctaLink ? (
+                <a
+                  href={tier.ctaLink}
+                  className={`btn btn-ghost ${styles.tierCta}`}
+                  style={{ justifyContent: 'center' }}
+                >
+                  {tier.cta}
+                </a>
+              ) : (
+                <button
+                  className={`btn ${tier.highlight ? 'btn-primary' : 'btn-ghost'} ${styles.tierCta}`}
+                  disabled={isCurrent || isLoading}
+                  onClick={() => tier.productId && handleCheckout(tier.productId)}
+                >
+                  {isLoading ? <div className="spinner" /> : isCurrent ? 'Current Plan' : tier.cta}
+                </button>
+              )}
 
               {tier.productId && (
                 <p className={styles.klarnaNote}>
@@ -194,15 +266,15 @@ export default function Membership() {
       <div className={styles.foundingCard}>
         <div className={styles.foundingLeft}>
           <div className={styles.foundingBadge}>
-            <Star size={14} />
-            Limited — 25 spots
+            <Star size={13} />
+            Limited — 25 spots only
           </div>
           <h2 className={styles.foundingTitle}>{FOUNDING.name}</h2>
           <p className={styles.foundingDesc}>{FOUNDING.description}</p>
           <ul className={styles.foundingFeatures}>
             {FOUNDING.features.map(f => (
               <li key={f} className={styles.featureItem}>
-                <Check size={13} style={{ color: 'var(--green)', flexShrink: 0 }} />
+                <Check size={13} style={{ color: 'var(--navy)', flexShrink: 0 }} />
                 <span>{f}</span>
               </li>
             ))}
@@ -233,8 +305,8 @@ export default function Membership() {
           <div>
             <div className={styles.guaranteeTitle}>No risk. Cancel anytime.</div>
             <div className={styles.guaranteeSub}>
-              Monthly memberships cancel with one click from your billing portal. No contracts. No questions.
-              Founding Member purchases are final due to the lifetime access nature of the offer.
+              Monthly memberships cancel with one click from your billing portal. No contracts, no questions asked.
+              Founding Member purchases are final due to the lifetime nature of the offer.
             </div>
           </div>
         </div>

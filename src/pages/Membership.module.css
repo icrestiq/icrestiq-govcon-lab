@@ -3,7 +3,6 @@
   max-width: 1100px;
 }
 
-/* ── Header ── */
 .header {
   text-align: center;
   margin-bottom: var(--sp-10);
@@ -11,7 +10,7 @@
 
 .title {
   font-size: clamp(1.75rem, 4vw, 2.5rem);
-  color: var(--text-primary);
+  color: var(--navy);
   margin: var(--sp-4) 0 var(--sp-3);
 }
 
@@ -24,11 +23,44 @@
   font-style: italic;
 }
 
+/* ── Discount box ── */
+.discountBox {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  max-width: 480px;
+  margin: 0 auto var(--sp-4);
+  background: #FFFFFF;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: var(--sp-2) var(--sp-3);
+  box-shadow: 0 1px 4px rgba(27,42,74,0.06);
+}
+
+.discountInput {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  color: var(--navy);
+  background: transparent;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.discountInput::placeholder {
+  color: var(--text-muted);
+  text-transform: none;
+  letter-spacing: 0;
+  font-family: var(--font-body);
+}
+
 .payBadges {
   display: flex;
   flex-wrap: wrap;
   gap: var(--sp-2);
   justify-content: center;
+  margin-top: var(--sp-4);
 }
 
 .payBadge {
@@ -52,19 +84,25 @@
 
 /* ── Tier card ── */
 .tierCard {
-  background: var(--surface-1);
+  background: #FFFFFF;
   border: 1px solid var(--border);
   border-radius: var(--r-xl);
   padding: var(--sp-6);
   display: flex;
   flex-direction: column;
   position: relative;
+  box-shadow: 0 1px 4px rgba(27,42,74,0.06);
+  transition: box-shadow 0.15s, transform 0.15s;
+}
+
+.tierCard:hover {
+  box-shadow: 0 8px 24px rgba(27,42,74,0.10);
+  transform: translateY(-2px);
 }
 
 .tierHighlight {
-  border-color: rgba(0,255,135,0.35);
-  background: linear-gradient(160deg, rgba(0,255,135,0.04) 0%, var(--surface-1) 50%);
-  box-shadow: 0 0 40px rgba(0,255,135,0.06);
+  border-color: var(--navy);
+  box-shadow: 0 4px 20px rgba(27,42,74,0.12);
 }
 
 .tierBadgeWrap {
@@ -72,18 +110,19 @@
   top: -12px;
   left: 50%;
   transform: translateX(-50%);
+  white-space: nowrap;
 }
 
 .tierIcon {
   width: 44px;
   height: 44px;
-  background: var(--green-muted);
-  border: 1px solid rgba(0,255,135,0.15);
+  background: rgba(27,42,74,0.07);
+  border: 1px solid rgba(27,42,74,0.12);
   border-radius: var(--r-md);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--green);
+  color: var(--navy);
   margin-bottom: var(--sp-4);
 }
 
@@ -91,7 +130,7 @@
   font-family: var(--font-display);
   font-weight: 700;
   font-size: 1.125rem;
-  color: var(--text-primary);
+  color: var(--navy);
   margin-bottom: var(--sp-3);
 }
 
@@ -100,13 +139,22 @@
   align-items: baseline;
   gap: var(--sp-2);
   margin-bottom: var(--sp-3);
+  flex-wrap: wrap;
+}
+
+.tierPriceOriginal {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-decoration: line-through;
 }
 
 .tierPrice {
   font-family: var(--font-display);
   font-size: 2.25rem;
   font-weight: 700;
-  color: var(--text-primary);
+  color: var(--navy);
   line-height: 1;
 }
 
@@ -161,21 +209,10 @@
   grid-template-columns: 1fr auto;
   gap: var(--sp-8);
   align-items: center;
-  background: var(--surface-1);
-  border: 1px solid var(--border-lit);
+  background: var(--navy);
   border-radius: var(--r-xl);
   padding: var(--sp-8);
   margin-bottom: var(--sp-8);
-  position: relative;
-  overflow: hidden;
-}
-
-.foundingCard::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 2px;
-  background: linear-gradient(90deg, var(--green), transparent);
 }
 
 .foundingBadge {
@@ -183,24 +220,24 @@
   align-items: center;
   gap: var(--sp-2);
   padding: 4px 12px;
-  background: var(--green-muted);
-  border: 1px solid rgba(0,255,135,0.2);
+  background: rgba(201,168,76,0.2);
+  border: 1px solid rgba(201,168,76,0.4);
   border-radius: 100px;
   font-family: var(--font-mono);
   font-size: 0.6875rem;
-  color: var(--green);
+  color: var(--gold);
   margin-bottom: var(--sp-4);
 }
 
 .foundingTitle {
   font-size: 1.5rem;
-  color: var(--text-primary);
+  color: #FFFFFF;
   margin-bottom: var(--sp-3);
 }
 
 .foundingDesc {
   font-size: 0.9375rem;
-  color: var(--text-secondary);
+  color: rgba(255,255,255,0.7);
   line-height: 1.6;
   margin-bottom: var(--sp-5);
 }
@@ -212,6 +249,10 @@
   gap: var(--sp-2);
 }
 
+.foundingFeatures .featureItem {
+  color: rgba(255,255,255,0.75);
+}
+
 .foundingRight {
   display: flex;
   flex-direction: column;
@@ -220,16 +261,14 @@
   min-width: 220px;
 }
 
-.foundingPrice {
-  text-align: center;
-}
+.foundingPrice { text-align: center; }
 
 .foundingAmount {
   display: block;
   font-family: var(--font-display);
   font-size: 3rem;
   font-weight: 700;
-  color: var(--text-primary);
+  color: #FFFFFF;
   line-height: 1;
   margin-bottom: var(--sp-2);
 }
@@ -237,7 +276,7 @@
 .foundingPeriod {
   font-family: var(--font-mono);
   font-size: 0.75rem;
-  color: var(--text-muted);
+  color: rgba(255,255,255,0.5);
 }
 
 .foundingCta {
@@ -245,6 +284,13 @@
   justify-content: center;
   font-size: 1rem;
   padding: 14px;
+  background: var(--gold);
+  color: #FFFFFF;
+  border: none;
+}
+.foundingCta:hover {
+  background: var(--gold-dim);
+  color: #FFFFFF;
 }
 
 /* ── Guarantee ── */
@@ -261,16 +307,13 @@
   gap: var(--sp-4);
 }
 
-.guaranteeIcon {
-  font-size: 1.5rem;
-  flex-shrink: 0;
-}
+.guaranteeIcon { font-size: 1.5rem; flex-shrink: 0; }
 
 .guaranteeTitle {
   font-family: var(--font-display);
   font-weight: 600;
   font-size: 0.9375rem;
-  color: var(--text-primary);
+  color: var(--navy);
   margin-bottom: var(--sp-2);
 }
 
@@ -280,7 +323,6 @@
   line-height: 1.6;
 }
 
-/* ── Responsive ── */
 @media (max-width: 900px) {
   .grid { grid-template-columns: 1fr; max-width: 420px; margin-left: auto; margin-right: auto; }
   .foundingCard { grid-template-columns: 1fr; }

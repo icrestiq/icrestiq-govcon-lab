@@ -1,14 +1,14 @@
 .shell {
   display: flex;
   min-height: 100vh;
-  background: var(--obsidian);
+  background: #F8F9FB;
 }
 
 /* ── Sidebar ── */
 .sidebar {
   width: 240px;
   flex-shrink: 0;
-  background: var(--surface-1);
+  background: #FFFFFF;
   border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
@@ -16,6 +16,7 @@
   top: 0;
   height: 100vh;
   overflow-y: auto;
+  box-shadow: 1px 0 4px rgba(27,42,74,0.06);
 }
 
 /* ── Logo ── */
@@ -31,8 +32,8 @@
 .logoMark {
   width: 36px;
   height: 36px;
-  background: var(--green);
-  color: var(--obsidian);
+  background: var(--navy);
+  color: #FFFFFF;
   border-radius: var(--r-md);
   display: flex;
   align-items: center;
@@ -47,7 +48,7 @@
   font-family: var(--font-display);
   font-weight: 700;
   font-size: 0.9375rem;
-  color: var(--text-primary);
+  color: var(--navy);
   line-height: 1.1;
 }
 
@@ -89,18 +90,18 @@
   font-weight: 500;
   text-decoration: none;
   transition: all 0.12s ease;
-  position: relative;
 }
 
 .navItem:hover {
   background: var(--surface-2);
-  color: var(--text-primary);
+  color: var(--navy);
 }
 
 .navActive {
-  background: var(--green-muted) !important;
-  color: var(--green) !important;
-  border: 1px solid rgba(0, 255, 135, 0.15);
+  background: rgba(27,42,74,0.07) !important;
+  color: var(--navy) !important;
+  font-weight: 600;
+  border: 1px solid rgba(27,42,74,0.12);
 }
 
 .navChevron {
@@ -119,6 +120,7 @@
   align-items: center;
   gap: var(--sp-3);
   flex-shrink: 0;
+  background: var(--surface-2);
 }
 
 .userInfo {
@@ -135,7 +137,7 @@
   font-family: var(--font-display);
   font-weight: 600;
   font-size: 0.875rem;
-  color: var(--text-primary);
+  color: var(--navy);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -144,7 +146,7 @@
 .userRole {
   font-family: var(--font-mono);
   font-size: 0.6875rem;
-  color: var(--green);
+  color: var(--gold);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -175,11 +177,12 @@
   align-items: center;
   justify-content: space-between;
   padding: var(--sp-4) var(--sp-5);
-  background: var(--surface-1);
+  background: #FFFFFF;
   border-bottom: 1px solid var(--border);
   position: sticky;
   top: 0;
   z-index: 100;
+  box-shadow: 0 1px 4px rgba(27,42,74,0.06);
 }
 
 .menuBtn {
@@ -194,13 +197,12 @@
 .overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.6);
+  background: rgba(27,42,74,0.4);
   z-index: 199;
 }
 
 @media (max-width: 768px) {
   .mobileHeader { display: flex; }
-
   .sidebar {
     position: fixed;
     left: -280px;
@@ -211,10 +213,7 @@
     transition: left 0.25s ease;
     border-right: 1px solid var(--border-lit);
   }
-
   .sidebarOpen { left: 0; }
-
   .shell { flex-direction: column; }
-
   .main { min-height: calc(100vh - 57px); }
 }

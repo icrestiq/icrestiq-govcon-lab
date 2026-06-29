@@ -9,14 +9,12 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null)
       if (session?.user) fetchProfile(session.user.id)
       else setLoading(false)
     })
 
-    // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null)
       if (session?.user) fetchProfile(session.user.id)
@@ -44,23 +42,42 @@ export function AuthProvider({ children }) {
     }
   }
 
-  async function signUp(email, password, username) {
+  // ── Updated signUp — now accepts firstName, lastName ──────
+  async function signUp(email, password, { username, firstName, lastName }) {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { username } }
+      options: {
+        data: { username, first_name: firstName, last_name: lastName }
+      }
     })
     if (error) throw error
-    // Create profile row
+
+    // Create profile row with full name fields
     if (data.user) {
       await supabase.from('profiles').upsert({
         id: data.user.id,
         username,
+        first_name: firstName,
+        last_name: lastName,
         email,
         role: 'member',
         created_at: new Date().toISOString(),
       })
+
+      // Add to ConvertKit email list automatically
+      try {
+        await fetch('/api/convertkit/subscribe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, firstName, lastName }),
+        })
+      } catch (ckErr) {
+        // Never block signup if ConvertKit fails
+        console.warn('ConvertKit subscribe failed:', ckErr)
+      }
     }
+
     return data
   }
 
