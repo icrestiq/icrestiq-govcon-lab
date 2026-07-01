@@ -2,7 +2,8 @@
 // Vercel serverless function — runs server-side, keeps secret key safe
 // Stripe secret key NEVER touches the browser
 
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY)
+import Stripe from 'stripe'
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY)
 
 // Map product IDs to Stripe Price IDs + payment config
 // Update these after creating products in your Stripe dashboard
@@ -49,8 +50,7 @@ const PRODUCT_MAP = {
   },
 }
 
-module.exports = async function handler(req, res) {
-  // CORS headers
+export default async function handler(req, res) {  // CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*')
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
