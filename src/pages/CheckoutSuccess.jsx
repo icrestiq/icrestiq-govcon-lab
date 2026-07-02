@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams, Link } from 'react-router-dom'
-import { CheckCircle, ArrowRight, Download, MessageSquare } from 'lucide-react'
+import { CheckCircle, ArrowRight, Download, MessageSquare, Loader } from 'lucide-react'
+import { useAuth } from '../lib/AuthContext'
 import styles from './CheckoutResult.module.css'
 
 const PRODUCT_CONTENT = {
@@ -10,8 +11,8 @@ const PRODUCT_CONTENT = {
   'mro-industrial':  { name: 'MRO & Industrial Parts Playbook',        type: 'digital' },
   'mil-spec-bible':  { name: 'MIL-SPEC Packaging Bible™',              type: 'digital' },
   'founding-member': { name: 'Founding Member — Lifetime Access',      type: 'membership' },
-  'lab-monthly':     { name: 'iCrestiQ GovCon Lab — $57/mo Membership',         type: 'membership' },
-  'lab-pro-monthly': { name: 'iCrestiQ GovCon Lab Pro — $107/mo Membership',     type: 'membership' },
+  'lab-monthly':     { name: 'iCrestiQ GovCon Lab — $57/mo Membership',      type: 'membership' },
+  'lab-pro-monthly': { name: 'iCrestiQ GovCon Lab Pro — $107/mo Membership', type: 'membership' },
 }
 
 export default function CheckoutSuccess() {
@@ -19,18 +20,38 @@ export default function CheckoutSuccess() {
   const productId = params.get('product')
   const sessionId = params.get('session_id')
   const product = PRODUCT_CONTENT[productId] || { name: 'Your purchase', type: 'digital' }
-  const [countdown, setCountdown] = useState(10)
+  const { user } = useAuth()
 
-  useEffect(() => {
-    if (countdown <= 0) return
-    const t = setTimeout(() => setCountdown(c => c - 1), 1000)
-    return () => clearTimeout(t)
-  }, [countdown])
+  const [downloadLoading, setDownloadLoading] = useState(false)
+  const [downloadError, setDownloadError] = useState('')
+
+  async function handleDownload() {
+    if (!user || !productId) return
+    setDownloadLoading(true)
+    setDownloadError('')
+
+    try {
+      const res = await fetch('/api/stripe/download', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ productId, userId: user.id }),
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) throw new Error(data.error || 'Download failed')
+
+      window.open(data.url, '_blank')
+    } catch (err) {
+      setDownloadError(err.message)
+    } finally {
+      setDownloadLoading(false)
+    }
+  }
 
   return (
     <div className={styles.page}>
       <div className={styles.card}>
-        {/* Success icon */}
         <div className={styles.iconWrap}>
           <CheckCircle size={48} strokeWidth={1.5} />
         </div>
@@ -46,7 +67,7 @@ export default function CheckoutSuccess() {
         <p className={styles.message}>
           {product.type === 'membership'
             ? 'Your membership is active. Full access to the community, courses, and intel digest is unlocked.'
-            : 'Your purchase is confirmed. Check your email for the download link, or access it directly from your dashboard.'
+            : 'Your purchase is confirmed. Download your file below or access it anytime from your dashboard.'
           }
         </p>
 
@@ -56,9 +77,32 @@ export default function CheckoutSuccess() {
           </p>
         )}
 
+        {product.type === 'digital' && (
+          <div style={{ margin: 'var(--sp-5) 0' }}>
+            {downloadError && (
+              <p style={{ color: 'var(--red)', fontSize: '0.875rem', marginBottom: 'var(--sp-3)' }}>
+                {downloadError}
+              </p>
+            )}
+            <button
+              className="btn btn-primary w-full"
+              style={{ justifyContent: 'center', gap: 'var(--sp-2)' }}
+              onClick={handleDownload}
+              disabled={downloadLoading}
+            >
+              {downloadLoading
+                ? <><Loader size={16} className={styles.spin} /> Generating download link...</>
+                : <><Download size={16} /> Download Your File Now</>
+              }
+            </button>
+            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textAlign: 'center', marginTop: 'var(--sp-2)' }}>
+              Link expires in 24 hours. Also available in your dashboard.
+            </p>
+          </div>
+        )}
+
         <hr className="divider" />
 
-        {/* Next steps */}
         <div className={styles.nextSteps}>
           <div className={styles.nextLabel}>What's next</div>
 
