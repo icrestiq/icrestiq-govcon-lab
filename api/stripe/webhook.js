@@ -11,6 +11,17 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
 
+// Maps each Stripe Price ID to the exact membership_tier value allowed
+// by the database (Phase 1 migration created a strict enum: free,
+// lab_member, lab_pro, founding_member). Reading the tier from the
+// actual Stripe price ID — rather than guessing from a metadata slug —
+// means this stays correct even if product IDs or slugs change later.
+const PRICE_TO_TIER = {
+  'price_1Tq8oWBhEghNkTanlBCEKH0E': 'lab_member',
+  'price_1Tq8paBhEghNkTanEVCjaTex': 'lab_pro',
+  'price_1Tq8qBBhEghNkTanqKQ4VJyj': 'founding_member',
+}
+
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end()
 
@@ -32,7 +43,7 @@ module.exports = async function handler(req, res) {
   try {
     switch (event.type) {
 
-      // ── One-time payment completed ─────────────────────
+      // — One-time payment completed ——————
       case 'checkout.session.completed': {
         const session = event.data.object
         if (session.payment_status !== 'paid') break
@@ -58,11 +69,17 @@ module.exports = async function handler(req, res) {
           purchased_at: new Date().toISOString(),
         })
 
-        // If founding member purchase — upgrade role to pro
+        // If founding member purchase — upgrade to founding_member tier
+        // (Phase 1 fix: was writing 'founding', which the new strict
+        // membership_tier enum rejects — must be 'founding_member')
         if (productId === 'founding-member') {
           await supabase
             .from('profiles')
-            .update({ role: 'founding', membership_tier: 'founding' })
+            .update({
+              role: 'founding',
+              membership_tier: 'founding_member',
+              tier_updated_at: new Date().toISOString(),
+            })
             .eq('id', userId)
         }
 
@@ -70,16 +87,20 @@ module.exports = async function handler(req, res) {
         break
       }
 
-      // ── Subscription activated ─────────────────────────
+      // — Subscription activated ——————
       case 'customer.subscription.created':
       case 'customer.subscription.updated': {
         const subscription = event.data.object
         const userId = subscription.metadata?.userId
-        const productId = subscription.metadata?.productId
 
         if (!userId) break
 
-        const tier = productId === 'lab-pro-monthly' ? 'pro' : 'member'
+        // Phase 1 fix: determine tier from the actual Stripe price ID
+        // on the subscription, instead of guessing from a hardcoded
+        // metadata.productId slug (which only matched one exact string
+        // and defaulted everything else to 'member').
+        const priceId = subscription.items.data[0]?.price?.id
+        const tier = PRICE_TO_TIER[priceId] || 'lab_member'
         const isActive = subscription.status === 'active' || subscription.status === 'trialing'
 
         await supabase.from('profiles').update({
@@ -88,13 +109,14 @@ module.exports = async function handler(req, res) {
           stripe_subscription_id: subscription.id,
           subscription_status: subscription.status,
           subscription_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+          tier_updated_at: new Date().toISOString(),
         }).eq('id', userId)
 
         console.log(`Subscription ${subscription.status} for user ${userId} — tier: ${tier}`)
         break
       }
 
-      // ── Subscription cancelled / expired ───────────────
+      // — Subscription cancelled / expired ——————
       case 'customer.subscription.deleted': {
         const subscription = event.data.object
         const userId = subscription.metadata?.userId
@@ -104,13 +126,14 @@ module.exports = async function handler(req, res) {
           membership_tier: 'free',
           subscription_status: 'cancelled',
           stripe_subscription_id: null,
+          tier_updated_at: new Date().toISOString(),
         }).eq('id', userId)
 
         console.log(`Subscription cancelled for user ${userId}`)
         break
       }
 
-      // ── Payment failed ─────────────────────────────────
+      // — Payment failed ——————
       case 'invoice.payment_failed': {
         const invoice = event.data.object
         const customerId = invoice.customer
