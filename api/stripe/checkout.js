@@ -69,10 +69,9 @@ export default async function handler(req, res) {
       allow_promotion_codes: true,
     }
 
-    if (mode === 'subscription') {
+   if (mode === 'subscription') {
       sessionConfig.subscription_data = {
         metadata: { userId, productId },
-        trial_period_days: 0,
       }
     }
 
