@@ -2,15 +2,17 @@
 // Opens Stripe's hosted billing portal
 // Members can update payment method, view invoices, cancel subscription
 
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY)
-const { createClient } = require('@supabase/supabase-js')
+import Stripe from 'stripe'
+import { createClient } from '@supabase/supabase-js'
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY)
 
 const supabase = createClient(
   process.env.VITE_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
 
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*')
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
@@ -21,7 +23,6 @@ module.exports = async function handler(req, res) {
   try {
     const { userId } = req.body
 
-    // Get the user's Stripe customer ID from their profile
     const { data: profile, error } = await supabase
       .from('profiles')
       .select('stripe_customer_id')
