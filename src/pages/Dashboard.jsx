@@ -1,6 +1,8 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../lib/AuthContext'
-import { MessageSquare, ShoppingBag, TrendingUp, ArrowRight, Zap } from 'lucide-react'
+import { createPortalSession } from '../lib/stripe'
+import { MessageSquare, ShoppingBag, TrendingUp, ArrowRight, Zap, CreditCard } from 'lucide-react'
 import styles from './Dashboard.module.css'
 
 // Each resource gets a distinct color matching GovCon Mastery style
@@ -30,8 +32,24 @@ const PILL_COLORS = {
 
 export default function Dashboard() {
   const { profile } = useAuth()
+  const [portalLoading, setPortalLoading] = useState(false)
+  const [portalError, setPortalError] = useState('')
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
+
+  const isPaidMember = ['member', 'pro', 'founding'].includes(profile?.membership_tier)
+
+  async function handleManageBilling() {
+    setPortalLoading(true)
+    setPortalError('')
+    try {
+      const { url } = await createPortalSession({ userId: profile.id })
+      window.location.href = url
+    } catch (err) {
+      setPortalError(err.message || 'Could not open billing portal')
+      setPortalLoading(false)
+    }
+  }
 
   return (
     <div className={styles.page}>
@@ -42,11 +60,29 @@ export default function Dashboard() {
           <h1 className={styles.name}>{profile?.first_name || profile?.username || 'Operator'}</h1>
           <p className={styles.tagline}>The government is always purchasing. Let's make sure it's from us.</p>
         </div>
-        <div className={styles.statusBadge}>
-          <span className="online-dot" />
-          <span className="mono">System Active</span>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 'var(--sp-2)' }}>
+          <div className={styles.statusBadge}>
+            <span className="online-dot" />
+            <span className="mono">System Active</span>
+          </div>
+          {isPaidMember && (
+            <button
+              className="btn btn-ghost"
+              onClick={handleManageBilling}
+              disabled={portalLoading}
+              style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-2)', fontSize: '0.8125rem' }}
+            >
+              <CreditCard size={14} />
+              {portalLoading ? 'Opening…' : 'Manage Billing'}
+            </button>
+          )}
         </div>
       </div>
+      {portalError && (
+        <div className="alert alert-info" style={{ borderColor: 'var(--red)', color: 'var(--red)', marginBottom: 'var(--sp-5)' }}>
+          {portalError}
+        </div>
+      )}
 
       {/* Quick links */}
       <div className={styles.quickLinks}>
