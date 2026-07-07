@@ -2,8 +2,10 @@
 // Receives events from Stripe after successful payment
 // Updates Supabase: creates orders, grants membership access
 
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY)
-const { createClient } = require('@supabase/supabase-js')
+import Stripe from 'stripe'
+import { createClient } from '@supabase/supabase-js'
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY)
 
 // Use service role key here (bypasses RLS) — server-side only, never exposed
 const supabase = createClient(
@@ -22,7 +24,7 @@ const PRICE_TO_TIER = {
   'price_1Tq8qBBhEghNkTanqKQ4VJyj': 'founding_member',
 }
 
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end()
 
   const sig = req.headers['stripe-signature']
@@ -70,8 +72,6 @@ module.exports = async function handler(req, res) {
         })
 
         // If founding member purchase — upgrade to founding_member tier
-        // (Phase 1 fix: was writing 'founding', which the new strict
-        // membership_tier enum rejects — must be 'founding_member')
         if (productId === 'founding-member') {
           await supabase
             .from('profiles')
@@ -95,10 +95,6 @@ module.exports = async function handler(req, res) {
 
         if (!userId) break
 
-        // Phase 1 fix: determine tier from the actual Stripe price ID
-        // on the subscription, instead of guessing from a hardcoded
-        // metadata.productId slug (which only matched one exact string
-        // and defaulted everything else to 'member').
         const priceId = subscription.items.data[0]?.price?.id
         const tier = PRICE_TO_TIER[priceId] || 'lab_member'
         const isActive = subscription.status === 'active' || subscription.status === 'trialing'
@@ -138,7 +134,6 @@ module.exports = async function handler(req, res) {
         const invoice = event.data.object
         const customerId = invoice.customer
 
-        // Find user by Stripe customer ID and flag their account
         const { data: profile } = await supabase
           .from('profiles')
           .select('id')
@@ -178,4 +173,4 @@ async function getRawBody(req) {
 
 // CRITICAL: Tell Vercel NOT to parse the body
 // Stripe needs the raw bytes to verify the webhook signature
-module.exports.config = { api: { bodyParser: false } }
+export const config = { api: { bodyParser: false } }
