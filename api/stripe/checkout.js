@@ -26,7 +26,6 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Missing productId or userId' })
     }
 
-    // Look up the product in Supabase by its UUID
     const { data: product, error } = await supabase
       .from('products')
       .select('id, title, price, stripe_price_id, is_subscription')
@@ -43,9 +42,6 @@ export default async function handler(req, res) {
 
     const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://govconlab.com'
 
-    // Determine mode from the product's is_subscription flag (Phase 1 —
-    // replaces the old guess-from-price-ID-text logic, which never
-    // actually matched real Stripe price IDs like price_1Tq8...)
     const mode = product.is_subscription ? 'subscription' : 'payment'
 
     const paymentMethodTypes = mode === 'subscription'
