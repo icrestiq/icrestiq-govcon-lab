@@ -11,13 +11,6 @@ const TABS = [
   { id: 'messages',  label: 'Messages',        icon: MessageSquare },
 ]
 
-// Built-in discount codes — add more here or manage via Stripe dashboard
-const DEFAULT_CODES = [
-  { code: 'GOVCON10',   discount: 10, type: '%',  active: true,  uses: 0 },
-  { code: 'LAUNCH10',   discount: 10, type: '%',  active: true,  uses: 0 },
-  { code: 'ICRESTIQ10', discount: 10, type: '%',  active: true,  uses: 0 },
-]
-
 export default function AdminPanel() {
   const { profile } = useAuth()
   const [tab, setTab] = useState('products')
@@ -141,48 +134,7 @@ export default function AdminPanel() {
       )}
 
       {/* ── Discount Codes ── */}
-      {tab === 'discounts' && (
-        <div>
-          <div className={styles.tabActions}>
-            <h2 className={styles.tabTitle}>Discount Codes</h2>
-          </div>
-
-          <div className="alert alert-info" style={{ marginBottom: 'var(--sp-5)' }}>
-            These codes are active on your membership page. To apply discounts to Stripe checkout automatically,
-            create matching coupon codes in your Stripe Dashboard → Coupons with the same code names.
-          </div>
-
-          <div className={styles.table}>
-            <div className={`${styles.tableRow} ${styles.tableHead}`} style={{ gridTemplateColumns: '1fr 1fr 100px 100px 120px' }}>
-              <span>Code</span>
-              <span>Discount</span>
-              <span>Type</span>
-              <span>Uses</span>
-              <span>Status</span>
-            </div>
-            {DEFAULT_CODES.map(code => (
-              <div key={code.code} className={styles.tableRow} style={{ gridTemplateColumns: '1fr 1fr 100px 100px 120px' }}>
-                <span className={styles.cellCode}>{code.code}</span>
-                <span className={styles.cellPrice}>{code.discount}{code.type}</span>
-                <span><span className="badge badge-blue">Percent</span></span>
-                <span className="mono">{code.uses}</span>
-                <span><span className={`badge ${code.active ? 'badge-green' : 'badge-red'}`}>{code.active ? 'Active' : 'Inactive'}</span></span>
-              </div>
-            ))}
-          </div>
-
-          <div className="card" style={{ marginTop: 'var(--sp-6)' }}>
-            <h3 style={{ marginBottom: 'var(--sp-3)', fontSize: '1rem', color: 'var(--navy)' }}>How to add a new discount code</h3>
-            <ol style={{ paddingLeft: 'var(--sp-5)', display: 'flex', flexDirection: 'column', gap: 'var(--sp-2)', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
-              <li>Go to <strong>Stripe Dashboard → Coupons → Create coupon</strong></li>
-              <li>Set the code name (e.g. <code style={{ background: '#F4F5F7', padding: '2px 6px', borderRadius: 4 }}>SUMMER20</code>)</li>
-              <li>Set the discount percent or fixed amount</li>
-              <li>Add the same code name to the <code style={{ background: '#F4F5F7', padding: '2px 6px', borderRadius: 4 }}>DISCOUNT_CODES</code> object in <code style={{ background: '#F4F5F7', padding: '2px 6px', borderRadius: 4 }}>src/pages/Membership.jsx</code></li>
-              <li>Post it on LinkedIn: <em>"Use code SUMMER20 for 20% off — this week only"</em></li>
-            </ol>
-          </div>
-        </div>
-      )}
+      {tab === 'discounts' && <DiscountsTab />}
 
       {/* ── Users ── */}
       {tab === 'users' && (
@@ -227,6 +179,228 @@ export default function AdminPanel() {
           </p>
         </div>
       )}
+    </div>
+  )
+}
+
+// ── Discounts Tab — create & manage real Stripe promo codes ──
+function DiscountsTab() {
+  const [codes, setCodes] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [showForm, setShowForm] = useState(false)
+  const [creating, setCreating] = useState(false)
+  const [error, setError] = useState('')
+
+  const [form, setForm] = useState({
+    code: '',
+    discountType: 'percent', // 'percent' | 'amount'
+    amount: '',
+    duration: 'once', // 'once' | 'forever' | 'repeating'
+    durationInMonths: 3,
+    maxRedemptions: '',
+    expiresAt: '',
+  })
+
+  useEffect(() => { loadCodes() }, [])
+
+  async function authHeader() {
+    const { data: { session } } = await supabase.auth.getSession()
+    return { Authorization: `Bearer ${session?.access_token}` }
+  }
+
+  async function loadCodes() {
+    setLoading(true)
+    setError('')
+    try {
+      const headers = await authHeader()
+      const res = await fetch('/api/stripe/discounts', { headers })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to load discount codes')
+      setCodes(data.codes || [])
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function handleCreate(e) {
+    e.preventDefault()
+    setCreating(true)
+    setError('')
+    try {
+      const headers = await authHeader()
+      const payload = {
+        code: form.code,
+        duration: form.duration,
+        durationInMonths: form.durationInMonths,
+        maxRedemptions: form.maxRedemptions || undefined,
+        expiresAt: form.expiresAt || undefined,
+      }
+      if (form.discountType === 'percent') payload.percentOff = form.amount
+      else payload.amountOff = form.amount
+
+      const res = await fetch('/api/stripe/discounts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...headers },
+        body: JSON.stringify(payload),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to create discount code')
+
+      setForm({
+        code: '', discountType: 'percent', amount: '', duration: 'once',
+        durationInMonths: 3, maxRedemptions: '', expiresAt: '',
+      })
+      setShowForm(false)
+      loadCodes()
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setCreating(false)
+    }
+  }
+
+  async function toggleActive(codeRow) {
+    try {
+      const headers = await authHeader()
+      const res = await fetch('/api/stripe/discounts', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', ...headers },
+        body: JSON.stringify({ id: codeRow.id, active: !codeRow.active }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to update code')
+      loadCodes()
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+
+  return (
+    <div>
+      <div className={styles.tabActions}>
+        <h2 className={styles.tabTitle}>Discount Codes ({codes.length})</h2>
+        <button className="btn btn-primary" onClick={() => setShowForm(f => !f)}>
+          <Plus size={16} /> New Discount
+        </button>
+      </div>
+
+      {error && (
+        <div className="alert alert-info" style={{ marginBottom: 'var(--sp-5)', borderColor: 'var(--red)', color: 'var(--red)' }}>
+          {error}
+        </div>
+      )}
+
+      {showForm && (
+        <div className="card" style={{ marginBottom: 'var(--sp-6)' }}>
+          <h3 style={{ marginBottom: 'var(--sp-5)', fontSize: '1rem', color: 'var(--navy)' }}>New Discount Code</h3>
+          <form onSubmit={handleCreate}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--sp-4)' }}>
+
+              <div className="field" style={{ gridColumn: '1 / -1' }}>
+                <label className="label">Code (e.g. SUMMER20)</label>
+                <input className="input mono" value={form.code}
+                  onChange={e => setForm(f => ({ ...f, code: e.target.value.toUpperCase() }))}
+                  placeholder="SUMMER20" required />
+              </div>
+
+              <div className="field">
+                <label className="label">Discount Type</label>
+                <select className="input" value={form.discountType}
+                  onChange={e => setForm(f => ({ ...f, discountType: e.target.value }))}>
+                  <option value="percent">Percent off (%)</option>
+                  <option value="amount">Dollar amount off ($)</option>
+                </select>
+              </div>
+
+              <div className="field">
+                <label className="label">{form.discountType === 'percent' ? 'Percent Off' : 'Dollars Off'}</label>
+                <input className="input" type="number" min="0"
+                  max={form.discountType === 'percent' ? 100 : undefined}
+                  value={form.amount}
+                  onChange={e => setForm(f => ({ ...f, amount: e.target.value }))}
+                  placeholder={form.discountType === 'percent' ? '20' : '10'} required />
+              </div>
+
+              <div className="field">
+                <label className="label">Applies</label>
+                <select className="input" value={form.duration}
+                  onChange={e => setForm(f => ({ ...f, duration: e.target.value }))}>
+                  <option value="once">Once (first payment only)</option>
+                  <option value="repeating">For a number of months</option>
+                  <option value="forever">Forever (every payment)</option>
+                </select>
+              </div>
+
+              {form.duration === 'repeating' && (
+                <div className="field">
+                  <label className="label">Number of Months</label>
+                  <input className="input" type="number" min="1" value={form.durationInMonths}
+                    onChange={e => setForm(f => ({ ...f, durationInMonths: e.target.value }))} />
+                </div>
+              )}
+
+              <div className="field">
+                <label className="label">Max Redemptions (optional)</label>
+                <input className="input" type="number" min="1" value={form.maxRedemptions}
+                  onChange={e => setForm(f => ({ ...f, maxRedemptions: e.target.value }))}
+                  placeholder="Unlimited" />
+              </div>
+
+              <div className="field">
+                <label className="label">Expires On (optional)</label>
+                <input className="input" type="date" value={form.expiresAt}
+                  onChange={e => setForm(f => ({ ...f, expiresAt: e.target.value }))} />
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 'var(--sp-3)', marginTop: 'var(--sp-5)' }}>
+              <button type="submit" className="btn btn-primary" disabled={creating}>
+                {creating ? <div className="spinner" /> : 'Create Code'}
+              </button>
+              <button type="button" className="btn btn-ghost" onClick={() => setShowForm(false)}>Cancel</button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      <div className={styles.table}>
+        <div className={`${styles.tableRow} ${styles.tableHead}`} style={{ gridTemplateColumns: '1.5fr 1fr 1fr 100px 120px' }}>
+          <span>Code</span>
+          <span>Discount</span>
+          <span>Redemptions</span>
+          <span>Expires</span>
+          <span>Status</span>
+        </div>
+        {loading && <div className={styles.tableEmpty}>Loading discount codes…</div>}
+        {!loading && codes.length === 0 && (
+          <div className={styles.tableEmpty}>No discount codes yet. Create your first one above.</div>
+        )}
+        {!loading && codes.map(c => (
+          <div key={c.id} className={styles.tableRow} style={{ gridTemplateColumns: '1.5fr 1fr 1fr 100px 120px' }}>
+            <span className={styles.cellCode}>{c.code}</span>
+            <span className={styles.cellPrice}>
+              {c.percentOff ? `${c.percentOff}%` : c.amountOff ? `$${c.amountOff}` : '—'}
+            </span>
+            <span className="mono" style={{ fontSize: '0.8125rem' }}>
+              {c.timesRedeemed}{c.maxRedemptions ? ` / ${c.maxRedemptions}` : ''}
+            </span>
+            <span className="mono" style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+              {c.expiresAt ? new Date(c.expiresAt * 1000).toLocaleDateString() : 'Never'}
+            </span>
+            <span>
+              <button
+                className={`badge ${c.active ? 'badge-green' : 'badge-red'}`}
+                onClick={() => toggleActive(c)}
+                style={{ cursor: 'pointer', border: 'none' }}
+              >
+                {c.active ? 'Active' : 'Inactive'}
+              </button>
+            </span>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
