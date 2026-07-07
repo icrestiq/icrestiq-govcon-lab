@@ -95,16 +95,22 @@ export default async function handler(req, res) {
 
         if (!userId) break
 
-        const priceId = subscription.items.data[0]?.price?.id
+       const priceId = subscription.items.data[0]?.price?.id
         const tier = PRICE_TO_TIER[priceId] || 'lab_member'
         const isActive = subscription.status === 'active' || subscription.status === 'trialing'
+
+        // Some Stripe API versions place current_period_end on the
+        // subscription object directly; others place it per-item instead.
+        // Check both, and never let a missing value crash the whole update.
+        const periodEndUnix = subscription.current_period_end || subscription.items?.data?.[0]?.current_period_end
+        const periodEndISO = periodEndUnix ? new Date(periodEndUnix * 1000).toISOString() : null
 
         await supabase.from('profiles').update({
           membership_tier: isActive ? tier : 'free',
           stripe_customer_id: subscription.customer,
           stripe_subscription_id: subscription.id,
           subscription_status: subscription.status,
-          subscription_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+          subscription_period_end: periodEndISO,
           tier_updated_at: new Date().toISOString(),
         }).eq('id', userId)
 
