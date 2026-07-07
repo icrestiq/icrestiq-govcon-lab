@@ -13,15 +13,13 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
 
-// Maps each Stripe Price ID to the exact membership_tier value allowed
-// by the database (Phase 1 migration created a strict enum: free,
-// lab_member, lab_pro, founding_member). Reading the tier from the
-// actual Stripe price ID — rather than guessing from a metadata slug —
-// means this stays correct even if product IDs or slugs change later.
+// Maps each Stripe Price ID to the membership_tier value this app's
+// existing database constraint actually allows: free, member, pro,
+// founding, admin.
 const PRICE_TO_TIER = {
-  'price_1Tq8oWBhEghNkTanlBCEKH0E': 'lab_member',
-  'price_1Tq8paBhEghNkTanEVCjaTex': 'lab_pro',
-  'price_1Tq8qBBhEghNkTanqKQ4VJyj': 'founding_member',
+  'price_1Tq8oWBhEghNkTanlBCEKH0E': 'member',
+  'price_1Tq8paBhEghNkTanEVCjaTex': 'pro',
+  'price_1Tq8qBBhEghNkTanqKQ4VJyj': 'founding',
 }
 
 export default async function handler(req, res) {
@@ -52,7 +50,6 @@ export default async function handler(req, res) {
 
         const { userId, productId, productName } = session.metadata
 
-        // Record the order
         await supabase.from('orders').insert({
           id: session.id,
           user_id: userId,
@@ -64,20 +61,18 @@ export default async function handler(req, res) {
           created_at: new Date().toISOString(),
         })
 
-        // Grant product access
         await supabase.from('user_purchases').upsert({
           user_id: userId,
           product_id: productId,
           purchased_at: new Date().toISOString(),
         })
 
-        // If founding member purchase — upgrade to founding_member tier
         if (productId === 'founding-member') {
           await supabase
             .from('profiles')
             .update({
               role: 'founding',
-              membership_tier: 'founding_member',
+              membership_tier: 'founding',
               tier_updated_at: new Date().toISOString(),
             })
             .eq('id', userId)
@@ -95,13 +90,10 @@ export default async function handler(req, res) {
 
         if (!userId) break
 
-       const priceId = subscription.items.data[0]?.price?.id
-        const tier = PRICE_TO_TIER[priceId] || 'lab_member'
+        const priceId = subscription.items.data[0]?.price?.id
+        const tier = PRICE_TO_TIER[priceId] || 'member'
         const isActive = subscription.status === 'active' || subscription.status === 'trialing'
 
-        // Some Stripe API versions place current_period_end on the
-        // subscription object directly; others place it per-item instead.
-        // Check both, and never let a missing value crash the whole update.
         const periodEndUnix = subscription.current_period_end || subscription.items?.data?.[0]?.current_period_end
         const periodEndISO = periodEndUnix ? new Date(periodEndUnix * 1000).toISOString() : null
 
@@ -167,7 +159,6 @@ export default async function handler(req, res) {
   }
 }
 
-// Vercel requires raw body for Stripe signature verification
 async function getRawBody(req) {
   return new Promise((resolve, reject) => {
     const chunks = []
@@ -177,6 +168,4 @@ async function getRawBody(req) {
   })
 }
 
-// CRITICAL: Tell Vercel NOT to parse the body
-// Stripe needs the raw bytes to verify the webhook signature
 export const config = { api: { bodyParser: false } }
