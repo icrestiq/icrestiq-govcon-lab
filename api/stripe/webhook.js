@@ -50,8 +50,10 @@ export default async function handler(req, res) {
 
         const { userId, productId, productName } = session.metadata
 
-        await supabase.from('orders').insert({
-          id: session.id,
+        // NOTE: orders.id is a UUID primary key with its own default
+        // generator — do NOT pass Stripe's session.id (e.g. "cs_live_...")
+        // into it, that's what stripe_session_id is for.
+        const { error: orderError } = await supabase.from('orders').insert({
           user_id: userId,
           product_id: productId,
           amount: session.amount_total / 100,
@@ -60,22 +62,33 @@ export default async function handler(req, res) {
           payment_method: session.payment_method_types?.[0] || 'card',
           created_at: new Date().toISOString(),
         })
+        if (orderError) {
+          console.error('Failed to insert order:', orderError.message, { userId, productId, sessionId: session.id })
+          throw new Error(`Order insert failed: ${orderError.message}`)
+        }
 
-        await supabase.from('user_purchases').upsert({
+        const { error: purchaseError } = await supabase.from('user_purchases').upsert({
           user_id: userId,
           product_id: productId,
           purchased_at: new Date().toISOString(),
         })
+        if (purchaseError) {
+          console.error('Failed to record purchase:', purchaseError.message, { userId, productId })
+          throw new Error(`Purchase upsert failed: ${purchaseError.message}`)
+        }
 
         if (productId === 'founding-member') {
-          await supabase
+          const { error: tierError } = await supabase
             .from('profiles')
             .update({
               role: 'founding',
               membership_tier: 'founding',
-              tier_updated_at: new Date().toISOString(),
             })
             .eq('id', userId)
+          if (tierError) {
+            console.error('Failed to set founding tier:', tierError.message, { userId })
+            throw new Error(`Founding tier update failed: ${tierError.message}`)
+          }
         }
 
         console.log(`Order recorded: ${productName} for user ${userId}`)
@@ -88,7 +101,10 @@ export default async function handler(req, res) {
         const subscription = event.data.object
         const userId = subscription.metadata?.userId
 
-        if (!userId) break
+        if (!userId) {
+          console.warn(`Subscription ${subscription.id} has no userId in metadata — skipping tier update`)
+          break
+        }
 
         const priceId = subscription.items.data[0]?.price?.id
         const tier = PRICE_TO_TIER[priceId] || 'member'
@@ -97,14 +113,18 @@ export default async function handler(req, res) {
         const periodEndUnix = subscription.current_period_end || subscription.items?.data?.[0]?.current_period_end
         const periodEndISO = periodEndUnix ? new Date(periodEndUnix * 1000).toISOString() : null
 
-        await supabase.from('profiles').update({
+        const { error: subError } = await supabase.from('profiles').update({
           membership_tier: isActive ? tier : 'free',
           stripe_customer_id: subscription.customer,
           stripe_subscription_id: subscription.id,
           subscription_status: subscription.status,
           subscription_period_end: periodEndISO,
-          tier_updated_at: new Date().toISOString(),
         }).eq('id', userId)
+
+        if (subError) {
+          console.error('Failed to update subscription tier:', subError.message, { userId, tier, status: subscription.status })
+          throw new Error(`Subscription tier update failed: ${subError.message}`)
+        }
 
         console.log(`Subscription ${subscription.status} for user ${userId} — tier: ${tier}`)
         break
@@ -114,14 +134,21 @@ export default async function handler(req, res) {
       case 'customer.subscription.deleted': {
         const subscription = event.data.object
         const userId = subscription.metadata?.userId
-        if (!userId) break
+        if (!userId) {
+          console.warn(`Cancelled subscription ${subscription.id} has no userId in metadata — skipping tier reset`)
+          break
+        }
 
-        await supabase.from('profiles').update({
+        const { error: cancelError } = await supabase.from('profiles').update({
           membership_tier: 'free',
           subscription_status: 'cancelled',
           stripe_subscription_id: null,
-          tier_updated_at: new Date().toISOString(),
         }).eq('id', userId)
+
+        if (cancelError) {
+          console.error('Failed to reset tier on cancellation:', cancelError.message, { userId })
+          throw new Error(`Cancellation tier reset failed: ${cancelError.message}`)
+        }
 
         console.log(`Subscription cancelled for user ${userId}`)
         break
@@ -132,16 +159,24 @@ export default async function handler(req, res) {
         const invoice = event.data.object
         const customerId = invoice.customer
 
-        const { data: profile } = await supabase
+        const { data: profile, error: lookupError } = await supabase
           .from('profiles')
           .select('id')
           .eq('stripe_customer_id', customerId)
           .single()
 
+        if (lookupError) {
+          console.error('Failed to look up profile for failed payment:', lookupError.message, { customerId })
+          break
+        }
+
         if (profile) {
-          await supabase.from('profiles').update({
+          const { error: statusError } = await supabase.from('profiles').update({
             subscription_status: 'past_due',
           }).eq('id', profile.id)
+          if (statusError) {
+            console.error('Failed to mark subscription past_due:', statusError.message, { userId: profile.id })
+          }
         }
 
         console.log(`Payment failed for customer ${customerId}`)
@@ -154,8 +189,10 @@ export default async function handler(req, res) {
 
     return res.status(200).json({ received: true })
   } catch (err) {
-    console.error('Webhook handler error:', err)
-    return res.status(500).json({ error: 'Webhook processing failed' })
+    console.error('Webhook handler error:', err.message)
+    // Return 500 so Stripe automatically retries this event —
+    // silently returning 200 on a failed DB write hides real problems.
+    return res.status(500).json({ error: 'Webhook processing failed', message: err.message })
   }
 }
 
