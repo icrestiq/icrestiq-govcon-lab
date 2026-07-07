@@ -2,7 +2,7 @@
 // Adds new member to ConvertKit automatically on signup
 // ConvertKit free plan: up to 10,000 subscribers
 
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*')
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
@@ -25,7 +25,6 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ message: 'ConvertKit not configured, skipped' })
     }
 
-    // Add subscriber to ConvertKit form
     const response = await fetch(
       `https://api.convertkit.com/v3/forms/${formId}/subscribe`,
       {
@@ -55,7 +54,6 @@ module.exports = async function handler(req, res) {
     return res.status(200).json({ message: 'Successfully subscribed', data })
   } catch (err) {
     console.error('ConvertKit subscribe error:', err)
-    // Never block signup due to email list failure
     return res.status(200).json({ message: 'Subscribe skipped due to error' })
   }
 }
