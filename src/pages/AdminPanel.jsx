@@ -424,10 +424,51 @@ function ProductForm({ product, onSave, onCancel }) {
     thumbnail_url: product?.thumbnail_url || '',
     stripe_price_id: product?.stripe_price_id || '',
     is_subscription: product?.is_subscription || false,
+    file_url: product?.file_url || '',
   })
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState('')
+  const [uploadingFile, setUploadingFile] = useState(false)
+  const [fileUploadError, setFileUploadError] = useState('')
+  const [fileUploadProgress, setFileUploadProgress] = useState(0)
+
+  async function handleProductFileUpload(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setFileUploadError('')
+    setUploadingFile(true)
+    setFileUploadProgress(0)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+
+      // Step 1: ask our server for a secure, one-time upload URL
+      const res = await fetch('/api/upload/product-file-url', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session?.access_token}`,
+        },
+        body: JSON.stringify({ fileName: file.name }),
+      })
+      const { path, token, error } = await res.json()
+      if (!res.ok) throw new Error(error || 'Could not prepare upload')
+
+      // Step 2: browser uploads the file DIRECTLY to Supabase Storage —
+      // this skips Vercel entirely, so large files (50MB+) work fine
+      const { error: uploadErr } = await supabase.storage
+        .from('products')
+        .uploadToSignedUrl(path, token, file)
+      if (uploadErr) throw uploadErr
+
+      setForm(f => ({ ...f, file_url: path }))
+      setFileUploadProgress(100)
+    } catch (err) {
+      setFileUploadError('Upload failed: ' + err.message)
+    } finally {
+      setUploadingFile(false)
+    }
+  }
 
   async function handleImageUpload(e) {
     const file = e.target.files?.[0]
@@ -474,6 +515,7 @@ function ProductForm({ product, onSave, onCancel }) {
         thumbnail_url: form.thumbnail_url,
         stripe_price_id: form.stripe_price_id.trim() || null,
         is_subscription: form.is_subscription,
+        file_url: form.file_url || null,
       }
       if (product?.id) {
         const { error } = await supabase.from('products').update(payload).eq('id', product.id)
@@ -621,6 +663,33 @@ function ProductForm({ product, onSave, onCancel }) {
                 <li>🎨 <strong>Style tip:</strong> Use navy/gold iCrestiQ branding for consistency</li>
               </ul>
             </div>
+          </div>
+
+          {/* Downloadable Product File */}
+          <div className="field" style={{ gridColumn: '1 / -1' }}>
+            <label className="label">Downloadable Product File</label>
+
+            {form.file_url && (
+              <div className="alert alert-info" style={{ marginBottom: 'var(--sp-3)', display: 'flex', alignItems: 'center', gap: 'var(--sp-2)' }}>
+                <span>✓ File attached: <span className="mono" style={{ fontSize: '0.75rem' }}>{form.file_url.split('/').pop()}</span></span>
+                <button type="button" className="btn btn-ghost" style={{ padding: '2px 8px', fontSize: '0.75rem' }}
+                  onClick={() => setForm(f => ({ ...f, file_url: '' }))}>
+                  Remove
+                </button>
+              </div>
+            )}
+
+            <label className={styles.uploadBtn}>
+              <Upload size={16} />
+              {uploadingFile ? 'Uploading…' : form.file_url ? 'Replace File' : 'Upload Product File'}
+              <input type="file" onChange={handleProductFileUpload} style={{ display: 'none' }} disabled={uploadingFile} />
+            </label>
+
+            {fileUploadError && <p style={{ color: 'var(--red)', fontSize: '0.8125rem', marginTop: 'var(--sp-2)' }}>{fileUploadError}</p>}
+
+            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 'var(--sp-2)' }}>
+              This is the actual file customers receive after purchase (PDF, Excel, ZIP bundle, etc.) — delivered via a secure 24-hour download link. Uploads go directly to storage, so large files (course PDFs, bundles) are fine.
+            </p>
           </div>
 
         </div>
