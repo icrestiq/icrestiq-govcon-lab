@@ -116,6 +116,11 @@ export default function AdminPanel() {
                   >
                     {p.active ? 'Active' : 'Hidden'}
                   </button>
+                  {!p.stripe_price_id && (
+                    <span className="badge badge-red" style={{ marginLeft: 'var(--sp-2)' }} title="Checkout will fail until a Stripe Price ID is added">
+                      No Price ID
+                    </span>
+                  )}
                 </span>
                 <span className={styles.cellActions}>
                   <button className="btn btn-ghost" style={{ padding: '4px 10px' }}
@@ -417,6 +422,8 @@ function ProductForm({ product, onSave, onCancel }) {
     badge: product?.badge || '',
     tag_line: product?.tag_line || '',
     thumbnail_url: product?.thumbnail_url || '',
+    stripe_price_id: product?.stripe_price_id || '',
+    is_subscription: product?.is_subscription || false,
   })
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
@@ -465,6 +472,8 @@ function ProductForm({ product, onSave, onCancel }) {
         active: form.active,
         badge: form.badge,
         thumbnail_url: form.thumbnail_url,
+        stripe_price_id: form.stripe_price_id.trim() || null,
+        is_subscription: form.is_subscription,
       }
       if (product?.id) {
         const { error } = await supabase.from('products').update(payload).eq('id', product.id)
@@ -539,6 +548,27 @@ function ProductForm({ product, onSave, onCancel }) {
                 <option key={c}>{c}</option>
               ))}
             </select>
+          </div>
+
+          {/* Stripe Price ID */}
+          <div className="field">
+            <label className="label">Stripe Price ID</label>
+            <input className="input mono" value={form.stripe_price_id}
+              onChange={e => setForm(f => ({ ...f, stripe_price_id: e.target.value }))}
+              placeholder="price_1AbCdEfGhIjKlMnOp" />
+            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 'var(--sp-1)' }}>
+              From Stripe → Product catalog → this product → Pricing. Checkout won't work without this.
+            </p>
+          </div>
+
+          {/* Subscription toggle */}
+          <div className="field" style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-2)' }}>
+            <input type="checkbox" id="is_subscription" checked={form.is_subscription}
+              onChange={e => setForm(f => ({ ...f, is_subscription: e.target.checked }))}
+              style={{ width: 18, height: 18 }} />
+            <label htmlFor="is_subscription" className="label" style={{ margin: 0, cursor: 'pointer' }}>
+              This is a recurring subscription (unchecked = one-time purchase)
+            </label>
           </div>
 
           {/* Badge */}
