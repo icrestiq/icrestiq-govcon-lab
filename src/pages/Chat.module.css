@@ -195,6 +195,78 @@
   border-top-left-radius: var(--r-lg);
 }
 
+/* ── Message actions (like / reply) ── */
+.messageActions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  margin-top: 4px;
+}
+
+.actionBtn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  padding: 2px 4px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: color 0.12s;
+}
+
+.actionBtn:hover {
+  color: var(--text-secondary);
+}
+
+.actionBtnActive {
+  color: #E0245E;
+}
+.actionBtnActive:hover {
+  color: #E0245E;
+}
+
+/* ── Gate banner ── */
+.gateBanner {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-6);
+  background: rgba(201,168,76,0.08);
+  border-top: 1px solid rgba(201,168,76,0.25);
+  color: var(--gold, #92620A);
+  font-size: 0.8125rem;
+  flex-shrink: 0;
+}
+
+/* ── Reply banner ── */
+.replyBanner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding: var(--sp-2) var(--sp-6);
+  background: var(--surface-3);
+  border-top: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-size: 0.8125rem;
+  flex-shrink: 0;
+}
+
+.replyBanner button {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  flex-shrink: 0;
+}
+.replyBanner button:hover {
+  color: var(--text-primary);
+}
+
 /* ── Input ── */
 .inputArea {
   display: flex;
