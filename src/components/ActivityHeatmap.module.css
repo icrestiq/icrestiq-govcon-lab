@@ -1,0 +1,57 @@
+.wrap {
+  display: inline-flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.months {
+  display: flex;
+  gap: 3px;
+  padding-left: 2px;
+}
+
+.monthLabel {
+  width: 13px;
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.grid {
+  display: flex;
+  gap: 3px;
+}
+
+.col {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.cell, .cellBlank {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.cellBlank {
+  background: transparent;
+}
+
+.cell[data-level="0"] { background: var(--surface-3, #EDEFF3); }
+.cell[data-level="1"] { background: #C6E6D3; }
+.cell[data-level="2"] { background: #7FCB9E; }
+.cell[data-level="3"] { background: #38A169; }
+.cell[data-level="4"] { background: #1F6B44; }
+
+.legend {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: var(--sp-1);
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  color: var(--text-muted);
+}
