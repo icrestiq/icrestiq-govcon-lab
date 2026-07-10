@@ -20,7 +20,7 @@ const LIKES_NEEDED = 5
 export default function Chat() {
   const { roomId } = useParams()
   const navigate = useNavigate()
-  const { user, profile } = useAuth()
+  const { user, profile, isAdmin } = useAuth()
   const activeRoom = roomId || 'general'
 
   const [messages, setMessages] = useState([])
@@ -129,6 +129,10 @@ export default function Chat() {
 
   async function checkGateStatus() {
     if (!user) return
+    if (isAdmin) {
+      setGate({ blocked: false, likesSoFar: 0, lastPostId: null })
+      return
+    }
     const { data: lastPost } = await supabase
       .from('messages')
       .select('id')
