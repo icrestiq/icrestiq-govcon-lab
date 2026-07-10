@@ -265,7 +265,7 @@ export default function Membership() {
 
               {/* CTA */}
               {tier.ctaLink ? (
-                <a
+                
                   href={tier.ctaLink}
                   className={`btn btn-ghost ${styles.tierCta}`}
                   style={{ justifyContent: 'center' }}
@@ -290,39 +290,45 @@ export default function Membership() {
             </div>
           )
         })}
-      </div>
 
-      {/* Founding Member offer */}
-      <div className={styles.foundingCard}>
-        <div className={styles.foundingLeft}>
-          <div className={styles.foundingBadge}>
-            <Star size={13} />
-            Limited — 25 spots only
+        {/* Founding Member — 4th card, styled dark/gold to stand out as the premium option */}
+        <div className={styles.founderTierCard}>
+          <div className={styles.tierBadgeWrap}>
+            <span className={styles.founderBadge}>
+              <Star size={11} />
+              Limited — 25 Spots
+            </span>
           </div>
-          <h2 className={styles.foundingTitle}>{FOUNDING.name}</h2>
-          <p className={styles.foundingDesc}>{FOUNDING.description}</p>
-          <ul className={styles.foundingFeatures}>
+
+          <div className={styles.founderIcon}>
+            <Crown size={22} />
+          </div>
+
+          <div className={styles.founderName}>{FOUNDING.name}</div>
+          <div className={styles.tierPriceRow}>
+            <span className={styles.founderPrice}>{FOUNDING.price}</span>
+          </div>
+          <p className={styles.founderPeriod}>{FOUNDING.period}</p>
+          <p className={styles.founderDesc}>{FOUNDING.description}</p>
+
+          <ul className={styles.featureList}>
             {FOUNDING.features.map(f => (
-              <li key={f} className={styles.featureItem}>
-                <Check size={13} style={{ color: 'var(--navy)', flexShrink: 0 }} />
+              <li key={f} className={styles.featureItem} style={{ color: 'rgba(255,255,255,0.85)' }}>
+                <Check size={14} style={{ color: 'var(--gold)', flexShrink: 0 }} />
                 <span>{f}</span>
               </li>
             ))}
           </ul>
-        </div>
-        <div className={styles.foundingRight}>
-          <div className={styles.foundingPrice}>
-            <span className={styles.foundingAmount}>{FOUNDING.price}</span>
-            <span className={styles.foundingPeriod}>{FOUNDING.period}</span>
-          </div>
+
           <button
-            className={`btn btn-primary ${styles.foundingCta}`}
+            className={`btn ${styles.founderCta}`}
             disabled={loading === FOUNDING.productId}
             onClick={() => handleCheckout(FOUNDING.productId)}
           >
             {loading === FOUNDING.productId ? <div className="spinner" /> : 'Claim Founding Spot →'}
           </button>
-          <p className={styles.klarnaNote} style={{ textAlign: 'center' }}>
+
+          <p className={styles.klarnaNote} style={{ color: 'rgba(255,255,255,0.5)' }}>
             Split into installments with Affirm at checkout
           </p>
         </div>
