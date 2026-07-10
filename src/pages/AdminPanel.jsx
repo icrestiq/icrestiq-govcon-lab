@@ -18,11 +18,22 @@ export default function AdminPanel() {
   const [users, setUsers] = useState([])
   const [showProductForm, setShowProductForm] = useState(false)
   const [editProduct, setEditProduct] = useState(null)
+  const [pendingReportCount, setPendingReportCount] = useState(0)
 
   useEffect(() => {
     if (tab === 'products') loadProducts()
     if (tab === 'users') loadUsers()
   }, [tab])
+
+  useEffect(() => { loadPendingReportCount() }, [])
+
+  async function loadPendingReportCount() {
+    const { count } = await supabase
+      .from('message_reports')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'pending')
+    setPendingReportCount(count || 0)
+  }
 
   async function loadProducts() {
     const { data } = await supabase.from('products').select('*').order('created_at', { ascending: false })
@@ -65,6 +76,11 @@ export default function AdminPanel() {
           >
             <Icon size={15} />
             {label}
+            {id === 'messages' && pendingReportCount > 0 && (
+              <span className="badge badge-red" style={{ marginLeft: 6, padding: '1px 7px', fontSize: '0.6875rem' }}>
+                {pendingReportCount}
+              </span>
+            )}
           </button>
         ))}
       </div>
@@ -175,15 +191,109 @@ export default function AdminPanel() {
       )}
 
       {/* ── Messages ── */}
-      {tab === 'messages' && (
-        <div className={styles.comingSoon}>
-          <MessageSquare size={32} style={{ color: 'var(--text-muted)', marginBottom: 'var(--sp-3)' }} />
-          <p>Message moderation panel coming in the next update.</p>
-          <p className="mono" style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: 'var(--sp-2)' }}>
-            Use Supabase dashboard → Table Editor → messages for now.
-          </p>
+      {tab === 'messages' && <ReportsTab />}
+    </div>
+  )
+}
+
+// ── Reports Tab — review flagged posts, delete or dismiss ──
+function ReportsTab() {
+  const [reports, setReports] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  useEffect(() => { loadReports() }, [])
+
+  async function loadReports() {
+    setLoading(true)
+    setError('')
+    try {
+      const { data, error } = await supabase
+        .from('message_reports')
+        .select(`
+          id, reason, status, created_at, reporter_id,
+          messages ( id, content, username, room_id, user_id )
+        `)
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false })
+      if (error) throw error
+      setReports(data || [])
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function dismissReport(report) {
+    try {
+      await supabase.from('message_reports').update({ status: 'dismissed' }).eq('id', report.id)
+      setReports(prev => prev.filter(r => r.id !== report.id))
+    } catch (err) {
+      alert('Could not dismiss: ' + err.message)
+    }
+  }
+
+  async function deleteReportedPost(report) {
+    if (!confirm('Delete this post? This also removes any replies to it. This cannot be undone.')) return
+    try {
+      if (report.messages?.id) {
+        await supabase.from('messages').delete().eq('id', report.messages.id)
+      }
+      await supabase.from('message_reports').update({ status: 'resolved' }).eq('id', report.id)
+      setReports(prev => prev.filter(r => r.id !== report.id))
+    } catch (err) {
+      alert('Could not delete: ' + err.message)
+    }
+  }
+
+  return (
+    <div>
+      <div className={styles.tabActions}>
+        <h2 className={styles.tabTitle}>Reported Posts ({reports.length})</h2>
+      </div>
+
+      {error && (
+        <div className="alert alert-info" style={{ marginBottom: 'var(--sp-5)', borderColor: 'var(--red)', color: 'var(--red)' }}>
+          {error}
         </div>
       )}
+
+      {loading && <div className={styles.tableEmpty}>Loading reports…</div>}
+      {!loading && reports.length === 0 && (
+        <div className={styles.tableEmpty}>No pending reports. All clear.</div>
+      )}
+
+      {!loading && reports.map(report => (
+        <div key={report.id} className="card" style={{ marginBottom: 'var(--sp-4)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 'var(--sp-3)' }}>
+            <div>
+              <span className="badge badge-red" style={{ marginRight: 'var(--sp-2)', textTransform: 'capitalize' }}>{report.reason}</span>
+              <span className="mono" style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                room: {report.messages?.room_id || 'unknown'} · {new Date(report.created_at).toLocaleString()}
+              </span>
+            </div>
+          </div>
+
+          <div style={{ background: 'var(--surface-2)', borderRadius: 'var(--r-md)', padding: 'var(--sp-3) var(--sp-4)', marginBottom: 'var(--sp-4)' }}>
+            <p style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--navy)', marginBottom: 'var(--sp-1)' }}>
+              {report.messages?.username || 'Unknown user'} posted:
+            </p>
+            <p style={{ fontSize: '0.9375rem', color: 'var(--text-primary)' }}>
+              {report.messages?.content || '(message no longer exists)'}
+            </p>
+          </div>
+
+          <div style={{ display: 'flex', gap: 'var(--sp-3)' }}>
+            <button className="btn btn-danger" onClick={() => deleteReportedPost(report)}>
+              <Trash2 size={14} /> Delete Post
+            </button>
+            <button className="btn btn-ghost" onClick={() => dismissReport(report)}>
+              Dismiss
+            </button>
+          </div>
+        </div>
+      ))}
     </div>
   )
 }
@@ -198,9 +308,9 @@ function DiscountsTab() {
 
   const [form, setForm] = useState({
     code: '',
-    discountType: 'percent', // 'percent' | 'amount'
+    discountType: 'percent',
     amount: '',
-    duration: 'once', // 'once' | 'forever' | 'repeating'
+    duration: 'once',
     durationInMonths: 3,
     maxRedemptions: '',
     expiresAt: '',
@@ -442,7 +552,6 @@ function ProductForm({ product, onSave, onCancel }) {
     try {
       const { data: { session } } = await supabase.auth.getSession()
 
-      // Step 1: ask our server for a secure, one-time upload URL
       const res = await fetch('/api/upload/product-file-url', {
         method: 'POST',
         headers: {
@@ -454,8 +563,6 @@ function ProductForm({ product, onSave, onCancel }) {
       const { path, token, error } = await res.json()
       if (!res.ok) throw new Error(error || 'Could not prepare upload')
 
-      // Step 2: browser uploads the file DIRECTLY to Supabase Storage —
-      // this skips Vercel entirely, so large files (50MB+) work fine
       const { error: uploadErr } = await supabase.storage
         .from('products')
         .uploadToSignedUrl(path, token, file)
@@ -476,11 +583,9 @@ function ProductForm({ product, onSave, onCancel }) {
     setUploadError('')
     setUploading(true)
     try {
-      // Validate file size (max 2MB)
       if (file.size > 2 * 1024 * 1024) {
         throw new Error('File too large. Max size is 2MB.')
       }
-      // Use server-side API to upload (bypasses storage RLS issues)
       const res = await fetch('/api/upload/image', {
         method: 'POST',
         headers: { 'Content-Type': file.type },
@@ -541,20 +646,17 @@ function ProductForm({ product, onSave, onCancel }) {
       <form onSubmit={handleSave}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--sp-4)' }}>
 
-          {/* Title */}
           <div className="field" style={{ gridColumn: '1 / -1' }}>
             <label className="label">Product Title</label>
             <input className="input" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} required />
           </div>
 
-          {/* Short Description */}
           <div className="field" style={{ gridColumn: '1 / -1' }}>
             <label className="label">Short Description (shown on card)</label>
             <textarea className="input" value={form.description}
               onChange={e => setForm(f => ({ ...f, description: e.target.value }))} rows={2} required />
           </div>
 
-          {/* Rich Long Description */}
           <div className="field" style={{ gridColumn: '1 / -1' }}>
             <label className="label">Full Description (shown on product page)</label>
             <textarea className="input" value={form.long_description}
@@ -566,7 +668,6 @@ function ProductForm({ product, onSave, onCancel }) {
             </p>
           </div>
 
-          {/* Tag line */}
           <div className="field" style={{ gridColumn: '1 / -1' }}>
             <label className="label">Tag Line (e.g. "70+ pages · Full appendix suite")</label>
             <input className="input" value={form.tag_line}
@@ -574,14 +675,12 @@ function ProductForm({ product, onSave, onCancel }) {
               placeholder="e.g. 70+ pages · Full appendix suite" />
           </div>
 
-          {/* Price */}
           <div className="field">
             <label className="label">Price ($)</label>
             <input className="input" type="number" min="0" value={form.price}
               onChange={e => setForm(f => ({ ...f, price: e.target.value }))} required />
           </div>
 
-          {/* Category */}
           <div className="field">
             <label className="label">Category</label>
             <select className="input" value={form.category}
@@ -592,7 +691,6 @@ function ProductForm({ product, onSave, onCancel }) {
             </select>
           </div>
 
-          {/* Stripe Price ID */}
           <div className="field">
             <label className="label">Stripe Price ID</label>
             <input className="input mono" value={form.stripe_price_id}
@@ -603,7 +701,6 @@ function ProductForm({ product, onSave, onCancel }) {
             </p>
           </div>
 
-          {/* Subscription toggle */}
           <div className="field" style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-2)' }}>
             <input type="checkbox" id="is_subscription" checked={form.is_subscription}
               onChange={e => setForm(f => ({ ...f, is_subscription: e.target.checked }))}
@@ -613,14 +710,12 @@ function ProductForm({ product, onSave, onCancel }) {
             </label>
           </div>
 
-          {/* Badge */}
           <div className="field">
             <label className="label">Badge (optional)</label>
             <input className="input" placeholder="e.g. New, Bestseller, Popular"
               value={form.badge} onChange={e => setForm(f => ({ ...f, badge: e.target.value }))} />
           </div>
 
-          {/* Active toggle */}
           <div className="field" style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-3)', paddingTop: 'var(--sp-5)' }}>
             <input type="checkbox" id="active" checked={form.active}
               onChange={e => setForm(f => ({ ...f, active: e.target.checked }))} />
@@ -629,7 +724,6 @@ function ProductForm({ product, onSave, onCancel }) {
             </label>
           </div>
 
-          {/* Thumbnail Upload */}
           <div className="field" style={{ gridColumn: '1 / -1' }}>
             <label className="label">Product Thumbnail</label>
 
@@ -665,7 +759,6 @@ function ProductForm({ product, onSave, onCancel }) {
             </div>
           </div>
 
-          {/* Downloadable Product File */}
           <div className="field" style={{ gridColumn: '1 / -1' }}>
             <label className="label">Downloadable Product File</label>
 
