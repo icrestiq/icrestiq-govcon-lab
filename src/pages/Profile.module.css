@@ -1,0 +1,131 @@
+.page {
+  padding: var(--sp-8);
+  max-width: 900px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-5);
+  margin-bottom: var(--sp-6);
+}
+
+.name {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  color: var(--navy);
+  margin-bottom: 2px;
+}
+
+.username {
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  margin-bottom: var(--sp-2);
+}
+
+.badges {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+.joined {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+}
+
+/* ── Tabs ── */
+.tabs {
+  display: flex;
+  gap: var(--sp-2);
+  border-bottom: 1px solid var(--border);
+  margin-bottom: var(--sp-6);
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-3) var(--sp-4);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-secondary);
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: color 0.12s, border-color 0.12s;
+}
+
+.tab:hover {
+  color: var(--navy);
+}
+
+.tabActive {
+  color: var(--navy);
+  border-bottom-color: var(--navy);
+  font-weight: 600;
+}
+
+/* ── Card ── */
+.card {
+  background: #FFFFFF;
+  border: 1px solid var(--border);
+  border-radius: var(--r-xl);
+  padding: var(--sp-6);
+  margin-bottom: var(--sp-5);
+}
+
+.cardTitle {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1rem;
+  color: var(--navy);
+  margin-bottom: var(--sp-4);
+}
+
+.bio {
+  font-size: 0.9375rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+/* ── Stats row ── */
+.statsRow {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--sp-4);
+  margin-bottom: var(--sp-5);
+}
+
+.statCard {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  background: #FFFFFF;
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: var(--sp-4);
+}
+
+.statValue {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.5rem;
+  color: var(--navy);
+  line-height: 1;
+}
+
+.statLabel {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+@media (max-width: 640px) {
+  .page { padding: var(--sp-5); }
+  .statsRow { grid-template-columns: 1fr; }
+  .header { flex-direction: column; align-items: flex-start; }
+}
