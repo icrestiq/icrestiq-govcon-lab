@@ -263,15 +263,14 @@ export default function Membership() {
                 ))}
               </ul>
 
-              {/* CTA */}
+             {/* CTA */}
               {tier.ctaLink ? (
-                
-                  href={tier.ctaLink}
+                <button
                   className={`btn btn-ghost ${styles.tierCta}`}
-                  style={{ justifyContent: 'center' }}
+                  onClick={() => navigate(tier.ctaLink)}
                 >
                   {tier.cta}
-                </a>
+                </button>
               ) : (
                 <button
                   className={`btn ${tier.highlight ? 'btn-primary' : 'btn-ghost'} ${styles.tierCta}`}
