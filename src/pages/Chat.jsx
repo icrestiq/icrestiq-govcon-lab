@@ -2,8 +2,9 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/AuthContext'
-import { Send, Hash, Users, ChevronRight, Heart, MessageCircle, X, Lock } from 'lucide-react'
+import { Send, Hash, Users, MessageCircle, X, Lock, SmilePlus } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
+import EmojiPicker from '../components/EmojiPicker'
 import styles from './Chat.module.css'
 
 const DEFAULT_ROOMS = [
@@ -27,8 +28,9 @@ export default function Chat() {
   const [newMsg, setNewMsg] = useState('')
   const [sending, setSending] = useState(false)
   const [onlineCount, setOnlineCount] = useState(1)
-  const [likes, setLikes] = useState({}) // { [message_id]: { count, likedByMe } }
-  const [replyingTo, setReplyingTo] = useState(null) // message object or null
+  // reactions[message_id] = { [emoji]: { count, reactedByMe } }
+  const [reactions, setReactions] = useState({})
+  const [replyingTo, setReplyingTo] = useState(null)
   const [gate, setGate] = useState({ blocked: false, likesSoFar: 0, lastPostId: null })
   const messagesEndRef = useRef(null)
   const inputRef = useRef(null)
@@ -37,13 +39,11 @@ export default function Chat() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [])
 
-  // Load messages for the active room
   useEffect(() => {
     setMessages([])
     loadMessages()
     checkGateStatus()
 
-    // Subscribe to real-time messages
     const channel = supabase
       .channel(`room:${activeRoom}`)
       .on('postgres_changes', {
@@ -53,21 +53,19 @@ export default function Chat() {
         filter: `room_id=eq.${activeRoom}`,
       }, payload => {
         setMessages(prev => [...prev, payload.new])
-        loadLikesFor([payload.new.id])
+        loadReactionsFor([payload.new.id])
         setTimeout(scrollToBottom, 50)
       })
       .subscribe()
 
-    // Subscribe to real-time likes (no room_id column, so filter client-side)
-    const likesChannel = supabase
-      .channel(`likes:${activeRoom}`)
+    const reactionsChannel = supabase
+      .channel(`reactions:${activeRoom}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'message_likes' }, () => {
-        refreshVisibleLikes()
+        refreshVisibleReactions()
         checkGateStatus()
       })
       .subscribe()
 
-    // Track presence (online count)
     const presence = supabase.channel(`presence:${activeRoom}`)
     presence
       .on('presence', { event: 'sync' }, () => {
@@ -82,7 +80,7 @@ export default function Chat() {
 
     return () => {
       supabase.removeChannel(channel)
-      supabase.removeChannel(likesChannel)
+      supabase.removeChannel(reactionsChannel)
       supabase.removeChannel(presence)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -99,32 +97,34 @@ export default function Chat() {
       .limit(200)
     if (data) {
       setMessages(data)
-      loadLikesFor(data.map(m => m.id))
+      loadReactionsFor(data.map(m => m.id))
     }
   }
 
-  async function loadLikesFor(messageIds) {
+  async function loadReactionsFor(messageIds) {
     if (!messageIds.length) return
     const { data } = await supabase
       .from('message_likes')
-      .select('message_id, user_id')
+      .select('message_id, user_id, emoji')
       .in('message_id', messageIds)
     if (!data) return
-    setLikes(prev => {
+    setReactions(prev => {
       const next = { ...prev }
-      messageIds.forEach(id => { next[id] = { count: 0, likedByMe: false } })
+      messageIds.forEach(id => { next[id] = {} })
       data.forEach(row => {
-        if (!next[row.message_id]) next[row.message_id] = { count: 0, likedByMe: false }
-        next[row.message_id].count += 1
-        if (row.user_id === user?.id) next[row.message_id].likedByMe = true
+        const emoji = row.emoji || '❤️'
+        if (!next[row.message_id]) next[row.message_id] = {}
+        if (!next[row.message_id][emoji]) next[row.message_id][emoji] = { count: 0, reactedByMe: false }
+        next[row.message_id][emoji].count += 1
+        if (row.user_id === user?.id) next[row.message_id][emoji].reactedByMe = true
       })
       return next
     })
   }
 
-  function refreshVisibleLikes() {
+  function refreshVisibleReactions() {
     const ids = messages.map(m => m.id)
-    if (ids.length) loadLikesFor(ids)
+    if (ids.length) loadReactionsFor(ids)
   }
 
   async function checkGateStatus() {
@@ -160,34 +160,52 @@ export default function Chat() {
     })
   }
 
-  async function toggleLike(message) {
+  async function toggleReaction(message, emoji) {
     if (!user) return
-    const current = likes[message.id] || { count: 0, likedByMe: false }
+    const current = reactions[message.id]?.[emoji] || { count: 0, reactedByMe: false }
     // Optimistic update
-    setLikes(prev => ({
+    setReactions(prev => ({
       ...prev,
       [message.id]: {
-        count: current.likedByMe ? current.count - 1 : current.count + 1,
-        likedByMe: !current.likedByMe,
+        ...prev[message.id],
+        [emoji]: {
+          count: current.reactedByMe ? current.count - 1 : current.count + 1,
+          reactedByMe: !current.reactedByMe,
+        },
       },
     }))
     try {
-      if (current.likedByMe) {
-        await supabase.from('message_likes').delete().eq('message_id', message.id).eq('user_id', user.id)
+      if (current.reactedByMe) {
+        await supabase.from('message_likes').delete()
+          .eq('message_id', message.id).eq('user_id', user.id).eq('emoji', emoji)
       } else {
-        await supabase.from('message_likes').insert({ message_id: message.id, user_id: user.id })
+        await supabase.from('message_likes').insert({ message_id: message.id, user_id: user.id, emoji })
       }
     } catch (err) {
-      console.error('Like error:', err)
-      loadLikesFor([message.id]) // revert on failure
+      console.error('Reaction error:', err)
+      loadReactionsFor([message.id]) // revert on failure
     }
+  }
+
+  function insertEmojiIntoComposer(emoji) {
+    const input = inputRef.current
+    if (!input) { setNewMsg(prev => prev + emoji); return }
+    const start = input.selectionStart ?? newMsg.length
+    const end = input.selectionEnd ?? newMsg.length
+    const updated = newMsg.slice(0, start) + emoji + newMsg.slice(end)
+    setNewMsg(updated)
+    setTimeout(() => {
+      input.focus()
+      const pos = start + emoji.length
+      input.setSelectionRange(pos, pos)
+    }, 0)
   }
 
   async function sendMessage(e) {
     e.preventDefault()
     const text = newMsg.trim()
     if (!text || sending) return
-    if (!replyingTo && gate.blocked) return // gated from new top-level posts
+    if (!replyingTo && gate.blocked) return
 
     setSending(true)
     setNewMsg('')
@@ -205,7 +223,7 @@ export default function Chat() {
       if (!wasReply) setTimeout(checkGateStatus, 300)
     } catch (err) {
       console.error('Send error:', err)
-      setNewMsg(text) // restore on failure
+      setNewMsg(text)
     } finally {
       setSending(false)
       inputRef.current?.focus()
@@ -214,14 +232,14 @@ export default function Chat() {
 
   const currentRoom = DEFAULT_ROOMS.find(r => r.id === activeRoom) || DEFAULT_ROOMS[0]
 
-  // Group messages: top-level posts, each followed by its replies
   const topLevel = messages.filter(m => !m.parent_id)
   const repliesFor = id => messages.filter(m => m.parent_id === id)
 
   function renderMessage(msg, isReply = false) {
     const isOwn = msg.user_id === user?.id
     const initials = (msg.username || 'M').slice(0, 2).toUpperCase()
-    const likeInfo = likes[msg.id] || { count: 0, likedByMe: false }
+    const msgReactions = reactions[msg.id] || {}
+    const activeEmoji = Object.entries(msgReactions).filter(([, v]) => v.count > 0)
 
     return (
       <div key={msg.id} className={`${styles.message} ${isOwn ? styles.messageOwn : ''}`} style={isReply ? { marginLeft: isOwn ? 0 : 44, marginRight: isOwn ? 44 : 0 } : {}}>
@@ -236,14 +254,28 @@ export default function Chat() {
           <div className={`${styles.messageText} ${isOwn ? styles.messageTextOwn : ''}`}>
             {msg.content}
           </div>
+
+          {/* Reaction pills */}
+          {activeEmoji.length > 0 && (
+            <div className={styles.reactionRow}>
+              {activeEmoji.map(([emoji, info]) => (
+                <button
+                  key={emoji}
+                  className={`${styles.reactionPill} ${info.reactedByMe ? styles.reactionPillActive : ''}`}
+                  onClick={() => toggleReaction(msg, emoji)}
+                >
+                  <span>{emoji}</span>
+                  <span>{info.count}</span>
+                </button>
+              ))}
+            </div>
+          )}
+
           <div className={styles.messageActions}>
-            <button
-              className={`${styles.actionBtn} ${likeInfo.likedByMe ? styles.actionBtnActive : ''}`}
-              onClick={() => toggleLike(msg)}
-            >
-              <Heart size={13} fill={likeInfo.likedByMe ? 'currentColor' : 'none'} />
-              {likeInfo.count > 0 && <span>{likeInfo.count}</span>}
-            </button>
+            <EmojiPicker
+              trigger={<SmilePlus size={14} />}
+              onSelect={emoji => toggleReaction(msg, emoji)}
+            />
             {!isReply && (
               <button className={styles.actionBtn} onClick={() => { setReplyingTo(msg); inputRef.current?.focus() }}>
                 <MessageCircle size={13} />
@@ -258,7 +290,6 @@ export default function Chat() {
 
   return (
     <div className={styles.shell}>
-      {/* Room sidebar */}
       <div className={styles.roomList}>
         <div className={styles.roomListHeader}>
           <span className="mono" style={{ color: 'var(--text-muted)', fontSize: '0.6875rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Rooms</span>
@@ -279,9 +310,7 @@ export default function Chat() {
         ))}
       </div>
 
-      {/* Chat area */}
       <div className={styles.chatArea}>
-        {/* Chat header */}
         <div className={styles.chatHeader}>
           <div className={styles.chatHeaderLeft}>
             <Hash size={18} style={{ color: 'var(--green)' }} />
@@ -296,7 +325,6 @@ export default function Chat() {
           </div>
         </div>
 
-        {/* Messages */}
         <div className={styles.messages}>
           {messages.length === 0 && (
             <div className={styles.emptyState}>
@@ -315,7 +343,6 @@ export default function Chat() {
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Gate banner — only affects new top-level posts, never replies */}
         {gate.blocked && !replyingTo && (
           <div className={styles.gateBanner}>
             <Lock size={14} />
@@ -325,7 +352,6 @@ export default function Chat() {
           </div>
         )}
 
-        {/* Replying-to banner */}
         {replyingTo && (
           <div className={styles.replyBanner}>
             <span>Replying to <strong>{replyingTo.username}</strong>: {replyingTo.content.slice(0, 60)}{replyingTo.content.length > 60 ? '…' : ''}</span>
@@ -333,8 +359,8 @@ export default function Chat() {
           </div>
         )}
 
-        {/* Input */}
         <form className={styles.inputArea} onSubmit={sendMessage}>
+          <EmojiPicker trigger={<SmilePlus size={18} />} onSelect={insertEmojiIntoComposer} />
           <input
             ref={inputRef}
             className={`input ${styles.chatInput}`}
