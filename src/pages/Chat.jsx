@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/AuthContext'
-import { Send, Hash, Users, MessageCircle, X, Lock, SmilePlus } from 'lucide-react'
+import { Send, Hash, Users, MessageCircle, X, Lock, SmilePlus, Trash2, Flag } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import EmojiPicker from '../components/EmojiPicker'
 import styles from './Chat.module.css'
@@ -17,6 +17,12 @@ const DEFAULT_ROOMS = [
 ]
 
 const LIKES_NEEDED = 5
+const REPORT_REASONS = [
+  { id: 'spam', label: 'Spam' },
+  { id: 'harassment', label: 'Harassment' },
+  { id: 'inappropriate', label: 'Inappropriate content' },
+  { id: 'other', label: 'Other' },
+]
 
 export default function Chat() {
   const { roomId } = useParams()
@@ -28,10 +34,11 @@ export default function Chat() {
   const [newMsg, setNewMsg] = useState('')
   const [sending, setSending] = useState(false)
   const [onlineCount, setOnlineCount] = useState(1)
-  // reactions[message_id] = { [emoji]: { count, reactedByMe } }
   const [reactions, setReactions] = useState({})
   const [replyingTo, setReplyingTo] = useState(null)
   const [gate, setGate] = useState({ blocked: false, likesSoFar: 0, lastPostId: null })
+  const [reportMenuFor, setReportMenuFor] = useState(null)
+  const [reportedIds, setReportedIds] = useState(new Set())
   const messagesEndRef = useRef(null)
   const inputRef = useRef(null)
 
@@ -43,18 +50,23 @@ export default function Chat() {
     setMessages([])
     loadMessages()
     checkGateStatus()
+    loadMyReports()
 
     const channel = supabase
       .channel(`room:${activeRoom}`)
       .on('postgres_changes', {
-        event: 'INSERT',
+        event: '*',
         schema: 'public',
         table: 'messages',
         filter: `room_id=eq.${activeRoom}`,
       }, payload => {
-        setMessages(prev => [...prev, payload.new])
-        loadReactionsFor([payload.new.id])
-        setTimeout(scrollToBottom, 50)
+        if (payload.eventType === 'INSERT') {
+          setMessages(prev => [...prev, payload.new])
+          loadReactionsFor([payload.new.id])
+          setTimeout(scrollToBottom, 50)
+        } else if (payload.eventType === 'DELETE') {
+          setMessages(prev => prev.filter(m => m.id !== payload.old.id))
+        }
       })
       .subscribe()
 
@@ -99,6 +111,15 @@ export default function Chat() {
       setMessages(data)
       loadReactionsFor(data.map(m => m.id))
     }
+  }
+
+  async function loadMyReports() {
+    if (!user) return
+    const { data } = await supabase
+      .from('message_reports')
+      .select('message_id')
+      .eq('reporter_id', user.id)
+    if (data) setReportedIds(new Set(data.map(r => r.message_id)))
   }
 
   async function loadReactionsFor(messageIds) {
@@ -163,7 +184,6 @@ export default function Chat() {
   async function toggleReaction(message, emoji) {
     if (!user) return
     const current = reactions[message.id]?.[emoji] || { count: 0, reactedByMe: false }
-    // Optimistic update
     setReactions(prev => ({
       ...prev,
       [message.id]: {
@@ -183,7 +203,7 @@ export default function Chat() {
       }
     } catch (err) {
       console.error('Reaction error:', err)
-      loadReactionsFor([message.id]) // revert on failure
+      loadReactionsFor([message.id])
     }
   }
 
@@ -230,6 +250,33 @@ export default function Chat() {
     }
   }
 
+  async function deleteMessage(message) {
+    if (!confirm('Delete this post? This also removes any replies to it. This cannot be undone.')) return
+    try {
+      await supabase.from('messages').delete().eq('id', message.id)
+      setMessages(prev => prev.filter(m => m.id !== message.id && m.parent_id !== message.id))
+    } catch (err) {
+      console.error('Delete error:', err)
+      alert('Could not delete this post: ' + err.message)
+    }
+  }
+
+  async function submitReport(message, reason) {
+    setReportMenuFor(null)
+    try {
+      const { error } = await supabase.from('message_reports').insert({
+        message_id: message.id,
+        reporter_id: user.id,
+        reason,
+      })
+      if (error) throw error
+      setReportedIds(prev => new Set([...prev, message.id]))
+    } catch (err) {
+      console.error('Report error:', err)
+      alert('Could not submit report: ' + err.message)
+    }
+  }
+
   const currentRoom = DEFAULT_ROOMS.find(r => r.id === activeRoom) || DEFAULT_ROOMS[0]
 
   const topLevel = messages.filter(m => !m.parent_id)
@@ -237,6 +284,8 @@ export default function Chat() {
 
   function renderMessage(msg, isReply = false) {
     const isOwn = msg.user_id === user?.id
+    const canDelete = isAdmin || isOwn
+    const alreadyReported = reportedIds.has(msg.id)
     const initials = (msg.username || 'M').slice(0, 2).toUpperCase()
     const msgReactions = reactions[msg.id] || {}
     const activeEmoji = Object.entries(msgReactions).filter(([, v]) => v.count > 0)
@@ -255,7 +304,6 @@ export default function Chat() {
             {msg.content}
           </div>
 
-          {/* Reaction pills */}
           {activeEmoji.length > 0 && (
             <div className={styles.reactionRow}>
               {activeEmoji.map(([emoji, info]) => (
@@ -280,6 +328,35 @@ export default function Chat() {
               <button className={styles.actionBtn} onClick={() => { setReplyingTo(msg); inputRef.current?.focus() }}>
                 <MessageCircle size={13} />
                 Reply
+              </button>
+            )}
+
+            {!isOwn && (
+              <div className={styles.reportWrap}>
+                <button
+                  className={styles.actionBtn}
+                  disabled={alreadyReported}
+                  onClick={() => setReportMenuFor(reportMenuFor === msg.id ? null : msg.id)}
+                  title={alreadyReported ? 'You already reported this' : 'Report this post'}
+                >
+                  <Flag size={13} fill={alreadyReported ? 'currentColor' : 'none'} />
+                  {alreadyReported ? 'Reported' : 'Report'}
+                </button>
+                {reportMenuFor === msg.id && (
+                  <div className={styles.reportMenu}>
+                    {REPORT_REASONS.map(r => (
+                      <button key={r.id} onClick={() => submitReport(msg, r.id)}>
+                        {r.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {canDelete && (
+              <button className={`${styles.actionBtn} ${styles.deleteBtn}`} onClick={() => deleteMessage(msg)}>
+                <Trash2 size={13} />
               </button>
             )}
           </div>
