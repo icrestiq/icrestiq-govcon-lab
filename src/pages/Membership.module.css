@@ -1,6 +1,6 @@
 .page {
   padding: var(--sp-8);
-  max-width: 1100px;
+  max-width: 1320px;
 }
 
 .header {
@@ -76,7 +76,7 @@
 /* ── Grid ── */
 .grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: var(--sp-5);
   margin-bottom: var(--sp-8);
   align-items: stretch;
@@ -201,94 +201,101 @@
   margin-top: var(--sp-3);
 }
 
-/* ── Founding card ── */
-.foundingCard {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: var(--sp-8);
-  align-items: center;
-  background: var(--navy);
+/* ── Founding tier card — 4th card in the grid, dark/gold to stand out ── */
+.founderTierCard {
+  background: linear-gradient(160deg, var(--navy) 0%, #14203A 100%);
+  border: 1.5px solid var(--gold);
   border-radius: var(--r-xl);
-  padding: var(--sp-8);
-  margin-bottom: var(--sp-8);
+  padding: var(--sp-6);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  box-shadow: 0 8px 32px rgba(201,168,76,0.25), 0 4px 20px rgba(27,42,74,0.25);
+  transition: box-shadow 0.15s, transform 0.15s;
 }
 
-.foundingBadge {
+.founderTierCard:hover {
+  box-shadow: 0 12px 40px rgba(201,168,76,0.35), 0 4px 20px rgba(27,42,74,0.3);
+  transform: translateY(-2px);
+}
+
+.founderBadge {
   display: inline-flex;
   align-items: center;
-  gap: var(--sp-2);
+  gap: 4px;
   padding: 4px 12px;
-  background: rgba(201,168,76,0.2);
-  border: 1px solid rgba(201,168,76,0.4);
   border-radius: 100px;
-  font-family: var(--font-mono);
   font-size: 0.6875rem;
-  color: var(--gold);
-  margin-bottom: var(--sp-4);
+  font-weight: 800;
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  background: var(--gold);
+  color: var(--navy);
+  border: 1.5px solid var(--gold);
+  box-shadow: 0 2px 8px rgba(201,168,76,0.4);
+  white-space: nowrap;
 }
 
-.foundingTitle {
-  font-size: 1.5rem;
+.founderIcon {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--r-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: var(--sp-4);
+  flex-shrink: 0;
+  background: rgba(201,168,76,0.15);
+  border: 1px solid rgba(201,168,76,0.4);
+  color: var(--gold);
+}
+
+.founderName {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.125rem;
   color: #FFFFFF;
   margin-bottom: var(--sp-3);
 }
 
-.foundingDesc {
-  font-size: 0.9375rem;
-  color: rgba(255,255,255,0.7);
-  line-height: 1.6;
-  margin-bottom: var(--sp-5);
-}
-
-.foundingFeatures {
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-2);
-}
-
-.foundingFeatures .featureItem {
-  color: rgba(255,255,255,0.75);
-}
-
-.foundingRight {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--sp-4);
-  min-width: 220px;
-}
-
-.foundingPrice { text-align: center; }
-
-.foundingAmount {
-  display: block;
+.founderPrice {
   font-family: var(--font-display);
-  font-size: 3rem;
+  font-size: 2.25rem;
   font-weight: 700;
   color: #FFFFFF;
   line-height: 1;
-  margin-bottom: var(--sp-2);
 }
 
-.foundingPeriod {
+.founderPeriod {
   font-family: var(--font-mono);
   font-size: 0.75rem;
-  color: rgba(255,255,255,0.5);
+  color: var(--gold);
+  margin-bottom: var(--sp-3);
 }
 
-.foundingCta {
+.founderDesc {
+  font-size: 0.875rem;
+  color: rgba(255,255,255,0.7);
+  line-height: 1.5;
+  margin-bottom: var(--sp-5);
+}
+
+.founderCta {
   width: 100%;
   justify-content: center;
-  font-size: 1rem;
-  padding: 14px;
+  margin-top: auto;
   background: var(--gold);
-  color: #FFFFFF;
+  color: var(--navy);
   border: none;
+  font-weight: 700;
 }
-.foundingCta:hover {
+.founderCta:hover {
   background: var(--gold-dim);
-  color: #FFFFFF;
+  color: var(--navy);
+}
+.founderCta:disabled {
+  opacity: 0.6;
 }
 
 /* ── Guarantee ── */
@@ -321,10 +328,12 @@
   line-height: 1.6;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1200px) {
+  .grid { grid-template-columns: repeat(2, 1fr); max-width: 720px; margin-left: auto; margin-right: auto; }
+}
+
+@media (max-width: 640px) {
   .grid { grid-template-columns: 1fr; max-width: 420px; margin-left: auto; margin-right: auto; }
-  .foundingCard { grid-template-columns: 1fr; }
-  .foundingRight { min-width: auto; }
 }
 
 @media (max-width: 768px) {
