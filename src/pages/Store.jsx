@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-import { ShoppingCart, Package, Search } from 'lucide-react'
+import { ShoppingCart, Package, Search,Shirt, ArrowRight } from 'lucide-react'
 import styles from './Store.module.css'
 import CartDrawer from '../components/store/CartDrawer'
 import { useCart } from '../hooks/useCart'
@@ -63,6 +63,36 @@ export default function Store() {
           {cartCount > 0 && <span className={styles.cartBadge}>{cartCount}</span>}
         </button>
       </div>
+
+      {/* Merch store banner */}
+      
+        href="https://govconlab.printify.me/"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="card card-hover"
+        style={{
+          display: 'flex', alignItems: 'center', gap: 'var(--sp-3)',
+          padding: 'var(--sp-4)', marginBottom: 'var(--sp-5)',
+          textDecoration: 'none', color: 'inherit',
+        }}
+      >
+        <div style={{
+          width: 40, height: 40, borderRadius: 10, flexShrink: 0,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: '#C9A84C15', border: '1px solid #C9A84C30', color: '#93762c',
+        }}>
+          <Shirt size={20} />
+        </div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontWeight: 700, fontSize: '0.9375rem' }}>Merch Store</div>
+          <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+            Shirts, hats & branded gear — shop the GovCon Lab collection
+          </div>
+        </div>
+        <ArrowRight size={18} style={{ opacity: 0.6, flexShrink: 0 }} />
+      </a>
+
+      {/* Filters */}
 
       {/* Filters */}
       <div className={styles.filters}>
