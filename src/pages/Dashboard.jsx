@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../lib/AuthContext'
 import { createPortalSession } from '../lib/stripe'
-import { MessageSquare, ShoppingBag, TrendingUp, ArrowRight, Zap, CreditCard, GraduationCap, shirt } from 'lucide-react'
+import { MessageSquare, ShoppingBag, TrendingUp, ArrowRight, Zap, CreditCard, GraduationCap, Shirt } from 'lucide-react'
 import styles from './Dashboard.module.css'
 
 // Each resource gets a distinct color matching GovCon Mastery style
@@ -99,7 +99,7 @@ export default function Dashboard() {
           </Link>
         ))}
         
-          href="https://govconlab.printify.me/"
+         <a href="https://govconlab.printify.me/"
           target="_blank"
           rel="noopener noreferrer"
           className={`card card-hover ${styles.quickCard}`}
@@ -133,7 +133,16 @@ export default function Dashboard() {
         <ArrowRight size={18} style={{ marginLeft: 'auto', flexShrink: 0, opacity: 0.6 }} />
       </a>
 
-      {/* Ops Principle */}
+     {/* Ops Principle */}
+      <div className={styles.principle}>
+        <div className={styles.principleIcon}><Zap size={18} /></div>
+        <div>
+          <div className={styles.principleLabel}>iCrestiQ Operating Principle</div>
+          <div className={styles.principleText}>
+            Systems over hustle. Relationships over transactions. Compliance over speed. AI is our force multiplier.
+          </div>
+        </div>
+      </div>
 
       {/* Gov Resources */}
       <div className={styles.section}>
