@@ -46,7 +46,7 @@ export default async function handler(req, res) {
 
     const paymentMethodTypes = mode === 'subscription'
       ? ['card']
-      : ['card', 'klarna']
+      : ['card', 'klarna', 'affirm']
 
     const sessionConfig = {
       mode,
