@@ -34,7 +34,24 @@ export default function AdminPanel() {
       .eq('status', 'pending')
     setPendingReportCount(count || 0)
   }
-
+async function testMonthlyRewards() {
+    const { data: { session } } = await supabase.auth.getSession()
+    try {
+      const res = await fetch('https://zohrpargudmogfywciik.supabase.co/functions/v1/monthly-rewards', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+      })
+      const data = await res.json()
+      console.log('Rewards result:', data)
+      alert(JSON.stringify(data, null, 2))
+    } catch (err) {
+      console.error('Test error:', err)
+      alert('Error: ' + err.message)
+    }
+  }
   async function loadProducts() {
     const { data } = await supabase.from('products').select('*').order('created_at', { ascending: false })
     if (data) setProducts(data)
@@ -63,7 +80,10 @@ export default function AdminPanel() {
           <h1 className={styles.title}>Admin Panel</h1>
           <p className={styles.sub}>Logged in as <span style={{ color: 'var(--gold)' }}>{profile?.username}</span></p>
         </div>
-        <span className="badge badge-red">Admin Access</span>
+       <span className="badge badge-red">Admin Access</span>
+        <button className="btn btn-primary" onClick={testMonthlyRewards} style={{ marginLeft: 'auto' }}>
+          Test Monthly Rewards
+        </button>
       </div>
 
       {/* Tabs */}
