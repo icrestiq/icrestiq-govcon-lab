@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../lib/AuthContext'
 import { createPortalSession } from '../lib/stripe'
-import { MessageSquare, ShoppingBag, TrendingUp, ArrowRight, Zap, CreditCard, GraduationCap } from 'lucide-react'
+import { MessageSquare, ShoppingBag, TrendingUp, ArrowRight, Zap, CreditCard, GraduationCap, shirt } from 'lucide-react'
 import styles from './Dashboard.module.css'
 
 // Each resource gets a distinct color matching GovCon Mastery style
@@ -84,7 +84,7 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Quick links */}
+     {/* Quick links */}
       <div className={styles.quickLinks}>
         {QUICK_LINKS.map(({ to, icon: Icon, label, desc, color }) => (
           <Link key={to} to={to} className={`card card-hover ${styles.quickCard}`}>
@@ -98,7 +98,22 @@ export default function Dashboard() {
             <ArrowRight size={18} className={styles.quickArrow} />
           </Link>
         ))}
-    </div>
+        
+          href="https://govconlab.printify.me/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className={`card card-hover ${styles.quickCard}`}
+        >
+          <div className={styles.quickIcon} style={{ background: '#C9A84C15', border: '1px solid #C9A84C30', color: '#93762c' }}>
+            <Shirt size={24} />
+          </div>
+          <div className={styles.quickInfo}>
+            <div className={styles.quickLabel}>Merch Store</div>
+            <div className={styles.quickDesc}>Shirts, hats & branded gear</div>
+          </div>
+          <ArrowRight size={18} className={styles.quickArrow} />
+        </a>
+      </div>
 
       {/* Free Class Promo */}
       
