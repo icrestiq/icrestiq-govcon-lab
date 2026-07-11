@@ -37,7 +37,7 @@ export default function AdminPanel() {
 async function testMonthlyRewards() {
     const { data: { session } } = await supabase.auth.getSession()
     try {
-      const res = await fetch('https://zohrpargudmogfywciik.supabase.co/functions/v1/monthly-rewards', {
+      const res = await fetch('https://zohrpargudmogfywciik.supabase.co/functions/v1/monthly_rewards', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
