@@ -66,7 +66,7 @@ export default function Store() {
 
       {/* Merch store banner */}
       
-        href="https://govconlab.printify.me/"
+        <a href="https://govconlab.printify.me/"
         target="_blank"
         rel="noopener noreferrer"
         className="card card-hover"
@@ -91,8 +91,6 @@ export default function Store() {
         </div>
         <ArrowRight size={18} style={{ opacity: 0.6, flexShrink: 0 }} />
       </a>
-
-      {/* Filters */}
 
       {/* Filters */}
       <div className={styles.filters}>
