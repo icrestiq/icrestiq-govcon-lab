@@ -14,6 +14,7 @@ const DEFAULT_ROOMS = [
   { id: 'wins',         name: 'Wins',               desc: 'Post your awards and milestones',    color: '#C9A84C' },
   { id: 'dibbs',        name: 'DIBBS',              desc: 'DIBBS-specific sourcing talk',       color: '#6B46C1' },
   { id: 'tools',        name: 'Tools & Automation', desc: 'Make.com, AI, workflow talk',        color: '#C53030' },
+  { id: 'founding-members', name: 'Founding Members', desc: 'Private room for Founding Members only', color: '#C9A84C', foundingOnly: true },
 ]
 
 const LIKES_NEEDED = 5
@@ -30,6 +31,11 @@ export default function Chat() {
   const { user, profile, isAdmin } = useAuth()
   const activeRoom = roomId || 'general'
 
+  const isFoundingMember = isAdmin || profile?.membership_tier === 'founding'
+
+  // Rooms this user is actually allowed to see in the sidebar
+  const visibleRooms = DEFAULT_ROOMS.filter(room => !room.foundingOnly || isFoundingMember)
+
   const [messages, setMessages] = useState([])
   const [newMsg, setNewMsg] = useState('')
   const [sending, setSending] = useState(false)
@@ -45,6 +51,15 @@ export default function Chat() {
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [])
+
+  // Guard: if someone lands on /chat/founding-members without access, bounce them to General.
+  // (The Supabase RLS policy already blocks the actual data — this just keeps the UI honest.)
+  useEffect(() => {
+    const room = DEFAULT_ROOMS.find(r => r.id === activeRoom)
+    if (room?.foundingOnly && !isFoundingMember) {
+      navigate('/chat/general', { replace: true })
+    }
+  }, [activeRoom, isFoundingMember, navigate])
 
   useEffect(() => {
     setMessages([])
@@ -371,7 +386,7 @@ export default function Chat() {
         <div className={styles.roomListHeader}>
           <span className="mono" style={{ color: 'var(--text-muted)', fontSize: '0.6875rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Rooms</span>
         </div>
-        {DEFAULT_ROOMS.map(room => (
+        {visibleRooms.map(room => (
           <button
             key={room.id}
             className={`${styles.roomItem} ${activeRoom === room.id ? styles.roomActive : ''}`}
@@ -383,6 +398,9 @@ export default function Chat() {
               opacity: activeRoom === room.id ? 1 : 0.5,
             }} />
             <span className={styles.roomName}>{room.name}</span>
+            {room.foundingOnly && (
+              <Lock size={12} style={{ marginLeft: 'auto', opacity: 0.6 }} />
+            )}
           </button>
         ))}
       </div>
@@ -390,7 +408,11 @@ export default function Chat() {
       <div className={styles.chatArea}>
         <div className={styles.chatHeader}>
           <div className={styles.chatHeaderLeft}>
-            <Hash size={18} style={{ color: 'var(--green)' }} />
+            {currentRoom.foundingOnly ? (
+              <Lock size={18} style={{ color: 'var(--green)' }} />
+            ) : (
+              <Hash size={18} style={{ color: 'var(--green)' }} />
+            )}
             <div>
               <div className={styles.chatRoomName}>{currentRoom.name}</div>
               <div className={styles.chatRoomDesc}>{currentRoom.desc}</div>
