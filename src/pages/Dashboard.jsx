@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../lib/AuthContext'
 import { createPortalSession } from '../lib/stripe'
-import { MessageSquare, ShoppingBag, TrendingUp, ArrowRight, Zap, CreditCard } from 'lucide-react'
+import { MessageSquare, ShoppingBag, TrendingUp, ArrowRight, Zap, CreditCard, GraduationCap } from 'lucide-react'
 import styles from './Dashboard.module.css'
 
 // Each resource gets a distinct color matching GovCon Mastery style
@@ -98,18 +98,27 @@ export default function Dashboard() {
             <ArrowRight size={18} className={styles.quickArrow} />
           </Link>
         ))}
-      </div>
+    </div>
 
-      {/* Ops Principle */}
-      <div className={styles.principle}>
-        <div className={styles.principleIcon}><Zap size={18} /></div>
+      {/* Free Class Promo */}
+      
+        href="https://class.govconlab.com"
+        target="_blank"
+        rel="noopener noreferrer"
+        className={`card card-hover ${styles.principle}`}
+        style={{ textDecoration: 'none', color: 'inherit' }}
+      >
+        <div className={styles.principleIcon}><GraduationCap size={18} /></div>
         <div>
-          <div className={styles.principleLabel}>iCrestiQ Operating Principle</div>
+          <div className={styles.principleLabel}>Free Course — GovCon Mastery</div>
           <div className={styles.principleText}>
-            Systems over hustle. Relationships over transactions. Compliance over speed. AI is our force multiplier.
+            New to government contracting? Take our free 23-lesson course covering everything from LLC formation to SAM.gov registration to landing your first contract. No cost, no catch.
           </div>
         </div>
-      </div>
+        <ArrowRight size={18} style={{ marginLeft: 'auto', flexShrink: 0, opacity: 0.6 }} />
+      </a>
+
+      {/* Ops Principle */}
 
       {/* Gov Resources */}
       <div className={styles.section}>
