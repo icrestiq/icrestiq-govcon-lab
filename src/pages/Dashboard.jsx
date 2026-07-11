@@ -102,7 +102,7 @@ export default function Dashboard() {
 
       {/* Free Class Promo */}
       
-        href="https://class.govconlab.com"
+        <a href="https://class.govconlab.com"
         target="_blank"
         rel="noopener noreferrer"
         className={`card card-hover ${styles.principle}`}
