@@ -17,11 +17,11 @@ const transporter = nodemailer.createTransport({
 })
 
 // Exact coordinates measured from the template PDF (in points, bottom-left origin)
-const NAME_BASELINE_Y = 376.7
+const NAME_BASELINE_Y = 383
 const NAME_FONT_SIZE = 50
 const NAME_CENTER_X = 413.6
 
-const DATE_BASELINE_Y = 34.1
+const DATE_BASELINE_Y = 40
 const DATE_FONT_SIZE = 17
 const DATE_START_X = 350.4
 
@@ -49,11 +49,11 @@ export default async function handler(req, res) {
     const font = await pdfDoc.embedFont('Helvetica-Bold')
 
     // Cover the "Name here" placeholder with a background-colored rectangle
-    page.drawRectangle({
+   page.drawRectangle({
       x: 60,
-      y: NAME_BASELINE_Y - 18,
+      y: 364,
       width: page.getWidth() - 120,
-      height: NAME_FONT_SIZE + 10,
+      height: 70,
       color: BG_COLOR,
     })
 
@@ -69,9 +69,9 @@ export default async function handler(req, res) {
     // Cover the "Date here" placeholder
     page.drawRectangle({
       x: DATE_START_X - 5,
-      y: DATE_BASELINE_Y - 6,
+      y: 28,
       width: 220,
-      height: DATE_FONT_SIZE + 8,
+      height: 35,
       color: BG_COLOR,
     })
 
