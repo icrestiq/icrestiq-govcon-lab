@@ -48,16 +48,7 @@ export default async function handler(req, res) {
     const page = pdfDoc.getPages()[0]
     const font = await pdfDoc.embedFont('Helvetica-Bold')
 
-    // Cover the "Name here" placeholder with a background-colored rectangle
-   page.drawRectangle({
-      x: 60,
-      y: 364,
-      width: page.getWidth() - 120,
-      height: 70,
-      color: BG_COLOR,
-    })
-
-    const nameWidth = font.widthOfTextAtSize(name.toUpperCase(), NAME_FONT_SIZE)
+      const nameWidth = font.widthOfTextAtSize(name.toUpperCase(), NAME_FONT_SIZE)
     page.drawText(name.toUpperCase(), {
       x: NAME_CENTER_X - nameWidth / 2,
       y: NAME_BASELINE_Y,
@@ -66,16 +57,7 @@ export default async function handler(req, res) {
       color: rgb(0, 0, 0),
     })
 
-    // Cover the "Date here" placeholder
-    page.drawRectangle({
-      x: DATE_START_X - 5,
-      y: 28,
-      width: 220,
-      height: 35,
-      color: BG_COLOR,
-    })
-
-    page.drawText(dateLabel, {
+       page.drawText(dateLabel, {
       x: DATE_START_X,
       y: DATE_BASELINE_Y,
       size: DATE_FONT_SIZE,
