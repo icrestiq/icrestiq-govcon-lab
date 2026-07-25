@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/AuthContext'
-import { Users, Package, MessageSquare, Plus, Trash2, Edit, Tag, Upload, X } from 'lucide-react'
+import { Users, Package, MessageSquare, Plus, Trash2, Edit, Tag, Upload, X, Image as ImageIcon, Copy, Check } from 'lucide-react'
 import styles from './AdminPanel.module.css'
 
 const TABS = [
@@ -9,6 +9,7 @@ const TABS = [
   { id: 'discounts', label: 'Discount Codes',  icon: Tag },
   { id: 'users',     label: 'Members',         icon: Users },
   { id: 'messages',  label: 'Messages',        icon: MessageSquare },
+  { id: 'images',    label: 'Image Uploader',  icon: ImageIcon },
 ]
 
 export default function AdminPanel() {
@@ -212,6 +213,9 @@ async function testMonthlyRewards() {
 
       {/* ── Messages ── */}
       {tab === 'messages' && <ReportsTab />}
+
+      {/* ── Image Uploader ── */}
+      {tab === 'images' && <ImageUploaderTab />}
     </div>
   )
 }
@@ -536,6 +540,118 @@ function DiscountsTab() {
           </div>
         ))}
       </div>
+    </div>
+  )
+}
+
+// ── Image Uploader Tab — standalone uploader for use across other sites ──
+function ImageUploaderTab() {
+  const [uploads, setUploads] = useState([])
+  const [uploading, setUploading] = useState(false)
+  const [error, setError] = useState('')
+  const [copiedUrl, setCopiedUrl] = useState('')
+
+  async function handleFile(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setError('')
+    setUploading(true)
+    try {
+      if (file.size > 5 * 1024 * 1024) {
+        throw new Error('File too large. Max size is 5MB.')
+      }
+      const res = await fetch('/api/upload/image', {
+        method: 'POST',
+        headers: { 'Content-Type': file.type },
+        body: file,
+      })
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.error || 'Upload failed')
+      }
+      const { url } = await res.json()
+      setUploads(prev => [{ url, name: file.name }, ...prev])
+    } catch (err) {
+      setError('Upload failed: ' + err.message)
+    } finally {
+      setUploading(false)
+      e.target.value = ''
+    }
+  }
+
+  function copyToClipboard(url) {
+    navigator.clipboard.writeText(url)
+    setCopiedUrl(url)
+    setTimeout(() => setCopiedUrl(''), 1500)
+  }
+
+  return (
+    <div>
+      <div className={styles.tabActions}>
+        <h2 className={styles.tabTitle}>Image Uploader</h2>
+      </div>
+
+      <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: 'var(--sp-4)' }}>
+        Upload any image to get a permanent, public direct-link URL — useful
+        for cover images on other sites (like iCrestiQ Publishing), not just
+        GovCon Lab products.
+      </p>
+
+      <label className={styles.uploadBtn}>
+        <Upload size={16} />
+        {uploading ? 'Uploading...' : 'Upload Image'}
+        <input type="file" accept="image/*" onChange={handleFile} style={{ display: 'none' }} disabled={uploading} />
+      </label>
+
+      {error && <p style={{ color: 'var(--red)', fontSize: '0.8125rem', marginTop: 'var(--sp-2)' }}>{error}</p>}
+
+      <div className={styles.uploadGuide} style={{ marginTop: 'var(--sp-4)' }}>
+        <strong>Notes:</strong>
+        <ul>
+          <li>📐 Any size or aspect ratio works — resize before uploading if you want a specific look</li>
+          <li>📁 JPG, PNG, GIF, or WebP</li>
+          <li>💾 Max file size: 5MB</li>
+          <li>🔗 The URL is permanent and public as soon as it uploads</li>
+        </ul>
+      </div>
+
+      {uploads.length > 0 && (
+        <div style={{ marginTop: 'var(--sp-6)' }}>
+          <h3 style={{ fontSize: '0.9375rem', color: 'var(--navy)', marginBottom: 'var(--sp-3)' }}>
+            This session&rsquo;s uploads
+          </h3>
+          <div className={styles.table}>
+            {uploads.map((u, i) => (
+              <div
+                key={i}
+                className={styles.tableRow}
+                style={{ gridTemplateColumns: '60px 1fr auto' }}
+              >
+                <img
+                  src={u.url}
+                  alt=""
+                  style={{ width: 48, height: 48, borderRadius: 4, objectFit: 'cover' }}
+                />
+                <span
+                  className="mono"
+                  style={{ fontSize: '0.75rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                >
+                  {u.url}
+                </span>
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  style={{ padding: '4px 10px' }}
+                  onClick={() => copyToClipboard(u.url)}
+                >
+                  {copiedUrl === u.url ? <Check size={14} /> : <Copy size={14} />}
+                  {copiedUrl === u.url ? ' Copied' : ' Copy'}
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
