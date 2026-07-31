@@ -5,6 +5,7 @@ import { useAuth } from '../lib/AuthContext'
 import { Send, Hash, Users, MessageCircle, X, Lock, SmilePlus, Trash2, Flag } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import EmojiPicker from '../components/EmojiPicker'
+import FounderBadge from '../components/FounderBadge'
 import styles from './Chat.module.css'
 
 const DEFAULT_ROOMS = [
@@ -250,6 +251,7 @@ export default function Chat() {
         room_id: activeRoom,
         user_id: user.id,
         username: profile?.username || 'Member',
+        membership_tier: profile?.membership_tier || null,
         content: text,
         parent_id: replyingTo?.id || null,
         created_at: new Date().toISOString(),
@@ -311,6 +313,7 @@ export default function Chat() {
         <div className={styles.messageBubble}>
           <div className={styles.messageMeta}>
             <span className={styles.messageUser}>{msg.username || 'Member'}</span>
+            <FounderBadge tier={msg.membership_tier} />
             <span className={styles.messageTime}>
               {formatDistanceToNow(new Date(msg.created_at), { addSuffix: true })}
             </span>

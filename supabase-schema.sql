@@ -62,6 +62,7 @@ CREATE TABLE IF NOT EXISTS messages (
   room_id     TEXT NOT NULL,
   user_id     UUID REFERENCES auth.users(id) ON DELETE SET NULL,
   username    TEXT NOT NULL,
+  membership_tier TEXT,
   content     TEXT NOT NULL,
   created_at  TIMESTAMPTZ DEFAULT NOW()
 );

@@ -3,6 +3,8 @@ import { useAuth } from '../lib/AuthContext'
 import { supabase } from '../lib/supabase'
 import { User, Activity, FileText, MessageCircle, Heart } from 'lucide-react'
 import ActivityHeatmap from '../components/ActivityHeatmap'
+import FounderBadge from '../components/FounderBadge'
+import { isFoundingMember } from '../lib/tier'
 import styles from './Profile.module.css'
 
 export default function Profile() {
@@ -64,7 +66,11 @@ export default function Profile() {
           <h1 className={styles.name}>{displayName}</h1>
           <p className={styles.username}>@{profile?.username || 'member'}</p>
           <div className={styles.badges}>
-            <span className="badge badge-navy">{profile?.membership_tier || 'free'}</span>
+            {isFoundingMember(profile) ? (
+              <FounderBadge tier="founding" size="lg" />
+            ) : (
+              <span className="badge badge-navy">{profile?.membership_tier || 'free'}</span>
+            )}
             {joinedDate && <span className={styles.joined}>Member since {joinedDate}</span>}
           </div>
         </div>

@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { useAuth } from '../lib/AuthContext'
+import { isFoundingMember } from '../lib/tier'
+import FounderBadge from '../components/FounderBadge'
 import { ShoppingCart, Package, Search,Shirt, ArrowRight } from 'lucide-react'
 import styles from './Store.module.css'
 import CartDrawer from '../components/store/CartDrawer'
@@ -17,6 +20,8 @@ const CATEGORY_COLORS = {
 const CATEGORIES = ['All', 'Playbooks', 'Templates', 'Tools', 'Courses', 'Bundles']
 
 export default function Store() {
+  const { profile, isAdmin } = useAuth()
+  const founder = isFoundingMember(profile, isAdmin)
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
   const [category, setCategory] = useState('All')
@@ -92,6 +97,19 @@ export default function Store() {
         <ArrowRight size={18} style={{ opacity: 0.6, flexShrink: 0 }} />
       </a>
 
+      {founder && (
+        <div className="card" style={{
+          display: 'flex', alignItems: 'center', gap: 'var(--sp-3)',
+          padding: 'var(--sp-4)', marginBottom: 'var(--sp-5)',
+          background: 'var(--gold-muted)', border: '1px solid var(--gold)',
+        }}>
+          <FounderBadge tier="founding" size="lg" />
+          <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+            Every product below is included with your Founding Membership — no charge, ever.
+          </span>
+        </div>
+      )}
+
       {/* Filters */}
       <div className={styles.filters}>
         <div className={styles.searchWrap}>
@@ -133,6 +151,7 @@ export default function Store() {
           <ProductCard
             key={product.id}
             product={product}
+            founder={founder}
             inCart={cart.some(c => c.id === product.id)}
             onAddToCart={() => addToCart(product)}
             onRemove={() => removeFromCart(product.id)}
@@ -150,8 +169,8 @@ export default function Store() {
   )
 }
 
-function ProductCard({ product, inCart, onAddToCart, onRemove }) {
-  const isFree = product.price === 0
+function ProductCard({ product, founder, inCart, onAddToCart, onRemove }) {
+  const isFree = product.price === 0 || founder
   const catColor = CATEGORY_COLORS[product.category] || CATEGORY_COLORS['Playbooks']
 
   const BADGE_COLORS = {
@@ -214,7 +233,7 @@ function ProductCard({ product, inCart, onAddToCart, onRemove }) {
       <div className={styles.productFooter}>
         <div className={styles.price}>
           {isFree ? (
-            <span className={styles.priceAccent}>FREE</span>
+            <span className={styles.priceAccent}>{founder && product.price > 0 ? 'INCLUDED' : 'FREE'}</span>
           ) : (
             <>
               <span className={styles.priceCurrency}>$</span>
@@ -238,9 +257,9 @@ function ProductCard({ product, inCart, onAddToCart, onRemove }) {
             )
           )}
           {isFree && (
-            <button className="btn btn-primary" style={{ padding: '8px 14px' }}>
-              Access Free →
-            </button>
+            <Link to={`/store/${product.id}`} className="btn btn-primary" style={{ padding: '8px 14px' }}>
+              {founder && product.price > 0 ? 'Access Now →' : 'Access Free →'}
+            </Link>
           )}
         </div>
       </div>

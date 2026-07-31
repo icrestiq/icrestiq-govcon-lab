@@ -9,6 +9,7 @@ import Chat from './pages/Chat'
 import Store from './pages/Store'
 import ProductDetail from './pages/ProductDetail'
 import Membership from './pages/Membership'
+import FoundersWall from './pages/FoundersWall'
 import Profile from './pages/Profile'
 import AdminPanel from './pages/AdminPanel'
 import CheckoutSuccess from './pages/CheckoutSuccess'
@@ -62,6 +63,7 @@ export default function App() {
         <Route path="store" element={<Store />} />
         <Route path="store/:productId" element={<ProductDetail />} />
         <Route path="membership" element={<Membership />} />
+        <Route path="founders" element={<FoundersWall />} />
         <Route path="profile" element={<Profile />} />
       </Route>
 

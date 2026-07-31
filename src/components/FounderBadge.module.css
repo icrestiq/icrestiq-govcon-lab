@@ -1,0 +1,23 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 7px 1px 6px;
+  border-radius: 100px;
+  background: var(--gold-muted, rgba(201, 168, 76, 0.10));
+  border: 1px solid var(--gold, #C9A84C);
+  color: var(--gold-dim, #B8963E);
+  font-family: inherit;
+  font-size: 0.625rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  line-height: 1.6;
+  white-space: nowrap;
+}
+
+.lg {
+  padding: 3px 10px 3px 8px;
+  font-size: 0.6875rem;
+  gap: 4px;
+}

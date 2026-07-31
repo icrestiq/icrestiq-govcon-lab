@@ -2,10 +2,15 @@ import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { ArrowLeft, Package, ShoppingCart } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import { useAuth } from '../lib/AuthContext'
+import { isFoundingMember } from '../lib/tier'
+import FounderBadge from '../components/FounderBadge'
 import styles from './ProductDetail.module.css'
 
 export default function ProductDetail() {
   const { productId } = useParams()
+  const { profile, isAdmin } = useAuth()
+  const founder = isFoundingMember(profile, isAdmin)
   const [product, setProduct] = useState(null)
   const [loading, setLoading] = useState(true)
 
@@ -77,9 +82,15 @@ export default function ProductDetail() {
         </div>
 
         <div className={styles.purchaseCard}>
+          {founder && product.price > 0 && (
+            <div style={{ marginBottom: 'var(--sp-3)' }}>
+              <FounderBadge tier="founding" size="lg" />
+            </div>
+          )}
+
           <div className={styles.price}>
-            {product.price === 0 ? (
-              <span className={styles.amount}>FREE</span>
+            {product.price === 0 || founder ? (
+              <span className={styles.amount}>{founder && product.price > 0 ? 'INCLUDED' : 'FREE'}</span>
             ) : (
               <>
                 <span className={styles.currency}>$</span>
@@ -95,21 +106,23 @@ export default function ProductDetail() {
             </div>
           )}
 
-          {product.price > 0 && (
+          {product.price > 0 && !founder && (
             <button className="btn btn-primary w-full" style={{ justifyContent: 'center', fontSize: '1rem', padding: '14px' }}>
               <ShoppingCart size={18} />
               Add to Cart
             </button>
           )}
 
-          {product.price === 0 && (
+          {(product.price === 0 || founder) && (
             <button className="btn btn-primary w-full" style={{ justifyContent: 'center', fontSize: '1rem', padding: '14px' }}>
-              Access Free
+              {founder && product.price > 0 ? 'Access Now — Included' : 'Access Free'}
             </button>
           )}
 
           <p className={styles.note}>
-            Secure checkout. Instant digital delivery upon payment confirmation.
+            {founder && product.price > 0
+              ? 'Included with your Founding Membership — no charge.'
+              : 'Secure checkout. Instant digital delivery upon payment confirmation.'}
           </p>
         </div>
       </div>
