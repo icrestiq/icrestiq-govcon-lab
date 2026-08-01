@@ -321,7 +321,7 @@ export default function ProposalBuilder() {
         </ul>
         <p style={{ margin: 0, fontSize: 13, color: "#555" }}>
           Want the full section-by-section walkthrough, with examples and a pre-submission checklist?{" "}
-          
+          <a
             href="/store?q=Proposal%20Builder%20Playbook"
             style={{ color: GOLD, fontWeight: 600, textDecoration: "underline" }}
           >
