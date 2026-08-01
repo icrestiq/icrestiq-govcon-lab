@@ -10,6 +10,7 @@ import { isPaidMember } from "../lib/tier";
  *
  * Gating: any paid tier (member / pro / founding) or admin can use it.
  * Free-tier members see an upgrade prompt instead of the form.
+
  *
  * REQUIRES (Supabase SQL already provided separately):
  *   1. Table `proposal_drafts` (id, user_id, data jsonb, logo_url, updated_at)
