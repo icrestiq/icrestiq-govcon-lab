@@ -306,6 +306,29 @@ export default function ProposalBuilder() {
         )}
       </div>
 
+      <div style={{
+        background: "#EEF1F8", border: `1px solid ${NAVY}22`, borderRadius: 8,
+        padding: "18px 20px", marginBottom: 20,
+      }}>
+        <h3 style={{ margin: "0 0 10px 0", fontSize: 14, color: NAVY }}>Quick Guide: How to Fill This Out</h3>
+        <ul style={{ margin: "0 0 12px 0", paddingLeft: 20, fontSize: 13, color: "#3a3a3a", lineHeight: 1.7 }}>
+          <li><strong>Company Info</strong> — copy your UEI, CAGE code, and set-aside status straight from SAM.gov.</li>
+          <li><strong>Executive Summary</strong> — write win themes that are specific and provable, not slogans.</li>
+          <li><strong>Technical Approach</strong> — mirror the solicitation's own deliverables and timeline.</li>
+          <li><strong>Past Performance</strong> — pick references that are relevant in scope and size, not just recent.</li>
+          <li><strong>Price Proposal</strong> — always include a basis of estimate; never submit numbers with no rationale.</li>
+        </ul>
+        <p style={{ margin: 0, fontSize: 13, color: "#555" }}>
+          Want the full section-by-section walkthrough, with examples and a pre-submission checklist?{" "}
+          
+            href="/store?q=Proposal%20Builder%20Playbook"
+            style={{ color: GOLD, fontWeight: 600, textDecoration: "underline" }}
+          >
+            Get the Proposal Builder Playbook ebook in the Store →
+          </a>
+        </p>
+      </div>
+
       <SectionCard title="Company Logo">
         {userId ? (
           <LogoUpload logoUrl={logoUrl} userId={userId} onUploaded={setLogoUrl} />

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/AuthContext'
 import { isFoundingMember } from '../lib/tier'
@@ -25,7 +25,8 @@ export default function Store() {
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
   const [category, setCategory] = useState('All')
-  const [search, setSearch] = useState('')
+  const [searchParams] = useSearchParams()
+  const [search, setSearch] = useState(searchParams.get('q') || '')
   const [cartOpen, setCartOpen] = useState(false)
   const { cart, addToCart, removeFromCart, cartCount } = useCart()
 
