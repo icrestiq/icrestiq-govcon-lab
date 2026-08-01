@@ -10,6 +10,7 @@ import Store from './pages/Store'
 import ProductDetail from './pages/ProductDetail'
 import Membership from './pages/Membership'
 import FoundersWall from './pages/FoundersWall'
+import ProposalBuilder from './pages/ProposalBuilder'
 import Profile from './pages/Profile'
 import AdminPanel from './pages/AdminPanel'
 import CheckoutSuccess from './pages/CheckoutSuccess'
@@ -64,6 +65,7 @@ export default function App() {
         <Route path="store/:productId" element={<ProductDetail />} />
         <Route path="membership" element={<Membership />} />
         <Route path="founders" element={<FoundersWall />} />
+        <Route path="tools/proposal-builder" element={<ProposalBuilder />} />
         <Route path="profile" element={<Profile />} />
       </Route>
 
