@@ -154,6 +154,59 @@ export default async function handler(req, res) {
         break
       }
 
+      // — Recurring payment succeeded (renewal) ——————
+      // NOTE: Stripe also fires this on the *first* invoice of a new
+      // subscription, which is already logged via checkout.session.completed.
+      // billing_reason distinguishes them — only log true renewals here,
+      // or you'll get a duplicate order row for month 1.
+      case 'invoice.paid': {
+        const invoice = event.data.object
+
+        if (invoice.billing_reason !== 'subscription_cycle') {
+          console.log(`Skipping invoice.paid (billing_reason: ${invoice.billing_reason}) — not a renewal`)
+          break
+        }
+
+        const customerId = invoice.customer
+
+        const { data: profile, error: lookupError } = await supabase
+          .from('profiles')
+          .select('id, membership_tier')
+          .eq('stripe_customer_id', customerId)
+          .single()
+
+        if (lookupError) {
+          console.error('Failed to look up profile for renewal invoice:', lookupError.message, { customerId })
+          break
+        }
+
+        if (!profile) {
+          console.warn(`No profile found for customer ${customerId} — skipping renewal order log`)
+          break
+        }
+
+        const priceId = invoice.lines?.data?.[0]?.price?.id
+        const tier = PRICE_TO_TIER[priceId] || profile.membership_tier || 'unknown'
+
+        const { error: renewalOrderError } = await supabase.from('orders').insert({
+          user_id: profile.id,
+          product_id: priceId || tier,
+          amount: invoice.amount_paid / 100,
+          status: 'paid',
+          stripe_session_id: invoice.id, // invoice ID, not a checkout session — kept in same column for a unified payment history
+          payment_method: 'card',
+          created_at: new Date().toISOString(),
+        })
+
+        if (renewalOrderError) {
+          console.error('Failed to insert renewal order:', renewalOrderError.message, { userId: profile.id, invoiceId: invoice.id })
+          throw new Error(`Renewal order insert failed: ${renewalOrderError.message}`)
+        }
+
+        console.log(`Renewal payment recorded: ${tier} for user ${profile.id} — invoice ${invoice.id}`)
+        break
+      }
+
       // — Payment failed ——————
       case 'invoice.payment_failed': {
         const invoice = event.data.object
