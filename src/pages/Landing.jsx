@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { Shield, Zap, MessageSquare, ShoppingBag, TrendingUp, Lock, Phone, Mail, MapPin } from 'lucide-react'
+import { Shield, Zap, MessageSquare, ShoppingBag, TrendingUp, Lock, Phone, Mail, MapPin, FileText } from 'lucide-react'
 import styles from './Landing.module.css'
 
 const FEATURES = [
@@ -26,6 +26,12 @@ const FEATURES = [
     title: 'AI-Powered Workflows',
     desc: 'Automation blueprints for Make.com, HubSpot CRM routing, and PDF-to-quote pipelines.',
     color: '#C9A84C', bg: '#FFFFF0',
+  },
+{
+    icon: FileText,
+    title: 'Proposal Builder',
+    desc: 'Fill in one guided form and get a print-ready government contract proposal — cover letter, technical approach, past performance, and pricing, ready to submit.',
+    color: '#1F3864', bg: '#EEF1F8',
   },
   {
     icon: Shield,
