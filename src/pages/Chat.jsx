@@ -40,6 +40,7 @@ export default function Chat() {
   const [messages, setMessages] = useState([])
   const [newMsg, setNewMsg] = useState('')
   const [sending, setSending] = useState(false)
+  const [sendError, setSendError] = useState('')
   const [onlineCount, setOnlineCount] = useState(1)
   const [reactions, setReactions] = useState({})
   const [replyingTo, setReplyingTo] = useState(null)
@@ -244,10 +245,11 @@ export default function Chat() {
     if (!replyingTo && gate.blocked) return
 
     setSending(true)
+    setSendError('')
     setNewMsg('')
     const wasReply = !!replyingTo
     try {
-      await supabase.from('messages').insert({
+      const { error } = await supabase.from('messages').insert({
         room_id: activeRoom,
         user_id: user.id,
         username: profile?.username || 'Member',
@@ -256,11 +258,13 @@ export default function Chat() {
         parent_id: replyingTo?.id || null,
         created_at: new Date().toISOString(),
       })
+      if (error) throw error
       setReplyingTo(null)
       if (!wasReply) setTimeout(checkGateStatus, 300)
     } catch (err) {
       console.error('Send error:', err)
       setNewMsg(text)
+      setSendError(err.message || 'Message failed to send. Please try again.')
     } finally {
       setSending(false)
       inputRef.current?.focus()
@@ -461,6 +465,13 @@ export default function Chat() {
           </div>
         )}
 
+        {sendError && (
+          <div className={styles.replyBanner} style={{ color: '#c44' }}>
+            <span>⚠️ {sendError}</span>
+            <button onClick={() => setSendError('')}><X size={14} /></button>
+          </div>
+        )}
+
         <form className={styles.inputArea} onSubmit={sendMessage}>
           <EmojiPicker trigger={<SmilePlus size={18} />} onSelect={insertEmojiIntoComposer} />
           <input
@@ -472,7 +483,7 @@ export default function Chat() {
                 : replyingTo ? `Reply to ${replyingTo.username}...` : `Message #${currentRoom.name}...`
             }
             value={newMsg}
-            onChange={e => setNewMsg(e.target.value)}
+            onChange={e => { setNewMsg(e.target.value); if (sendError) setSendError('') }}
             onKeyDown={e => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault()
