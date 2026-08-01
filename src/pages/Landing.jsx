@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { Shield, Zap, MessageSquare, ShoppingBag, TrendingUp, Lock, Phone, Mail, MapPin, FileText } from 'lucide-react'
+import { Shield, Zap, MessageSquare, ShoppingBag, TrendingUp, Lock, Mail, MapPin, FileText } from 'lucide-react'
 import styles from './Landing.module.css'
 
 const FEATURES = [
@@ -199,13 +199,6 @@ export default function Landing() {
             </div>
           </div>
           <div>
-            <div className={styles.contactLabel}>Phone</div>
-            <a href="tel:8646318250" className={styles.contactLink}>
-              <Phone size={14} style={{ display: 'inline', marginRight: 6, color: 'var(--gold)' }} />
-              (864) 631-8250
-            </a>
-          </div>
-          <div>
             <div className={styles.contactLabel}>Email</div>
             <a href="mailto:hello@icrestiq.com" className={styles.contactLink}>
               <Mail size={14} style={{ display: 'inline', marginRight: 6, color: 'var(--gold)' }} />
@@ -218,7 +211,7 @@ export default function Landing() {
       <footer className={styles.footer}>
         <div className={styles.footerLogo}>
           <div className={styles.logoMarkSmall}>iQ</div>
-          <span className={styles.footerText}>© 2025 iCrestiQ LLC · Easley, South Carolina · All rights reserved.</span>
+          <span className={styles.footerText}>© 2026-2027 iCrestiQ LLC · Easley, South Carolina · All rights reserved.</span>
         </div>
         <div className={styles.footerRight}>govconlab.com</div>
       </footer>
