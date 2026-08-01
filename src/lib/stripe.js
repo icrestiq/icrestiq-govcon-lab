@@ -18,7 +18,7 @@ export const STRIPE_PRICES = {
   'safety-ppe':      { priceId: 'price_1ToUxdBhEghNkTantcq8Cfza', mode: 'payment' },
   'mro-industrial':  { priceId: 'price_1ToUyQBhEghNkTan25MWAqlt', mode: 'payment' },
   'mil-spec-bible':  { priceId: 'price_1ToUzfBhEghNkTanQUmlZOui', mode: 'payment' },
-  'founding-member': { priceId: 'price_1ToV0DBhEghNkTanDhn3HKDS', mode: 'payment' },
+  'founding-member': { priceId: 'price_1Tq8qBBhEghNkTanqKQ4VJyj', mode: 'payment' },
 
   // Subscriptions
   'lab-monthly':     { priceId: 'price_1ToV0dBhEghNkTanLss0PFNL', mode: 'subscription' },
