@@ -34,6 +34,9 @@ export default function Chat() {
 
   const isFoundingMember = isAdmin || profile?.membership_tier === 'founding'
 
+  // Free tier = no membership_tier set, or explicitly 'free'. Read-only across the board.
+  const isFreeTier = !isAdmin && (!profile?.membership_tier || profile?.membership_tier === 'free')
+
   // Rooms this user is actually allowed to see in the sidebar
   const visibleRooms = DEFAULT_ROOMS.filter(room => !room.foundingOnly || isFoundingMember)
 
@@ -44,7 +47,9 @@ export default function Chat() {
   const [onlineCount, setOnlineCount] = useState(1)
   const [reactions, setReactions] = useState({})
   const [replyingTo, setReplyingTo] = useState(null)
-  const [gate, setGate] = useState({ blocked: false, likesSoFar: 0, lastPostId: null })
+  // canComment: can this user post/reply at all (false for free tier)
+  // canPost: can this user start a NEW top-level post (false for paid tiers until they hit LIKES_NEEDED cumulative likes)
+  const [gate, setGate] = useState({ canComment: false, canPost: false, likesSoFar: 0 })
   const [reportMenuFor, setReportMenuFor] = useState(null)
   const [reportedIds, setReportedIds] = useState(new Set())
   const messagesEndRef = useRef(null)
@@ -165,36 +170,52 @@ export default function Chat() {
     if (ids.length) loadReactionsFor(ids)
   }
 
+  // Tier-based posting permissions:
+  //   Free tier            -> read-only, cannot comment or post at all
+  //   Paid tiers            -> can always comment/reply; can start a NEW top-level
+  //                             post only after their messages have earned
+  //                             LIKES_NEEDED cumulative likes (across ALL their
+  //                             messages in this room, not just their last post)
+  //   Admin / founding staff -> unrestricted
   async function checkGateStatus() {
-    if (!user) return
-    if (isAdmin) {
-      setGate({ blocked: false, likesSoFar: 0, lastPostId: null })
+    if (!user) {
+      setGate({ canComment: false, canPost: false, likesSoFar: 0 })
       return
     }
-    const { data: lastPost } = await supabase
+
+    if (isAdmin) {
+      setGate({ canComment: true, canPost: true, likesSoFar: 0 })
+      return
+    }
+
+    if (isFreeTier) {
+      setGate({ canComment: false, canPost: false, likesSoFar: 0 })
+      return
+    }
+
+    // Paid tier: always allowed to comment/reply.
+    // Sum likes across ALL of this user's messages in this room to decide
+    // whether they've unlocked starting new top-level posts.
+    const { data: myMessages } = await supabase
       .from('messages')
       .select('id')
+      .eq('room_id', activeRoom)
       .eq('user_id', user.id)
-      .is('parent_id', null)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle()
 
-    if (!lastPost) {
-      setGate({ blocked: false, likesSoFar: 0, lastPostId: null })
-      return
+    const ids = (myMessages || []).map(m => m.id)
+    let likesSoFar = 0
+    if (ids.length) {
+      const { count } = await supabase
+        .from('message_likes')
+        .select('*', { count: 'exact', head: true })
+        .in('message_id', ids)
+      likesSoFar = count || 0
     }
 
-    const { count } = await supabase
-      .from('message_likes')
-      .select('*', { count: 'exact', head: true })
-      .eq('message_id', lastPost.id)
-
-    const likesSoFar = count || 0
     setGate({
-      blocked: likesSoFar < LIKES_NEEDED,
+      canComment: true,
+      canPost: likesSoFar >= LIKES_NEEDED,
       likesSoFar,
-      lastPostId: lastPost.id,
     })
   }
 
@@ -242,7 +263,8 @@ export default function Chat() {
     e.preventDefault()
     const text = newMsg.trim()
     if (!text || sending) return
-    if (!replyingTo && gate.blocked) return
+    if (!gate.canComment) return
+    if (!replyingTo && !gate.canPost) return
 
     setSending(true)
     setSendError('')
@@ -346,7 +368,7 @@ export default function Chat() {
               trigger={<SmilePlus size={14} />}
               onSelect={emoji => toggleReaction(msg, emoji)}
             />
-            {!isReply && (
+            {!isReply && gate.canComment && (
               <button className={styles.actionBtn} onClick={() => { setReplyingTo(msg); inputRef.current?.focus() }}>
                 <MessageCircle size={13} />
                 Reply
@@ -449,11 +471,20 @@ export default function Chat() {
           <div ref={messagesEndRef} />
         </div>
 
-        {gate.blocked && !replyingTo && (
+        {isFreeTier && (
           <div className={styles.gateBanner}>
             <Lock size={14} />
             <span>
-              Your last post needs {LIKES_NEEDED - gate.likesSoFar} more like{LIKES_NEEDED - gate.likesSoFar === 1 ? '' : 's'} ({gate.likesSoFar}/{LIKES_NEEDED}) before you can start a new post. You can still reply to others anytime.
+              Free members can read all rooms. Upgrade your membership to post and reply.
+            </span>
+          </div>
+        )}
+
+        {!isFreeTier && gate.canComment && !gate.canPost && !replyingTo && (
+          <div className={styles.gateBanner}>
+            <Lock size={14} />
+            <span>
+              You need {LIKES_NEEDED - gate.likesSoFar} more like{LIKES_NEEDED - gate.likesSoFar === 1 ? '' : 's'} ({gate.likesSoFar}/{LIKES_NEEDED}) across your posts before you can start a new top-level post. You can still reply to others anytime.
             </span>
           </div>
         )}
@@ -478,8 +509,10 @@ export default function Chat() {
             ref={inputRef}
             className={`input ${styles.chatInput}`}
             placeholder={
-              !replyingTo && gate.blocked
-                ? 'Reply to others while your last post earns likes...'
+              isFreeTier
+                ? 'Upgrade your membership to post...'
+                : !replyingTo && !gate.canPost
+                ? 'Reply to others while you earn likes to unlock posting...'
                 : replyingTo ? `Reply to ${replyingTo.username}...` : `Message #${currentRoom.name}...`
             }
             value={newMsg}
@@ -490,14 +523,14 @@ export default function Chat() {
                 sendMessage(e)
               }
             }}
-            disabled={!replyingTo && gate.blocked}
+            disabled={!gate.canComment || (!replyingTo && !gate.canPost)}
             maxLength={2000}
             autoComplete="off"
           />
           <button
             type="submit"
             className={`btn btn-primary ${styles.sendBtn}`}
-            disabled={!newMsg.trim() || sending || (!replyingTo && gate.blocked)}
+            disabled={!newMsg.trim() || sending || !gate.canComment || (!replyingTo && !gate.canPost)}
           >
             <Send size={16} />
           </button>
