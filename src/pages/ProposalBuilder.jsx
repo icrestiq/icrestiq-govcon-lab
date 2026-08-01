@@ -275,6 +275,32 @@ export default function ProposalBuilder() {
   const removeRow = (listKey, idx) =>
     setData((d) => ({ ...d, [listKey]: d[listKey].filter((_, i) => i !== idx) }));
 
+  const clearDraft = async () => {
+    const confirmed = window.confirm(
+      "Clear this draft? This will erase everything you've filled in and cannot be undone."
+    );
+    if (!confirmed) return;
+
+    clearTimeout(saveTimer.current);
+    setData(initialState);
+    setLogoUrl(null);
+
+    if (draftId) {
+      try {
+        setSaveStatus("saving");
+        const { error } = await supabase.from("proposal_drafts").delete().eq("id", draftId);
+        if (error) throw error;
+        setDraftId(null);
+        setSaveStatus("saved");
+      } catch (e) {
+        console.error(e);
+        setSaveStatus("error");
+      }
+    } else {
+      setSaveStatus("");
+    }
+  };
+
   const totalPrice = data.pricing.reduce((sum, row) => {
     const n = parseFloat(row.extPrice);
     return sum + (isNaN(n) ? 0 : n);
@@ -299,10 +325,22 @@ export default function ProposalBuilder() {
           </p>
         </div>
         {userId && (
-          <div style={{ fontSize: 12, color: saveStatus === "error" ? "#c44" : "#888" }}>
-            {saveStatus === "saving" && "Saving…"}
-            {saveStatus === "saved" && "Draft saved"}
-            {saveStatus === "error" && "Couldn't save draft"}
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{ fontSize: 12, color: saveStatus === "error" ? "#c44" : "#888" }}>
+              {saveStatus === "saving" && "Saving…"}
+              {saveStatus === "saved" && "Draft saved"}
+              {saveStatus === "error" && "Couldn't save draft"}
+            </div>
+            <button
+              type="button"
+              onClick={clearDraft}
+              style={{
+                background: "none", border: "1px solid #c44", color: "#c44", borderRadius: 4,
+                padding: "6px 12px", fontSize: 12, cursor: "pointer",
+              }}
+            >
+              Clear Draft
+            </button>
           </div>
         )}
       </div>
