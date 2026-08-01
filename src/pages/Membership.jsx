@@ -82,7 +82,7 @@ const TIERS = [
 const FOUNDING = {
   productId: 'founding-member',
   name: 'Founding Member',
-  price: '$297',
+  price: '$497',
   period: 'one-time · lifetime access',
   description: 'Lock in everything — forever. No monthly fees, ever. First 25 spots only.',
   features: [
