@@ -2,6 +2,10 @@ User-agent: *
 Allow: /
 Disallow: /admin
 Disallow: /api/
+Disallow: /chat/
+Disallow: /checkout-success
+Disallow: /checkout-cancel
+Disallow: /profile
 
 User-agent: GPTBot
 Allow: /
@@ -18,4 +22,5 @@ Allow: /
 User-agent: CCBot
 Allow: /
 
-Sitemap: https://icrestiq-govcon-lab.vercel.app/sitemap.xml
+Sitemap: https://www.govconlab.com/sitemap.xml
+
