@@ -1,8 +1,9 @@
+
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/AuthContext'
-import { Send, Hash, Users, MessageCircle, X, Lock, SmilePlus, Trash2, Flag } from 'lucide-react'
+import { Send, Hash, Users, MessageCircle, X, Lock, SmilePlus, Trash2, Flag, Pin, PinOff } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import EmojiPicker from '../components/EmojiPicker'
 import FounderBadge from '../components/FounderBadge'
@@ -88,6 +89,10 @@ export default function Chat() {
           setTimeout(scrollToBottom, 50)
         } else if (payload.eventType === 'DELETE') {
           setMessages(prev => prev.filter(m => m.id !== payload.old.id))
+        } else if (payload.eventType === 'UPDATE') {
+          // Covers pin/unpin (and any other future edits) so every
+          // viewer's pinned list stays in sync in real time.
+          setMessages(prev => prev.map(m => m.id === payload.new.id ? payload.new : m))
         }
       })
       .subscribe()
@@ -320,9 +325,38 @@ export default function Chat() {
     }
   }
 
+  // Admin-only pin/unpin. Restricted to top-level posts (not replies) —
+  // pinning a buried reply wouldn't make sense with per-room pinning.
+  async function togglePin(message) {
+    const nextValue = message.pinned_at ? null : new Date().toISOString()
+    // Optimistic local update — don't wait on the realtime round-trip
+    // for the admin's own screen to reflect the change.
+    setMessages(prev => prev.map(m => m.id === message.id ? { ...m, pinned_at: nextValue } : m))
+    try {
+      const { error } = await supabase.from('messages').update({ pinned_at: nextValue }).eq('id', message.id)
+      if (error) throw error
+    } catch (err) {
+      console.error('Pin toggle error:', err)
+      // Roll back the optimistic update on failure
+      setMessages(prev => prev.map(m => m.id === message.id ? { ...m, pinned_at: message.pinned_at } : m))
+      alert('Could not update pin status: ' + err.message)
+    }
+  }
+
   const currentRoom = DEFAULT_ROOMS.find(r => r.id === activeRoom) || DEFAULT_ROOMS[0]
 
-  const topLevel = messages.filter(m => !m.parent_id)
+  // Pinned posts float to the top (most recently pinned first), then
+  // everything else falls back to normal chronological order.
+  const topLevel = messages
+    .filter(m => !m.parent_id)
+    .sort((a, b) => {
+      const aPinned = !!a.pinned_at
+      const bPinned = !!b.pinned_at
+      if (aPinned && !bPinned) return -1
+      if (!aPinned && bPinned) return 1
+      if (aPinned && bPinned) return new Date(b.pinned_at) - new Date(a.pinned_at)
+      return new Date(a.created_at) - new Date(b.created_at)
+    })
   const repliesFor = id => messages.filter(m => m.parent_id === id)
 
   function renderMessage(msg, isReply = false) {
@@ -332,12 +366,25 @@ export default function Chat() {
     const initials = (msg.username || 'M').slice(0, 2).toUpperCase()
     const msgReactions = reactions[msg.id] || {}
     const activeEmoji = Object.entries(msgReactions).filter(([, v]) => v.count > 0)
+    const isPinned = !isReply && !!msg.pinned_at
 
     return (
-      <div key={msg.id} className={`${styles.message} ${isOwn ? styles.messageOwn : ''}`} style={isReply ? { marginLeft: isOwn ? 0 : 44, marginRight: isOwn ? 44 : 0 } : {}}>
+      <div
+        key={msg.id}
+        className={`${styles.message} ${isOwn ? styles.messageOwn : ''}`}
+        style={{
+          ...(isReply ? { marginLeft: isOwn ? 0 : 44, marginRight: isOwn ? 44 : 0 } : {}),
+          ...(isPinned ? { borderLeft: '3px solid #C9A84C', paddingLeft: 10, background: 'rgba(201, 168, 76, 0.06)', borderRadius: 6 } : {}),
+        }}
+      >
         <div className="avatar" style={{ width: isReply ? 28 : 36, height: isReply ? 28 : 36, fontSize: isReply ? '0.6875rem' : undefined, ...(isOwn ? { order: 1 } : {}) }}>{initials}</div>
         <div className={styles.messageBubble}>
           <div className={styles.messageMeta}>
+            {isPinned && (
+              <span title="Pinned" style={{ display: 'inline-flex', alignItems: 'center', color: '#C9A84C' }}>
+                <Pin size={12} fill="#C9A84C" />
+              </span>
+            )}
             <span className={styles.messageUser}>{msg.username || 'Member'}</span>
             <FounderBadge tier={msg.membership_tier} />
             <span className={styles.messageTime}>
@@ -372,6 +419,13 @@ export default function Chat() {
               <button className={styles.actionBtn} onClick={() => { setReplyingTo(msg); inputRef.current?.focus() }}>
                 <MessageCircle size={13} />
                 Reply
+              </button>
+            )}
+
+            {!isReply && isAdmin && (
+              <button className={styles.actionBtn} onClick={() => togglePin(msg)} title={msg.pinned_at ? 'Unpin this post' : 'Pin this post to the top of the room'}>
+                {msg.pinned_at ? <PinOff size={13} /> : <Pin size={13} />}
+                {msg.pinned_at ? 'Unpin' : 'Pin'}
               </button>
             )}
 
