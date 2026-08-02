@@ -1,9 +1,8 @@
-
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/AuthContext'
-import { Send, Hash, Users, MessageCircle, X, Lock, SmilePlus, Trash2, Flag, Pin, PinOff } from 'lucide-react'
+import { Send, Hash, Users, MessageCircle, X, Lock, SmilePlus, Trash2, Flag, Pin, PinOff, ScrollText } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import EmojiPicker from '../components/EmojiPicker'
 import FounderBadge from '../components/FounderBadge'
@@ -26,6 +25,199 @@ const REPORT_REASONS = [
   { id: 'inappropriate', label: 'Inappropriate content' },
   { id: 'other', label: 'Other' },
 ]
+
+const CHAT_RULES_INTRO = [
+  'Welcome to GovCon Lab—a community for small businesses, new contractors, and experienced professionals working to grow in government contracting.',
+  'Our goal is to create a helpful, professional environment where members can learn, share resources, ask questions, and support one another.',
+]
+
+const CHAT_RULES_SECTIONS = [
+  {
+    title: '1. Be Respectful',
+    body: [
+      'Treat every member with professionalism and respect.',
+      'Disagreements are allowed, but personal attacks, insults, harassment, bullying, threats, discrimination, or hostile behavior will not be tolerated.',
+    ],
+  },
+  {
+    title: '2. No Spam or Excessive Promotion',
+    body: [
+      'Do not repeatedly promote your business, products, services, affiliate links, social media accounts, or outside communities.',
+      'Helpful recommendations are welcome when they are relevant to the conversation. Self-promotion should be limited to designated channels or approved posts.',
+    ],
+  },
+  {
+    title: '3. Do Not Share Sensitive Information',
+    body: [
+      'Never post:',
+    ],
+    bullets: [
+      'Social Security numbers',
+      'Banking or payment information',
+      'Passwords or login credentials',
+      'Controlled Unclassified Information',
+      'Export-controlled information',
+      'Proprietary customer or government information',
+      'Personally identifiable information',
+      'Unredacted bid, employee, or vendor documents',
+    ],
+    footer: 'Remove sensitive information before uploading screenshots, solicitations, proposals, invoices, or other documents.',
+  },
+  {
+    title: '4. Protect Procurement Integrity',
+    body: [
+      'Do not request, share, or discuss confidential source-selection information, competitor proposal information, nonpublic government estimates, or information obtained improperly from a contracting official.',
+      'Do not encourage bribery, bid rigging, false certifications, collusion, fraud, or other unethical conduct.',
+    ],
+  },
+  {
+    title: '5. No Guaranteed-Win Claims',
+    body: [
+      'Members may share strategies, experiences, tools, and opinions, but no one can guarantee that a business will receive a contract, certification, award, loan, grant, or government approval.',
+      'Be cautious of anyone promising guaranteed awards or requesting large payments through private messages.',
+    ],
+  },
+  {
+    title: '6. Keep Advice Honest and Clearly Labeled',
+    body: [
+      'Clearly distinguish between:',
+    ],
+    bullets: [
+      'Personal experience',
+      'General guidance',
+      'Professional advice',
+      'Confirmed facts',
+      'Opinions or estimates',
+    ],
+    footer: 'Government contracting requirements can vary by agency, solicitation, industry, and contract. Members should verify important information using the solicitation, official regulations, and government sources.',
+  },
+  {
+    title: '7. Stay on Topic',
+    body: [
+      'Keep discussions related to government contracting, business development, sourcing, proposals, compliance, certifications, operations, tools, and other approved community topics.',
+      'Use the appropriate chat room or discussion category whenever possible.',
+    ],
+  },
+  {
+    title: '8. No Solicitation Harassment',
+    body: [
+      'Do not send unwanted sales messages, recruiting messages, partnership requests, or repeated private messages to other members.',
+      'A member\u2019s participation in the community is not permission to add them to an email list or contact them outside GovCon Lab.',
+    ],
+  },
+  {
+    title: '9. Respect Intellectual Property',
+    body: [
+      'Do not upload or distribute copyrighted courses, paid templates, proprietary databases, subscription-only content, software, or documents that you do not have permission to share.',
+      'Give proper credit when sharing another person\u2019s work.',
+    ],
+  },
+  {
+    title: '10. No False Identity or Misrepresentation',
+    body: [
+      'Do not impersonate a government official, contracting officer, business owner, community administrator, certification provider, or another member.',
+      'Do not falsely claim certifications, contract awards, past performance, business relationships, or professional qualifications.',
+    ],
+  },
+  {
+    title: '11. Vendors and Service Providers Must Be Transparent',
+    body: [
+      'If you recommend a company, product, service, course, consultant, software platform, or affiliate offer from which you may benefit financially, disclose that relationship.',
+      'Paid promotions and vendor solicitations may require prior approval.',
+    ],
+  },
+  {
+    title: '12. Report Suspicious Activity',
+    body: [
+      'Report scams, fraudulent offers, harassment, suspicious private messages, misinformation, or possible security concerns to a moderator.',
+      'Do not publicly post another member\u2019s private information while reporting an issue.',
+    ],
+  },
+  {
+    title: '13. Moderation Decisions',
+    body: [
+      'GovCon Lab may remove content, limit posting privileges, suspend accounts, or permanently remove members who violate these rules or disrupt the community.',
+      'Serious violations may result in immediate removal without warning.',
+    ],
+  },
+  {
+    title: '14. Educational Disclaimer',
+    body: [
+      'Information shared in GovCon Lab is provided for general educational and informational purposes. It is not legal, accounting, tax, cybersecurity, compliance, or financial advice.',
+      'Members are responsible for reviewing the applicable solicitation, contract terms, laws, regulations, and official agency guidance before making business decisions.',
+    ],
+  },
+  {
+    title: '15. Help Build a Strong Community',
+    body: [
+      'Ask thoughtful questions, share useful information, celebrate member progress, and provide constructive feedback.',
+      'We are here to learn, improve, and help one another compete responsibly.',
+    ],
+  },
+]
+
+const CHAT_RULES_CLOSING = 'By participating in GovCon Lab chat, you agree to follow these community rules.'
+
+function ChatRulesModal({ onClose }) {
+  return (
+    <div
+      style={{
+        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100,
+        padding: 20,
+      }}
+      onClick={onClose}
+    >
+      <div
+        style={{
+          background: '#fff', borderRadius: 10, maxWidth: 620, width: '100%',
+          maxHeight: '85vh', display: 'flex', flexDirection: 'column',
+          boxShadow: '0 12px 40px rgba(0,0,0,0.25)',
+        }}
+        onClick={e => e.stopPropagation()}
+      >
+        <div style={{
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          padding: '20px 28px', borderBottom: '1px solid #eee', flexShrink: 0,
+        }}>
+          <h2 style={{ margin: 0, fontSize: 18, color: '#1F3864' }}>GovCon Lab Community Chat Rules</h2>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#888', flexShrink: 0 }}>
+            <X size={20} />
+          </button>
+        </div>
+
+        <div style={{ padding: '20px 28px', overflowY: 'auto', fontSize: 14, color: '#333', lineHeight: 1.6 }}>
+          {CHAT_RULES_INTRO.map((p, i) => (
+            <p key={i} style={{ margin: '0 0 12px 0' }}>{p}</p>
+          ))}
+
+          {CHAT_RULES_SECTIONS.map((section, i) => (
+            <div key={i} style={{ marginTop: 20 }}>
+              <h3 style={{ fontSize: 14.5, color: '#1F3864', margin: '0 0 6px 0' }}>{section.title}</h3>
+              {section.body.map((p, j) => (
+                <p key={j} style={{ margin: '0 0 8px 0' }}>{p}</p>
+              ))}
+              {section.bullets && (
+                <ul style={{ margin: '0 0 8px 0', paddingLeft: 20 }}>
+                  {section.bullets.map((b, k) => (
+                    <li key={k} style={{ marginBottom: 4 }}>{b}</li>
+                  ))}
+                </ul>
+              )}
+              {section.footer && (
+                <p style={{ margin: '0 0 8px 0' }}>{section.footer}</p>
+              )}
+            </div>
+          ))}
+
+          <p style={{ marginTop: 24, paddingTop: 16, borderTop: '1px solid #eee', fontWeight: 600, color: '#1F3864' }}>
+            {CHAT_RULES_CLOSING}
+          </p>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 export default function Chat() {
   const { roomId } = useParams()
@@ -53,6 +245,7 @@ export default function Chat() {
   const [gate, setGate] = useState({ canComment: false, canPost: false, likesSoFar: 0 })
   const [reportMenuFor, setReportMenuFor] = useState(null)
   const [reportedIds, setReportedIds] = useState(new Set())
+  const [showRules, setShowRules] = useState(false)
   const messagesEndRef = useRef(null)
   const inputRef = useRef(null)
 
@@ -466,6 +659,20 @@ export default function Chat() {
   return (
     <div className={styles.shell}>
       <div className={styles.roomList}>
+        <button
+          onClick={() => setShowRules(true)}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 8,
+            width: '100%', padding: '10px 12px', marginBottom: 4,
+            background: 'none', border: 'none', borderBottom: '1px solid var(--border, #eee)',
+            color: 'var(--text-muted, #888)', fontSize: '0.8125rem', cursor: 'pointer',
+            textAlign: 'left',
+          }}
+        >
+          <ScrollText size={14} />
+          Chat Rules
+        </button>
+
         <div className={styles.roomListHeader}>
           <span className="mono" style={{ color: 'var(--text-muted)', fontSize: '0.6875rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Rooms</span>
         </div>
@@ -590,6 +797,8 @@ export default function Chat() {
           </button>
         </form>
       </div>
+
+      {showRules && <ChatRulesModal onClose={() => setShowRules(false)} />}
     </div>
   )
 }
