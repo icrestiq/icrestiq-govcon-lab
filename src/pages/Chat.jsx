@@ -18,6 +18,11 @@ const DEFAULT_ROOMS = [
   { id: 'founding-members', name: 'Founding Members', desc: 'Private room for Founding Members only', color: '#C9A84C', foundingOnly: true },
 ]
 
+// Rooms currently bridged to Slack. Must match the mapping in
+// api/slack/notify.js. Used only to decide whether to fire the
+// outbound notify call — the actual channel routing lives server-side.
+const SLACK_BRIDGED_ROOMS = new Set(['general'])
+
 const LIKES_NEEDED = 5
 const REPORT_REASONS = [
   { id: 'spam', label: 'Spam' },
@@ -523,9 +528,26 @@ export default function Chat() {
         membership_tier: profile?.membership_tier || null,
         content: text,
         parent_id: replyingTo?.id || null,
+        source: 'web',
         created_at: new Date().toISOString(),
       })
       if (error) throw error
+
+      // Push to Slack if this room is bridged. Fire-and-forget on purpose —
+      // Slack being slow or down should never block or error out the
+      // person's actual chat experience on the site.
+      if (SLACK_BRIDGED_ROOMS.has(activeRoom)) {
+        fetch('/api/slack/notify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            roomId: activeRoom,
+            username: profile?.username || 'Member',
+            content: text,
+          }),
+        }).catch(err => console.error('Slack notify failed (non-blocking):', err))
+      }
+
       setReplyingTo(null)
       if (!wasReply) setTimeout(checkGateStatus, 300)
     } catch (err) {
