@@ -9,12 +9,12 @@ import FounderBadge from '../components/FounderBadge'
 import styles from './Chat.module.css'
 
 const DEFAULT_ROOMS = [
-  { id: 'general',      name: 'General',          desc: 'Open discussion for all members',    color: '#4F6BED' },
-  { id: 'rfq-help',     name: 'RFQ Help',          desc: 'Get eyes on your quotes and bids',   color: '#38A169' },
-  { id: 'vendor-intel', name: 'Vendor Intel',       desc: 'Share and discover supplier leads',  color: '#C05621' },
-  { id: 'wins',         name: 'Wins',               desc: 'Post your awards and milestones',    color: '#C9A84C' },
-  { id: 'dibbs',        name: 'DIBBS',              desc: 'DIBBS-specific sourcing talk',       color: '#6B46C1' },
-  { id: 'tools',        name: 'Tools & Automation', desc: 'Make.com, AI, workflow talk',        color: '#C53030' },
+  { id: 'general',      name: 'General',          desc: 'Open discussion for everyone — introductions, general questions, and anything that doesn\u2019t fit a specific room. If you\u2019re new, this is the best place to say hello and get oriented.', color: '#4F6BED' },
+  { id: 'rfq-help',     name: 'RFQ Help',          desc: 'Post a quote or bid you\u2019re working on and get real feedback from other members before you submit. Great for a second set of eyes on pricing, compliance, or anything that feels off before it goes to a contracting officer.', color: '#38A169' },
+  { id: 'vendor-intel', name: 'Vendor Intel',       desc: 'Share and discover supplier leads — who\u2019s reliable, who\u2019s fast, who ships what. A place to swap real sourcing intel instead of hunting for it alone.', color: '#C05621' },
+  { id: 'wins',         name: 'Wins',               desc: 'Post your awards, milestones, and contract wins to celebrate progress with the community. It\u2019s also a good source of motivation and proof that the process actually works.', color: '#C9A84C' },
+  { id: 'dibbs',        name: 'DIBBS',              desc: 'Focused talk specifically on DIBBS sourcing, solicitations, and DLA contracting quirks. The place to go for anything specific to that platform rather than general GovCon questions.', color: '#6B46C1' },
+  { id: 'tools',        name: 'Tools & Automation', desc: 'Discussion on Make.com workflows, AI tools, and anything that automates or speeds up your GovCon process. Share what\u2019s working (or not) so people aren\u2019t rebuilding the same automation from scratch.', color: '#C53030' },
   { id: 'founding-members', name: 'Founding Members', desc: 'Private room for Founding Members only', color: '#C9A84C', foundingOnly: true },
 ]
 
@@ -34,6 +34,7 @@ const REPORT_REASONS = [
 const CHAT_RULES_INTRO = [
   'Welcome to GovCon Lab—a community for small businesses, new contractors, and experienced professionals working to grow in government contracting.',
   'Our goal is to create a helpful, professional environment where members can learn, share resources, ask questions, and support one another.',
+  'How posting works: every paid member can reply to any post right away. Starting your own new top-level post unlocks once your comments have earned 5 total likes across the community — this keeps the focus on genuine participation rather than drive-by posting. Free-tier members can read every room but cannot post or comment.',
 ]
 
 const CHAT_RULES_SECTIONS = [
@@ -731,16 +732,26 @@ export default function Chat() {
         <button
           onClick={() => setShowRules(true)}
           style={{
-            display: 'flex', alignItems: 'center', gap: 8,
-            width: '100%', padding: '10px 12px', marginBottom: 4,
-            background: 'none', border: 'none', borderBottom: '1px solid var(--border, #eee)',
-            color: 'var(--text-muted, #888)', fontSize: '0.8125rem', cursor: 'pointer',
-            textAlign: 'left',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+            width: 'calc(100% - 16px)', margin: '10px 8px 12px', padding: '10px 12px',
+            background: 'rgba(201, 168, 76, 0.12)', border: '1px solid #C9A84C', borderRadius: 8,
+            color: '#8a6d1f', fontSize: '0.8125rem', fontWeight: 700, cursor: 'pointer',
+            textAlign: 'center',
           }}
         >
-          <ScrollText size={14} />
-          Chat Rules
+          <ScrollText size={15} />
+          Read the Community Chat Rules
         </button>
+
+        <div style={{
+          margin: '0 8px 12px', padding: '10px 12px', borderRadius: 8,
+          background: 'rgba(79, 107, 237, 0.08)', border: '1px solid rgba(79, 107, 237, 0.25)',
+          fontSize: '0.75rem', lineHeight: 1.5, color: 'var(--text-muted, #555)',
+        }}>
+          <strong style={{ color: '#4F6BED' }}>New here?</strong> You can reply to any post right away.
+          Starting your own new post unlocks once your comments have earned {LIKES_NEEDED} total likes —
+          it keeps the community focused on genuine participation over drive-by posting.
+        </div>
 
         <div className={styles.roomListHeader}>
           <span className="mono" style={{ color: 'var(--text-muted)', fontSize: '0.6875rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Rooms</span>
