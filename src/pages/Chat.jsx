@@ -246,6 +246,8 @@ export default function Chat() {
   const [reportMenuFor, setReportMenuFor] = useState(null)
   const [reportedIds, setReportedIds] = useState(new Set())
   const [showRules, setShowRules] = useState(false)
+  // Running total of messages per room, shown as a badge next to each room name.
+  const [roomCounts, setRoomCounts] = useState({})
   const messagesEndRef = useRef(null)
   const inputRef = useRef(null)
 
@@ -261,6 +263,51 @@ export default function Chat() {
       navigate('/chat/general', { replace: true })
     }
   }, [activeRoom, isFoundingMember, navigate])
+
+  // Per-room message counts: fetch once for every room the user can see,
+  // then keep them live via a single unfiltered realtime subscription
+  // (separate from the per-room message channel below, which only
+  // listens to the currently active room). Runs independently of room
+  // switching so counts for OTHER rooms keep updating in the background.
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadCounts() {
+      const results = await Promise.all(
+        visibleRooms.map(async room => {
+          const { count } = await supabase
+            .from('messages')
+            .select('*', { count: 'exact', head: true })
+            .eq('room_id', room.id)
+          return [room.id, count || 0]
+        })
+      )
+      if (!cancelled) setRoomCounts(Object.fromEntries(results))
+    }
+    loadCounts()
+
+    const countsChannel = supabase
+      .channel('room-message-counts')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
+        setRoomCounts(prev => ({
+          ...prev,
+          [payload.new.room_id]: (prev[payload.new.room_id] || 0) + 1,
+        }))
+      })
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'messages' }, payload => {
+        setRoomCounts(prev => ({
+          ...prev,
+          [payload.old.room_id]: Math.max(0, (prev[payload.old.room_id] || 0) - 1),
+        }))
+      })
+      .subscribe()
+
+    return () => {
+      cancelled = true
+      supabase.removeChannel(countsChannel)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isFoundingMember])
 
   useEffect(() => {
     setMessages([])
@@ -688,9 +735,23 @@ export default function Chat() {
               opacity: activeRoom === room.id ? 1 : 0.5,
             }} />
             <span className={styles.roomName}>{room.name}</span>
-            {room.foundingOnly && (
-              <Lock size={12} style={{ marginLeft: 'auto', opacity: 0.6 }} />
-            )}
+            <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+              {typeof roomCounts[room.id] === 'number' && (
+                <span
+                  title={`${roomCounts[room.id]} message${roomCounts[room.id] === 1 ? '' : 's'}`}
+                  style={{
+                    fontSize: '0.6875rem', color: 'var(--text-muted, #999)',
+                    background: 'rgba(0,0,0,0.06)', borderRadius: 10,
+                    padding: '1px 7px', lineHeight: '16px', fontVariantNumeric: 'tabular-nums',
+                  }}
+                >
+                  {roomCounts[room.id]}
+                </span>
+              )}
+              {room.foundingOnly && (
+                <Lock size={12} style={{ opacity: 0.6 }} />
+              )}
+            </span>
           </button>
         ))}
       </div>
