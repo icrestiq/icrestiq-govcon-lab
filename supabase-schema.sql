@@ -220,3 +220,37 @@ CREATE POLICY "Authenticated users can update product images"
 CREATE POLICY "Authenticated users can delete product images"
   ON storage.objects FOR DELETE
   USING (bucket_id = 'product-images' AND auth.role() = 'authenticated');
+
+-- ════════════════════════════════════════════════════════════
+-- DIGEST SUBSCRIBERS — free weekly RFQ digest signup (homepage)
+-- Run in Supabase SQL Editor
+-- ════════════════════════════════════════════════════════════
+
+-- Note: the prompt asked for (email, created_at, source, confirmed).
+-- Two columns beyond that are added because double opt-in needs them:
+--   confirm_token — an unguessable value sent in the confirmation email
+--                   link. Without it, anyone could confirm anyone else's
+--                   email just by knowing the address.
+--   confirmed_at  — when it was actually confirmed, for a real audit
+--                   trail rather than just a boolean flip.
+CREATE TABLE IF NOT EXISTS digest_subscribers (
+  id            UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  email         TEXT NOT NULL,
+  created_at    TIMESTAMPTZ DEFAULT NOW(),
+  source        TEXT DEFAULT 'homepage',
+  confirmed     BOOLEAN DEFAULT FALSE,
+  confirm_token TEXT UNIQUE,
+  confirmed_at  TIMESTAMPTZ
+);
+
+-- One row per email address — resubmitting the form just refreshes the
+-- confirm_token rather than creating a duplicate row.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_digest_subscribers_email
+  ON digest_subscribers (lower(email));
+
+ALTER TABLE digest_subscribers ENABLE ROW LEVEL SECURITY;
+
+-- Deliberately no public SELECT/INSERT/UPDATE policies. Every write goes
+-- through /api/digest/subscribe and /api/digest/confirm using the
+-- service role key server-side, so the email list can't be scraped or
+-- tampered with directly from the browser with the anon key.

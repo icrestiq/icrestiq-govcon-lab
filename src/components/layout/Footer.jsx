@@ -17,7 +17,7 @@ export default function Footer() {
         </div>
       </div>
       <div className={styles.copy}>
-        © 2026-2027 iCrestiQ LLC · All rights reserved · govconlab.com
+        © {new Date().getFullYear()} iCrestiQ LLC · All rights reserved · govconlab.com
       </div>
     </footer>
   )

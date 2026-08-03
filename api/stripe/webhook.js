@@ -81,7 +81,6 @@ export default async function handler(req, res) {
           const { error: tierError } = await supabase
             .from('profiles')
             .update({
-              role: 'founding',
               membership_tier: 'founding',
             })
             .eq('id', userId)

@@ -4,7 +4,7 @@
   align-items: center;
   justify-content: center;
   padding: var(--sp-6);
-  background: #F8F9FB;
+  background: var(--surface-warm);
 }
 
 .card {

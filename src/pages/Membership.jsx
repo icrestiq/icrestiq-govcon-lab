@@ -5,7 +5,7 @@ import { createCheckoutSession } from '../lib/stripe'
 import { Check, Zap, Crown, Star, Tag } from 'lucide-react'
 import styles from './Membership.module.css'
 
-const TIERS = [
+export const TIERS = [
   {
     id: null,
     productId: null,
@@ -79,7 +79,7 @@ const TIERS = [
   },
 ]
 
-const FOUNDING = {
+export const FOUNDING = {
   productId: 'founding-member',
   name: 'Founding Member',
   price: '$497',

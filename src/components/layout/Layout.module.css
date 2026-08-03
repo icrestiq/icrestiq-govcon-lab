@@ -146,7 +146,7 @@
 .userRole {
   font-family: var(--font-mono);
   font-size: 0.6875rem;
-  color: var(--gold);
+  color: var(--navy);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }

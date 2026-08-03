@@ -2,6 +2,7 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './lib/AuthContext'
 import Layout from './components/layout/Layout'
 import Landing from './pages/Landing'
+import About from './pages/About'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import Dashboard from './pages/Dashboard'
@@ -15,6 +16,7 @@ import Profile from './pages/Profile'
 import AdminPanel from './pages/AdminPanel'
 import CheckoutSuccess from './pages/CheckoutSuccess'
 import CheckoutCancel from './pages/CheckoutCancel'
+import DigestConfirmed from './pages/DigestConfirmed'
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth()
@@ -51,10 +53,14 @@ export default function App() {
       <Route path="/" element={user ? <Navigate to="/dashboard" /> : <Landing />} />
       <Route path="/login" element={user ? <Navigate to="/dashboard" /> : <Login />} />
       <Route path="/register" element={user ? <Navigate to="/dashboard" /> : <Register />} />
+      <Route path="/about" element={<About />} />
 
       {/* Stripe checkout result pages - public so Stripe can redirect */}
       <Route path="/checkout/success" element={<CheckoutSuccess />} />
       <Route path="/checkout/cancel" element={<CheckoutCancel />} />
+
+      {/* Digest signup confirmation - public so the emailed link works for anyone */}
+      <Route path="/digest-confirmed" element={<DigestConfirmed />} />
 
       {/* Protected - inside layout */}
       <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>

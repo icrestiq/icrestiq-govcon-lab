@@ -1,0 +1,73 @@
+.digest {
+  background: var(--surface-warm);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  padding: 120px var(--sp-8);
+}
+
+.inner {
+  max-width: 640px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--navy);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: var(--sp-4);
+}
+
+.heading {
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  color: var(--navy);
+  line-height: 1.3;
+  margin-bottom: var(--sp-5);
+}
+
+.body {
+  font-size: 1rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  max-width: 68ch;
+  margin: 0 auto var(--sp-8);
+}
+
+.form {
+  display: flex;
+  gap: var(--sp-3);
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: var(--sp-5);
+}
+
+.input {
+  max-width: 320px;
+}
+
+.confirmMessage {
+  font-size: 0.9375rem;
+  color: var(--navy);
+  font-weight: 600;
+  margin-bottom: var(--sp-5);
+}
+
+.errorMessage {
+  font-size: 0.875rem;
+  color: var(--red);
+  margin: calc(var(--sp-5) * -1) 0 var(--sp-5);
+}
+
+.upsellNote {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+}
+
+@media (max-width: 768px) {
+  .digest { padding: 90px var(--sp-5); }
+  .form { flex-direction: column; align-items: stretch; }
+  .input { max-width: none; }
+}

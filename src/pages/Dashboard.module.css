@@ -16,7 +16,7 @@
 .greeting {
   font-family: var(--font-mono);
   font-size: 0.8125rem;
-  color: var(--gold);
+  color: var(--navy);
   text-transform: uppercase;
   letter-spacing: 0.08em;
   margin-bottom: var(--sp-1);
@@ -124,7 +124,7 @@
   box-shadow: 0 1px 4px rgba(27,42,74,0.06);
 }
 
-.principleIcon { color: var(--gold); flex-shrink: 0; margin-top: 2px; }
+.principleIcon { color: var(--navy); flex-shrink: 0; margin-top: 2px; }
 
 .principleLabel {
   font-family: var(--font-mono);
