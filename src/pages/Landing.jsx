@@ -7,6 +7,7 @@ import Testimonials from '../components/Testimonials'
 import RecentWins from '../components/RecentWins'
 import DigestSignup from '../components/DigestSignup'
 import FoundingSpotsCounter, { useFoundingSpotsRemaining } from '../components/FoundingSpotsCounter'
+import ProofSection from '../components/ProofSection'
 import styles from './Landing.module.css'
 
 const FEATURES = [
@@ -173,6 +174,8 @@ export default function Landing() {
           </div>
         </div>
       </section>
+
+      <ProofSection />
 
       {/* Auto-scrolling niche ticker */}
       <div className={styles.ticker}>
