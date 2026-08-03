@@ -54,20 +54,21 @@ const FEATURES = [
   },
 ]
 
-// Only these 4 have a real Stripe price ID wired up (see src/lib/stripe.js
-// STRIPE_PRICES and api/stripe/checkout.js, which reads stripe_price_id off
-// the Supabase products row). The other 4 niches are listed on the site but
-// have no purchasable product behind them yet — marked "Coming soon" rather
-// than implying a playbook exists when it doesn't.
+// Verified 2026-08-03 against the live products list in Supabase (via
+// AdminPanel screenshot) — these 9 niche playbooks are confirmed ACTIVE.
+// "Tools & Equipment" was in the original ticker but has no matching
+// product anywhere in the live list (active or hidden), so it's dropped
+// rather than guessed at. If it's actually planned, add it back as 'soon'.
 const NICHES = [
   { name: 'Hardware & Fasteners', status: 'active' },
   { name: 'Janitorial & Sanitation', status: 'active' },
   { name: 'Safety & PPE', status: 'active' },
   { name: 'MRO & Industrial Parts', status: 'active' },
-  { name: 'Medical Supplies', status: 'soon' },
-  { name: 'Tools & Equipment', status: 'soon' },
-  { name: 'Office & Facilities', status: 'soon' },
-  { name: 'IT & Electronics', status: 'soon' },
+  { name: 'Medical & Lab Supplies', status: 'active' },
+  { name: 'Office & Facilities', status: 'active' },
+  { name: 'IT & Electronics', status: 'active' },
+  { name: 'Courier & Trucking', status: 'active' },
+  { name: 'Landscaping & Grounds Maintenance', status: 'active' },
 ]
 
 // Short, homepage-teaser feature summaries. Pulled from the real feature lists in
@@ -175,7 +176,7 @@ export default function Landing() {
 
       {/* Auto-scrolling niche ticker */}
       <div className={styles.ticker}>
-        <div className={styles.tickerLabel}>Playbook niches</div>
+        <div className={styles.tickerLabel}>Active niches</div>
         <div className={styles.tickerTrack}>
           <div className={styles.tickerInner}>
             {[...NICHES, ...NICHES, ...NICHES].map((n, i) => (
