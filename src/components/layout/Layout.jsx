@@ -41,7 +41,7 @@ export default function Layout() {
   return (
     <div className={styles.shell}>
       {/* Mobile header */}
-      <header className={styles.mobileHeader}>
+      <header className={`${styles.mobileHeader} no-print`}>
         <div className={styles.mobileLogo}>
           <div className={styles.logoMark}>iQ</div>
           <div>
@@ -54,10 +54,10 @@ export default function Layout() {
         </button>
       </header>
 
-      {mobileOpen && <div className={styles.overlay} onClick={() => setMobileOpen(false)} />}
+      {mobileOpen && <div className={`${styles.overlay} no-print`} onClick={() => setMobileOpen(false)} />}
 
       {/* Sidebar */}
-      <aside className={`${styles.sidebar} ${mobileOpen ? styles.sidebarOpen : ''}`}>
+      <aside className={`${styles.sidebar} ${mobileOpen ? styles.sidebarOpen : ''} no-print`}>
         <div className={styles.logo}>
           <div className={styles.logoMark}>iQ</div>
           <div>

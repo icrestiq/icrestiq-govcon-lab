@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../lib/AuthContext";
 import { isPaidMember } from "../lib/tier";
+import { computeExtended, computeGrandTotal, formatCurrency } from "../lib/pricing";
 
 /**
  * GovCon Lab — Proposal Builder
@@ -27,7 +28,7 @@ const ACCEPTED_TYPES = ["image/png", "image/jpeg", "image/webp"];
 const ACCEPTED_LABEL = "PNG, JPG, or WEBP";
 
 const emptyPersonnel = () => ({ name: "", role: "", experience: "", allocation: "" });
-const emptyClin = () => ({ clin: "", description: "", qty: "", unitPrice: "", extPrice: "" });
+const emptyClin = () => ({ clin: "", description: "", quantity: "", unitOfMeasure: "", unitPrice: "" });
 const emptyPastPerf = () => ({
   contractNumber: "", agency: "", period: "", value: "", scope: "", reference: "",
 });
@@ -301,10 +302,7 @@ export default function ProposalBuilder() {
     }
   };
 
-  const totalPrice = data.pricing.reduce((sum, row) => {
-    const n = parseFloat(row.extPrice);
-    return sum + (isNaN(n) ? 0 : n);
-  }, 0);
+  const totalPrice = computeGrandTotal(data.pricing);
 
   // Gate: free-tier members see an upgrade prompt instead of the tool
   if (!isAdmin && !isPaidMember(profile)) {
@@ -385,7 +383,7 @@ export default function ProposalBuilder() {
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
           <Field label="Business Size / Set-Aside Status"><input style={inputStyle} placeholder="e.g. Small Business, SDVOSB" value={data.businessSize} onChange={set("businessSize")} /></Field>
-          <Field label="NAICS Code(s)"><input style={inputStyle} value={data.naics} onChange={set("naics")} /></Field>
+          <Field label="NAICS Code(s) — one per line"><textarea style={textareaStyle} value={data.naics} onChange={set("naics")} /></Field>
         </div>
       </SectionCard>
 
@@ -415,8 +413,8 @@ export default function ProposalBuilder() {
 
       <SectionCard title="Technical Approach">
         <Field label="Proposed Methodology"><textarea style={textareaStyle} value={data.methodology} onChange={set("methodology")} /></Field>
-        <Field label="Quality Control Plan"><textarea style={textareaStyle} value={data.qualityControl} onChange={set("qualityControl")} /></Field>
-        <Field label="Risk Management"><textarea style={textareaStyle} value={data.riskManagement} onChange={set("riskManagement")} /></Field>
+        <Field label="Quality Control Plan (one per line)"><textarea style={textareaStyle} value={data.qualityControl} onChange={set("qualityControl")} /></Field>
+        <Field label="Risk Management (one per line)"><textarea style={textareaStyle} value={data.riskManagement} onChange={set("riskManagement")} /></Field>
       </SectionCard>
 
       <SectionCard title="Key Personnel">
@@ -457,19 +455,24 @@ export default function ProposalBuilder() {
 
       <SectionCard title="Price Proposal">
         {data.pricing.map((row, i) => (
-          <div key={i} style={{ display: "grid", gridTemplateColumns: "0.8fr 2fr 1fr 1fr 1fr auto", gap: 8, marginBottom: 8, alignItems: "end" }}>
+          <div key={i} style={{ display: "grid", gridTemplateColumns: "0.7fr 1.7fr 0.6fr 0.6fr 0.9fr 1fr auto", gap: 8, marginBottom: 8, alignItems: "end" }}>
             <Field label="CLIN"><input style={inputStyle} value={row.clin} onChange={(e) => updateList("pricing", i, "clin", e.target.value)} /></Field>
             <Field label="Description"><input style={inputStyle} value={row.description} onChange={(e) => updateList("pricing", i, "description", e.target.value)} /></Field>
-            <Field label="Qty/Hrs"><input style={inputStyle} value={row.qty} onChange={(e) => updateList("pricing", i, "qty", e.target.value)} /></Field>
-            <Field label="Unit Price"><input style={inputStyle} value={row.unitPrice} onChange={(e) => updateList("pricing", i, "unitPrice", e.target.value)} /></Field>
-            <Field label="Ext. Price"><input style={inputStyle} value={row.extPrice} onChange={(e) => updateList("pricing", i, "extPrice", e.target.value)} /></Field>
+            <Field label="Quantity"><input type="number" style={inputStyle} value={row.quantity} onChange={(e) => updateList("pricing", i, "quantity", e.target.value)} /></Field>
+            <Field label="Unit"><input style={inputStyle} placeholder="EA, SET, LOT…" value={row.unitOfMeasure} onChange={(e) => updateList("pricing", i, "unitOfMeasure", e.target.value)} /></Field>
+            <Field label="Unit Price"><input type="number" step="0.01" style={inputStyle} value={row.unitPrice} onChange={(e) => updateList("pricing", i, "unitPrice", e.target.value)} /></Field>
+            <Field label="Ext. Price">
+              <div style={{ ...inputStyle, background: "#f2f2f2", color: "#444", display: "flex", alignItems: "center" }}>
+                {formatCurrency(computeExtended(row.quantity, row.unitPrice))}
+              </div>
+            </Field>
             {data.pricing.length > 1 && (
               <button onClick={() => removeRow("pricing", i)} style={removeBtnStyle}>Remove</button>
             )}
           </div>
         ))}
         <button onClick={() => addRow("pricing", emptyClin)} style={addBtnStyle}>+ Add Line Item</button>
-        <div style={{ marginTop: 12, fontWeight: 600, color: NAVY }}>Total: ${totalPrice.toLocaleString()}</div>
+        <div style={{ marginTop: 12, fontWeight: 600, color: NAVY }}>Total: {formatCurrency(totalPrice)}</div>
         <Field label="Basis of Estimate"><textarea style={textareaStyle} value={data.basisOfEstimate} onChange={set("basisOfEstimate")} /></Field>
       </SectionCard>
 
@@ -493,22 +496,83 @@ export default function ProposalBuilder() {
 // Preview / print view
 // ---------------------------------------------------------------------
 function ProposalPreview({ data, logoUrl, totalPrice, onBack }) {
-  const winThemeList = data.winThemes.split("\n").filter(Boolean);
+  const winThemeList = data.winThemes.split("\n").map(s => s.trim()).filter(Boolean);
+  const qcList = data.qualityControl.split("\n").map(s => s.trim()).filter(Boolean);
+  const riskList = data.riskManagement.split("\n").map(s => s.trim()).filter(Boolean);
+  const naicsList = data.naics.split("\n").map(s => s.trim()).filter(Boolean);
+
+  // Chrome's native print header/footer (when "Headers and footers" is
+  // checked in the print dialog, which is its default) shows document.title
+  // on one side and page numbers on the other. Setting the title here gives
+  // a real fallback that will actually appear even where the @page margin
+  // boxes below aren't supported — see the print-CSS comment for why both
+  // exist. Restored on unmount so the rest of the app keeps its own title.
+  useEffect(() => {
+    const previous = document.title;
+    document.title = data.solicitationNumber
+      ? `Solicitation No. ${data.solicitationNumber}`
+      : (data.solicitationTitle || previous);
+    return () => { document.title = previous; };
+  }, [data.solicitationNumber, data.solicitationTitle]);
 
   return (
     <div style={{ background: "#f0f0ee", minHeight: "100vh" }}>
       <style>{`
+        /* ── Screen-only chrome ── */
         @media print {
-          .no-print { display: none !important; }
-          .doc-page { box-shadow: none !important; margin: 0 !important; }
           body { background: #fff !important; }
         }
-        .doc-page h2 { color: ${NAVY}; border-bottom: 2px solid ${NAVY}; padding-bottom: 6px; font-size: 18px; }
+
+        /*
+          ── Running footer: solicitation number left, page X of Y right ──
+          This is written per the CSS Paged Media spec (@page margin boxes).
+          Real support caveat: Chrome/Chromium has partial, evolving support
+          for this; Firefox and Safari largely don't render it. Where it
+          isn't supported, it silently does nothing (no error) — the
+          document.title trick above is the practical fallback via the
+          browser's own native print header/footer, which most people leave
+          switched on by default.
+        */
+        @page {
+          size: letter;
+          margin: 1in;
+        }
+        @page {
+          @bottom-left  { content: "Solicitation No. ${data.solicitationNumber || "—"}"; font-family: 'Space Grotesk', sans-serif; font-size: 9pt; color: #333; }
+          @bottom-right { content: "Page " counter(page) " of " counter(pages); font-family: 'Space Grotesk', sans-serif; font-size: 9pt; color: #333; }
+        }
+
+        /* ── Two font families max: serif body (already set inline), sans headings ── */
+        .doc-page h2, .doc-page h3 { font-family: 'Space Grotesk', sans-serif; }
+        .doc-page h2 { color: ${NAVY}; border-bottom: 2px solid ${NAVY}; padding-bottom: 6px; font-size: 18px; margin-top: 0; }
         .doc-page h3 { color: ${NAVY}; font-size: 15px; margin-bottom: 4px; }
+
+        /* ── Pagination ── */
+        @media print {
+          .doc-page { box-shadow: none !important; margin: 0 !important; padding: 0 !important; max-width: none !important; }
+          .doc-section { page-break-before: always; }
+          .doc-page table { page-break-inside: avoid; }
+          .doc-page table tr { page-break-inside: avoid; }
+          .personnel-row, .pastperf-block { page-break-inside: avoid; }
+          .doc-page p, .doc-page li { orphans: 3; widows: 3; }
+        }
+
         .doc-page table { width: 100%; border-collapse: collapse; margin: 10px 0; }
         .doc-page th { background: ${NAVY}; color: #fff; text-align: left; padding: 6px 8px; font-size: 12px; }
         .doc-page td { border: 1px solid #ddd; padding: 6px 8px; font-size: 12px; }
         .doc-page tr:nth-child(even) td { background: #f7f7f5; }
+
+        .doc-page p { margin: 0 0 12pt 0; }
+        .doc-page ul { margin: 0 0 12pt 0; padding-left: 20px; }
+        .doc-page li { margin-bottom: 4pt; }
+
+        .cover-signoff { margin-bottom: 0.5in !important; }
+        .cover-signature { margin-top: 0 !important; line-height: 1.4; }
+
+        .personnel-table col.col-name { width: 22%; }
+        .personnel-table col.col-role { width: 24%; }
+        .personnel-table col.col-exp  { width: 42%; }
+        .personnel-table col.col-alloc { width: 12%; }
       `}</style>
 
       <div className="no-print" style={{ position: "sticky", top: 0, background: "#fff", borderBottom: "1px solid #ddd", padding: 12, display: "flex", gap: 10, justifyContent: "center", zIndex: 10 }}>
@@ -522,84 +586,112 @@ function ProposalPreview({ data, logoUrl, totalPrice, onBack }) {
       </div>
 
       <div className="doc-page" style={{ maxWidth: 800, margin: "24px auto", background: PAPER, padding: "48px 56px", boxShadow: "0 2px 20px rgba(0,0,0,0.1)", fontFamily: "Georgia, serif", color: "#222", lineHeight: 1.5 }}>
-        <div style={{ textAlign: "center", marginBottom: 32 }}>
+        <div className="doc-letterhead" style={{ textAlign: "center", marginBottom: 32 }}>
           {logoUrl && (
             <img src={logoUrl} alt="Company logo" style={{ maxHeight: 80, maxWidth: 240, objectFit: "contain", marginBottom: 12 }} />
           )}
-          <div style={{ fontWeight: "bold", fontSize: 22, color: NAVY }}>{data.companyName || "[Company Name]"}</div>
+          <div style={{ fontWeight: "bold", fontSize: 22, color: NAVY, fontFamily: "'Space Grotesk', sans-serif" }}>{data.companyName || "[Company Name]"}</div>
           <div style={{ fontSize: 12, color: "#666" }}>
             {data.companyAddress} {data.uei && `| UEI: ${data.uei}`} {data.cageCode && `| CAGE: ${data.cageCode}`}
           </div>
           <div style={{ borderTop: `2px solid ${GOLD}`, borderBottom: `2px solid ${GOLD}`, margin: "16px 0", padding: "10px 0" }}>
-            <div style={{ fontSize: 26, fontWeight: "bold", color: NAVY }}>TECHNICAL &amp; PRICE PROPOSAL</div>
+            <div style={{ fontSize: 26, fontWeight: "bold", color: NAVY, fontFamily: "'Space Grotesk', sans-serif" }}>TECHNICAL &amp; PRICE PROPOSAL</div>
           </div>
           <div>In Response to Solicitation No. {data.solicitationNumber || "[Number]"}</div>
           <div style={{ fontStyle: "italic", color: "#555" }}>{data.solicitationTitle}</div>
         </div>
 
-        <h2>1. Cover Letter</h2>
-        <p>{data.submissionDate}</p>
-        <p>{data.contractingOfficer}<br />{data.agencyName}<br />{data.agencyAddress}</p>
-        <p>Subject: Proposal Submission for Solicitation No. {data.solicitationNumber} – {data.solicitationTitle}</p>
-        <p>Dear {data.contractingOfficer || "Contracting Officer"},</p>
-        <p>{data.companyName} is pleased to submit the enclosed proposal in response to the above-referenced solicitation. We have reviewed the solicitation in its entirety and our proposal is fully compliant with the stated requirements, terms, and conditions.</p>
-        <p>Sincerely,<br />{data.poc}<br />{data.pocTitle}<br />{data.phone} | {data.email}</p>
+        <div className="doc-section">
+          <h2>1. Cover Letter</h2>
+          <p>{data.submissionDate}</p>
+          <p>{data.contractingOfficer}<br />{data.agencyName}<br />{data.agencyAddress}</p>
+          <p>Subject: Proposal Submission for Solicitation No. {data.solicitationNumber} – {data.solicitationTitle}</p>
+          <p>Dear {data.contractingOfficer || "Contracting Officer"},</p>
+          <p>{data.companyName} is pleased to submit the enclosed proposal in response to the above-referenced solicitation. We have reviewed the solicitation in its entirety and our proposal is fully compliant with the stated requirements, terms, and conditions.</p>
+          <p className="cover-signoff">Sincerely,</p>
+          <p className="cover-signature">{data.poc}<br />{data.pocTitle}<br />{data.phone} | {data.email}</p>
+        </div>
 
-        <h2>2. Executive Summary</h2>
-        <h3>2.1 Understanding of the Requirement</h3>
-        <p>{data.requirementSummary}</p>
-        <h3>2.2 Win Themes</h3>
-        <ul>{winThemeList.map((t, i) => <li key={i}>{t}</li>)}</ul>
-        <h3>2.3 Company Snapshot</h3>
-        <p>{data.companySnapshot}</p>
-        <p><strong>Business Size:</strong> {data.businessSize} &nbsp; <strong>NAICS:</strong> {data.naics}</p>
+        <div className="doc-section">
+          <h2>2. Executive Summary</h2>
+          <h3>2.1 Understanding of the Requirement</h3>
+          <p>{data.requirementSummary}</p>
+          <h3>2.2 Win Themes</h3>
+          <ul>{winThemeList.map((t, i) => <li key={i}>{t}</li>)}</ul>
+          <h3>2.3 Company Snapshot</h3>
+          <p>{data.companySnapshot}</p>
+          <p>
+            <strong>Business Size:</strong> {data.businessSize}
+          </p>
+          <p style={{ marginBottom: 0 }}><strong>NAICS:</strong></p>
+          {naicsList.length > 0 && (
+            <ul>{naicsList.map((code, i) => <li key={i}>{code}</li>)}</ul>
+          )}
+        </div>
 
-        <h2>3. Technical Approach</h2>
-        <h3>3.1 Proposed Methodology</h3>
-        <p>{data.methodology}</p>
-        <h3>3.2 Quality Control Plan</h3>
-        <p>{data.qualityControl}</p>
-        <h3>3.3 Risk Management</h3>
-        <p>{data.riskManagement}</p>
+        <div className="doc-section">
+          <h2>3. Technical Approach</h2>
+          <h3>3.1 Proposed Methodology</h3>
+          <p>{data.methodology}</p>
+          <h3>3.2 Quality Control Plan</h3>
+          <ul>{qcList.map((line, i) => <li key={i}>{line}</li>)}</ul>
+          <h3>3.3 Risk Management</h3>
+          <ul>{riskList.map((line, i) => <li key={i}>{line}</li>)}</ul>
+        </div>
 
-        <h2>4. Key Personnel</h2>
-        <table>
-          <thead><tr><th>Name</th><th>Role</th><th>Experience</th><th>% Allocation</th></tr></thead>
-          <tbody>
-            {data.personnel.map((p, i) => (
-              <tr key={i}><td>{p.name}</td><td>{p.role}</td><td>{p.experience}</td><td>{p.allocation}</td></tr>
-            ))}
-          </tbody>
-        </table>
+        <div className="doc-section">
+          <h2>4. Key Personnel</h2>
+          <table className="personnel-table">
+            <colgroup>
+              <col className="col-name" /><col className="col-role" /><col className="col-exp" /><col className="col-alloc" />
+            </colgroup>
+            <thead><tr><th>Name</th><th>Role</th><th>Experience</th><th>% Allocation</th></tr></thead>
+            <tbody>
+              {data.personnel.map((p, i) => (
+                <tr key={i} className="personnel-row"><td>{p.name}</td><td>{p.role}</td><td>{p.experience}</td><td>{p.allocation}</td></tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
 
-        <h2>5. Past Performance</h2>
-        {data.pastPerformance.map((pp, i) => (
-          <div key={i} style={{ marginBottom: 14 }}>
-            <table>
-              <tbody>
-                <tr><td style={{ fontWeight: "bold", width: "30%" }}>Contract #</td><td>{pp.contractNumber}</td></tr>
-                <tr><td style={{ fontWeight: "bold" }}>Agency</td><td>{pp.agency}</td></tr>
-                <tr><td style={{ fontWeight: "bold" }}>Period</td><td>{pp.period}</td></tr>
-                <tr><td style={{ fontWeight: "bold" }}>Value</td><td>{pp.value}</td></tr>
-                <tr><td style={{ fontWeight: "bold" }}>Scope</td><td>{pp.scope}</td></tr>
-                <tr><td style={{ fontWeight: "bold" }}>Reference</td><td>{pp.reference}</td></tr>
-              </tbody>
-            </table>
-          </div>
-        ))}
+        <div className="doc-section">
+          <h2>5. Past Performance</h2>
+          {data.pastPerformance.map((pp, i) => (
+            <div key={i} className="pastperf-block" style={{ marginBottom: 14 }}>
+              <table>
+                <tbody>
+                  <tr><td style={{ fontWeight: "bold", width: "30%" }}>Contract #</td><td>{pp.contractNumber}</td></tr>
+                  <tr><td style={{ fontWeight: "bold" }}>Agency</td><td>{pp.agency}</td></tr>
+                  <tr><td style={{ fontWeight: "bold" }}>Period</td><td>{pp.period}</td></tr>
+                  <tr><td style={{ fontWeight: "bold" }}>Value</td><td>{pp.value}</td></tr>
+                  <tr><td style={{ fontWeight: "bold" }}>Scope</td><td>{pp.scope}</td></tr>
+                  <tr><td style={{ fontWeight: "bold" }}>Reference</td><td>{pp.reference}</td></tr>
+                </tbody>
+              </table>
+            </div>
+          ))}
+        </div>
 
-        <h2>6. Price Proposal</h2>
-        <table>
-          <thead><tr><th>CLIN</th><th>Description</th><th>Qty/Hrs</th><th>Unit Price</th><th>Ext. Price</th></tr></thead>
-          <tbody>
-            {data.pricing.map((row, i) => (
-              <tr key={i}><td>{row.clin}</td><td>{row.description}</td><td>{row.qty}</td><td>{row.unitPrice}</td><td>{row.extPrice}</td></tr>
-            ))}
-            <tr><td colSpan={4} style={{ fontWeight: "bold", textAlign: "right" }}>TOTAL</td><td style={{ fontWeight: "bold" }}>${totalPrice.toLocaleString()}</td></tr>
-          </tbody>
-        </table>
-        <h3>6.1 Basis of Estimate</h3>
-        <p>{data.basisOfEstimate}</p>
+        <div className="doc-section">
+          <h2>6. Price Proposal</h2>
+          <table>
+            <thead><tr><th>CLIN</th><th>Description</th><th>Qty/Hrs</th><th>Unit Price</th><th>Ext. Price</th></tr></thead>
+            <tbody>
+              {data.pricing.map((row, i) => (
+                <tr key={i}>
+                  <td>{row.clin}</td>
+                  <td>{row.description}</td>
+                  <td>{row.quantity} {row.unitOfMeasure}</td>
+                  <td>{formatCurrency(row.unitPrice)}</td>
+                  <td>{formatCurrency(computeExtended(row.quantity, row.unitPrice))}</td>
+                </tr>
+              ))}
+              <tr><td colSpan={4} style={{ fontWeight: "bold", textAlign: "right" }}>TOTAL</td><td style={{ fontWeight: "bold" }}>{formatCurrency(totalPrice)}</td></tr>
+            </tbody>
+          </table>
+          <h3>6.1 Basis of Estimate</h3>
+          <p>{data.basisOfEstimate}</p>
+        </div>
       </div>
     </div>
   );

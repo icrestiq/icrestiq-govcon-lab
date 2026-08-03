@@ -248,6 +248,12 @@ select.input { cursor: pointer; }
 .badge-red   { background: rgba(229,62,62,0.08); color: var(--red); border: 1px solid rgba(229,62,62,0.2); }
 .badge-navy  { background: rgba(27,42,74,0.08); color: var(--navy); border: 1px solid rgba(27,42,74,0.2); }
 
+/* ── Print utility — used by pages that render a printable document
+   (e.g. the Proposal Builder) to hide standard app chrome ── */
+@media print {
+  .no-print { display: none !important; }
+}
+
 /* ── Divider ── */
 .divider {
   border: none;

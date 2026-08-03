@@ -4,6 +4,12 @@
   background: #F8F9FB;
 }
 
+@media print {
+  .shell { display: block; min-height: 0; background: #fff; }
+  .mainWrap { display: block; overflow: visible; }
+  .main { padding-bottom: 0; }
+}
+
 /* ── Sidebar ── */
 .sidebar {
   width: 240px;

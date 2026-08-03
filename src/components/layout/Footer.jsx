@@ -5,7 +5,7 @@ import styles from './Footer.module.css'
 
 export default function Footer() {
   return (
-    <footer className={styles.footer}>
+    <footer className={`${styles.footer} no-print`}>
       <div className={styles.contact}>
         <div className={styles.contactItem}>
           <MapPin size={13} />
