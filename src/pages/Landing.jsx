@@ -1,4 +1,5 @@
-import { Link } from 'react-router-dom'
+import { useEffect } from 'react'
+import { Link, useLocation } from 'react-router-dom'
 import { Shield, Zap, MessageSquare, ShoppingBag, TrendingUp, Lock, Mail, MapPin, FileText, Check } from 'lucide-react'
 import { TIERS, FOUNDING } from './Membership'
 import MemberCount from '../components/MemberCount'
@@ -90,6 +91,18 @@ const PAYMENT_LABELS = ['Visa', 'Mastercard', 'Amex', 'Klarna', 'Affirm', 'Apple
 
 export default function Landing() {
   const foundingSpotsRemaining = useFoundingSpotsRemaining()
+  const location = useLocation()
+
+  useEffect(() => {
+    if (!location.hash) return
+    // Give the page a moment to finish its initial render before scrolling —
+    // jumping on the same tick as navigation can land in the wrong spot.
+    const id = location.hash.slice(1)
+    const timer = setTimeout(() => {
+      document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 80)
+    return () => clearTimeout(timer)
+  }, [location.hash])
 
   return (
     <div className={styles.page}>
