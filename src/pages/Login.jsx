@@ -1,12 +1,23 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../lib/AuthContext'
 import { LogIn } from 'lucide-react'
 import styles from './Auth.module.css'
 
+// Open-redirect guard: only ever navigate to a same-origin, root-relative
+// path. Rejects protocol-relative URLs ("//evil.com" — browsers treat the
+// leading // as "same scheme, different host") and absolute URLs
+// ("https://evil.com", "javascript:...") by requiring exactly one leading
+// slash, not two, and nothing before it.
+function isSafeNextPath(next) {
+  return typeof next === 'string' && next.startsWith('/') && !next.startsWith('//')
+}
+
 export default function Login() {
   const { signIn } = useAuth()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const next = searchParams.get('next')
   const [form, setForm] = useState({ email: '', password: '' })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -17,7 +28,7 @@ export default function Login() {
     setLoading(true)
     try {
       await signIn(form.email, form.password)
-      navigate('/dashboard')
+      navigate(isSafeNextPath(next) ? next : '/dashboard')
     } catch (err) {
       setError(err.message || 'Sign in failed. Check your credentials.')
     } finally {
@@ -74,7 +85,7 @@ export default function Login() {
 
         <p className={styles.switchLink}>
           Don't have an account?{' '}
-          <Link to="/register">Join the Lab →</Link>
+          <Link to={isSafeNextPath(next) ? `/register?next=${encodeURIComponent(next)}` : '/register'}>Join the Lab →</Link>
         </p>
       </div>
     </div>

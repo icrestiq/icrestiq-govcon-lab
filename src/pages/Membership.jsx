@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { useAuth } from '../lib/AuthContext'
 import { createCheckoutSession } from '../lib/stripe'
 import { Check, Zap, Crown, Star, Tag } from 'lucide-react'
@@ -97,6 +97,8 @@ export const FOUNDING = {
 export default function Membership() {
   const { user, profile } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
+  const nextParam = `?next=${encodeURIComponent(location.pathname)}`
   const [loading, setLoading] = useState(null)
   const [error, setError] = useState('')
   const [discountCode, setDiscountCode] = useState('')
@@ -130,7 +132,7 @@ export default function Membership() {
   }
 
   async function handleCheckout(productId) {
-    if (!user) { navigate('/register'); return }
+    if (!user) { navigate(`/register${nextParam}`); return }
     setError('')
     setLoading(productId)
     try {
@@ -271,6 +273,13 @@ export default function Membership() {
                 >
                   {tier.cta}
                 </button>
+              ) : !user ? (
+                <Link
+                  to={`/register${nextParam}`}
+                  className={`btn ${tier.highlight ? 'btn-primary' : 'btn-ghost'} ${styles.tierCta}`}
+                >
+                  {tier.cta}
+                </Link>
               ) : (
                 <button
                   className={`btn ${tier.highlight ? 'btn-primary' : 'btn-ghost'} ${styles.tierCta}`}
@@ -319,13 +328,19 @@ export default function Membership() {
             ))}
           </ul>
 
-          <button
-            className={`btn ${styles.founderCta}`}
-            disabled={loading === FOUNDING.productId}
-            onClick={() => handleCheckout(FOUNDING.productId)}
-          >
-            {loading === FOUNDING.productId ? <div className="spinner" /> : 'Claim Founding Spot →'}
-          </button>
+          {!user ? (
+            <Link to={`/register${nextParam}`} className={`btn ${styles.founderCta}`}>
+              Claim Founding Spot →
+            </Link>
+          ) : (
+            <button
+              className={`btn ${styles.founderCta}`}
+              disabled={loading === FOUNDING.productId}
+              onClick={() => handleCheckout(FOUNDING.productId)}
+            >
+              {loading === FOUNDING.productId ? <div className="spinner" /> : 'Claim Founding Spot →'}
+            </button>
+          )}
 
           <p className={styles.klarnaNote} style={{ color: 'rgba(255,255,255,0.5)' }}>
             Split into installments with Affirm at checkout

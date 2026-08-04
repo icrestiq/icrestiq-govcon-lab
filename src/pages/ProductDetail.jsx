@@ -1,5 +1,6 @@
+
 import { useState, useEffect } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, useLocation, Link } from 'react-router-dom'
 import { ArrowLeft, Package, ShoppingCart } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/AuthContext'
@@ -9,8 +10,10 @@ import styles from './ProductDetail.module.css'
 
 export default function ProductDetail() {
   const { productId } = useParams()
-  const { profile, isAdmin } = useAuth()
+  const location = useLocation()
+  const { user, profile, isAdmin } = useAuth()
   const founder = isFoundingMember(profile, isAdmin)
+  const nextParam = `?next=${encodeURIComponent(location.pathname)}`
   const [product, setProduct] = useState(null)
   const [loading, setLoading] = useState(true)
 
@@ -107,16 +110,29 @@ export default function ProductDetail() {
           )}
 
           {product.price > 0 && !founder && (
-            <button className="btn btn-primary w-full" style={{ justifyContent: 'center', fontSize: '1rem', padding: '14px' }}>
-              <ShoppingCart size={18} />
-              Add to Cart
-            </button>
+            user ? (
+              <button className="btn btn-primary w-full" style={{ justifyContent: 'center', fontSize: '1rem', padding: '14px' }}>
+                <ShoppingCart size={18} />
+                Add to Cart
+              </button>
+            ) : (
+              <Link to={`/register${nextParam}`} className="btn btn-primary w-full" style={{ justifyContent: 'center', fontSize: '1rem', padding: '14px' }}>
+                <ShoppingCart size={18} />
+                Add to Cart
+              </Link>
+            )
           )}
 
           {(product.price === 0 || founder) && (
-            <button className="btn btn-primary w-full" style={{ justifyContent: 'center', fontSize: '1rem', padding: '14px' }}>
-              {founder && product.price > 0 ? 'Access Now — Included' : 'Access Free'}
-            </button>
+            user ? (
+              <button className="btn btn-primary w-full" style={{ justifyContent: 'center', fontSize: '1rem', padding: '14px' }}>
+                {founder && product.price > 0 ? 'Access Now — Included' : 'Access Free'}
+              </button>
+            ) : (
+              <Link to={`/register${nextParam}`} className="btn btn-primary w-full" style={{ justifyContent: 'center', fontSize: '1rem', padding: '14px' }}>
+                {founder && product.price > 0 ? 'Access Now — Included' : 'Access Free'}
+              </Link>
+            )
           )}
 
           <p className={styles.note}>
