@@ -122,6 +122,11 @@
   footer .lk a{border-bottom:1px solid var(--border-lit);padding-bottom:1px}
   footer .cp{font-family:var(--mono);font-size:10.5px;color:var(--muted);margin-top:12px}
   @media (max-width:400px){.statrow{flex-wrap:wrap}.stat{flex:1 1 46%}}
+.fben{list-style:none;padding:0;margin:0 0 18px;text-align:left;display:grid;gap:9px}
+.fben li{position:relative;padding-left:20px;font-size:13.5px;line-height:1.55;color:var(--text-2)}
+.fben li:before{content:"\\2713";position:absolute;left:0;color:var(--gold);font-weight:700}
+.fben b{color:var(--navy)}
+.fnote{font-size:.78rem;color:var(--muted);margin:-6px 0 14px;line-height:1.5}
 </style>
 </head>
 <body>
@@ -186,26 +191,27 @@
     <h2>Want the niche playbook instead?</h2>
     <p class="lead">One-time purchase. The NSNs, the buying offices, the packaging rules, and the
       quote template for a single niche.</p>
+    <p class="lead" style="font-size:.85rem;opacity:.8">The store lives inside the Lab — create a free account (no card) and you land straight on the playbook.</p>
     <div class="cards">
-      <a class="card" href="/store/hw-fasteners?utm_source=link_in_bio&utm_medium=social&utm_content=playbook_hw">
+      <a class="card" href="/register?utm_source=link_in_bio&utm_medium=social&utm_content=playbook_hw&next=%2Fstore%2Fhw-fasteners">
         <div class="ic">🔩</div>
         <div class="tx"><div class="tt">Hardware &amp; Fasteners</div>
           <div class="ds">The highest-volume DIBBS niche there is.</div></div>
         <div class="ar">→</div>
       </a>
-      <a class="card" href="/store/safety-ppe?utm_source=link_in_bio&utm_medium=social&utm_content=playbook_ppe">
+      <a class="card" href="/register?utm_source=link_in_bio&utm_medium=social&utm_content=playbook_ppe&next=%2Fstore%2Fsafety-ppe">
         <div class="ic">🦺</div>
         <div class="tx"><div class="tt">Safety &amp; PPE</div>
           <div class="ds">Recurring, spec-driven, easy to source.</div></div>
         <div class="ar">→</div>
       </a>
-      <a class="card" href="/store/mil-spec-bible?utm_source=link_in_bio&utm_medium=social&utm_content=playbook_milspec">
+      <a class="card" href="/register?utm_source=link_in_bio&utm_medium=social&utm_content=playbook_milspec&next=%2Fstore%2Fmil-spec-bible">
         <div class="ic">📦</div>
         <div class="tx"><div class="tt">MIL-SPEC Packaging Bible™</div>
           <div class="ds">Why good quotes still get rejected.</div></div>
         <div class="ar">→</div>
       </a>
-      <a class="card" href="/store?utm_source=link_in_bio&utm_medium=social&utm_content=store_all">
+      <a class="card" href="/register?utm_source=link_in_bio&utm_medium=social&utm_content=store_all&next=%2Fstore">
         <div class="ic">🗂️</div>
         <div class="tx"><div class="tt">See all playbooks</div>
           <div class="ds">Jan-San, MRO &amp; more.</div></div>
@@ -225,7 +231,7 @@
     <div class="tier"><div class="nm">Lab Member</div><div class="dl">All rooms + Proposal Builder</div><div class="pr">$57/mo</div></div>
     <div class="tier"><div class="nm">Lab Pro</div><div class="dl">Playbooks + live Q&amp;A with Keith</div><div class="pr">$107/mo</div></div>
     <a class="btn" href="/register?utm_source=link_in_bio&utm_medium=social&utm_content=start_free">Start free — no card required</a>
-    <div class="micro">Compare every tier on the <a href="/membership?utm_source=link_in_bio&utm_medium=social&utm_content=membership" style="border-bottom:1px solid rgba(255,255,255,.3)">membership page</a></div>
+    <div class="micro">Compare every tier on the <a href="/register?utm_source=link_in_bio&utm_medium=social&utm_content=membership&next=%2Fmembership" style="border-bottom:1px solid rgba(255,255,255,.3)">membership page</a></div>
   </div>
 </section>
 
@@ -237,8 +243,17 @@
       <h2>Founding Member</h2>
       <p>Lifetime access, the private Founding Members room, and direct input on what gets built
         next. You would be early — that is the trade, and it is the honest pitch.</p>
+      <ul class="fben">
+        <li><b>Every digital product on the site is included — free, forever.</b> All five niche
+          playbooks, the MIL-SPEC Packaging Bible™ and every future course drop. Nothing in the
+          store is ever charged to a Founding Member.</li>
+        <li>Lifetime Lab Pro access — no monthly fee, ever.</li>
+        <li>Private Founding Members room + your name on the Founding Members wall.</li>
+      </ul>
       <div class="price">$497 <small>one time · lifetime</small></div>
-      <a class="btn" href="/founders?utm_source=link_in_bio&utm_medium=social&utm_content=founding">Claim a founding spot</a>
+      <div class="fnote">Buying the playbooks separately already runs past $497 — Founding is the
+        cheaper way in if you want more than one niche.</div>
+      <a class="btn" href="/register?utm_source=link_in_bio&utm_medium=social&utm_content=founding&next=%2Fmembership">Claim a founding spot</a>
       <div class="instal">Pay over time with Klarna or Affirm at checkout</div>
     </div>
   </div>
@@ -249,7 +264,7 @@
     <div class="lk">
       <a href="/?utm_source=link_in_bio&utm_medium=social&utm_content=footer_home">govconlab.com</a>
       &nbsp;·&nbsp;
-      <a href="/about?utm_source=link_in_bio&utm_medium=social&utm_content=footer_about">About Keith</a>
+      <a href="/?utm_source=link_in_bio&utm_medium=social&utm_content=footer_about#founder">About Keith</a>
       &nbsp;·&nbsp;
       <a href="mailto:hello@icrestiq.com">hello@icrestiq.com</a>
     </div>
