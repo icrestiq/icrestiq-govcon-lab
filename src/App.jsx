@@ -62,15 +62,22 @@ export default function App() {
       {/* Digest signup confirmation - public so the emailed link works for anyone */}
       <Route path="/digest-confirmed" element={<DigestConfirmed />} />
 
+      {/* Public marketing pages — browsable without an account.
+          Still wrapped in Layout for consistent nav/shell; only the
+          purchase actions inside these pages require sign-in (see
+          ProductDetail.jsx / Membership.jsx). */}
+      <Route path="/" element={<Layout />}>
+        <Route path="store" element={<Store />} />
+        <Route path="store/:productId" element={<ProductDetail />} />
+        <Route path="membership" element={<Membership />} />
+        <Route path="founders" element={<FoundersWall />} />
+      </Route>
+
       {/* Protected - inside layout */}
       <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
         <Route path="dashboard" element={<Dashboard />} />
         <Route path="chat" element={<Chat />} />
         <Route path="chat/:roomId" element={<Chat />} />
-        <Route path="store" element={<Store />} />
-        <Route path="store/:productId" element={<ProductDetail />} />
-        <Route path="membership" element={<Membership />} />
-        <Route path="founders" element={<FoundersWall />} />
         <Route path="tools/proposal-builder" element={<ProposalBuilder />} />
         <Route path="profile" element={<Profile />} />
       </Route>
