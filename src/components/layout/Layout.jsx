@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Outlet, NavLink, useNavigate } from 'react-router-dom'
+import { Outlet, NavLink, Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../lib/AuthContext'
 import {
   LayoutDashboard, MessageSquare, ShoppingBag,
@@ -19,7 +19,7 @@ const NAV = [
 ]
 
 export default function Layout() {
-  const { profile, signOut, isAdmin } = useAuth()
+  const { user, profile, signOut, isAdmin } = useAuth()
   const navigate = useNavigate()
   const [mobileOpen, setMobileOpen] = useState(false)
 
@@ -101,18 +101,29 @@ export default function Layout() {
           )}
         </nav>
 
-        <div className={styles.userSection}>
-          <div className={styles.userInfo}>
-            <div className="avatar">{initials}</div>
-            <div className={styles.userMeta}>
-              <div className={styles.userName}>{displayName}</div>
-              <div className={styles.userRole}>{profile?.membership_tier || profile?.role || 'member'}</div>
+        {user ? (
+          <div className={styles.userSection}>
+            <div className={styles.userInfo}>
+              <div className="avatar">{initials}</div>
+              <div className={styles.userMeta}>
+                <div className={styles.userName}>{displayName}</div>
+                <div className={styles.userRole}>{profile?.membership_tier || profile?.role || 'member'}</div>
+              </div>
             </div>
+            <button className={styles.signOutBtn} onClick={handleSignOut} title="Sign out">
+              <LogOut size={16} />
+            </button>
           </div>
-          <button className={styles.signOutBtn} onClick={handleSignOut} title="Sign out">
-            <LogOut size={16} />
-          </button>
-        </div>
+        ) : (
+          <div className={styles.userSection}>
+            <Link to="/login" className="btn btn-ghost" style={{ flex: 1, justifyContent: 'center' }} onClick={() => setMobileOpen(false)}>
+              Sign In
+            </Link>
+            <Link to="/register" className="btn btn-primary" style={{ flex: 1, justifyContent: 'center' }} onClick={() => setMobileOpen(false)}>
+              Join
+            </Link>
+          </div>
+        )}
       </aside>
 
       {/* Main content + footer */}
