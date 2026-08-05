@@ -79,6 +79,14 @@ export default function Profile() {
       console.error('Profile update error:', err)
       if (err?.code === '23505' || /duplicate key|unique/i.test(err?.message || '')) {
         setSaveError('That username is already taken. Please choose another.')
+      } else if (err?.code === '23514' || /check constraint|violates/i.test(err?.message || '')) {
+        if (/bio_length/i.test(err?.message || '')) {
+          setSaveError(`Your bio is too long. Please keep it under ${BIO_MAX_LEN} characters.`)
+        } else if (/username_format/i.test(err?.message || '')) {
+          setSaveError(`Username can only contain letters, numbers, underscores, and dashes. ${USERNAME_HELP}`)
+        } else {
+          setSaveError('One of your changes doesn\'t meet the site\'s requirements. Please check your entries and try again.')
+        }
       } else {
         setSaveError('Could not save your changes. Please try again.')
       }
