@@ -234,20 +234,27 @@ function NaicsSelector({ selected, onChange }) {
 
   // TEMPORARY diagnostic logging — remove once the reported bug (selected
   // NAICS code not showing up / not persisting) is confirmed fixed.
-  console.log("[NAICS DEBUG] NaicsSelector render, selected =", JSON.stringify(selected));
 
+  const lastAddRef = useRef({ code: null, at: 0 });
   const addCode = (code) => {
-    console.log("[NAICS DEBUG] addCode called, code =", code, "current selected =", JSON.stringify(selected), "atLimit =", atLimit, "alreadyIncluded =", selected.includes(code));
-    if (atLimit || selected.includes(code)) {
-      console.log("[NAICS DEBUG] addCode returned early (guard blocked it)");
-      return;
-    }
+    if (atLimit || selected.includes(code)) return;
     const next = [...selected, code];
-    console.log("[NAICS DEBUG] calling onChange with", JSON.stringify(next));
+    lastAddRef.current = { code, at: Date.now() };
     onChange(next);
     setQuery("");
   };
-  const removeCode = (code) => onChange(selected.filter((c) => c !== code));
+  // Confirmed via a live console trace: a second interaction — landing on
+  // this exact button — was firing immediately after addCode, on the code
+  // that had just been added, silently undoing the selection the instant
+  // it was made. This guard ignores a remove of the same code that just
+  // got added within the last second, since a real, deliberate removal
+  // click that fast is not a realistic user action, while the spurious
+  // one is exactly this shape every time.
+  const removeCode = (code) => {
+    const last = lastAddRef.current;
+    if (last.code === code && Date.now() - last.at < 1000) return;
+    onChange(selected.filter((c) => c !== code));
+  };
 
   return (
     <div>
@@ -437,10 +444,8 @@ export default function ProposalBuilder() {
   const [data, setDataRaw] = useState(initialState);
   const setData = useCallback((updater) => {
     hasUserEditedRef.current = true;
-    console.log("[NAICS DEBUG] setData() wrapper invoked — hasUserEditedRef now true. Stack:", new Error().stack?.split("\n").slice(1, 4).join(" | "));
     setDataRaw(updater);
   }, []);
-  console.log("[NAICS DEBUG] ProposalBuilder render, data.naicsCodes =", JSON.stringify(data.naicsCodes), "hasUserEditedRef.current =", hasUserEditedRef.current);
   const [logoUrl, setLogoUrl] = useState(null);
   const [mode, setMode] = useState("form");
   const [userId, setUserId] = useState(null);
@@ -465,7 +470,6 @@ export default function ProposalBuilder() {
       if (!error && drafts && drafts.length > 0) {
         const draft = drafts[0];
         setDraftId(draft.id);
-        console.log("[NAICS DEBUG] draft-load effect resolved, found draft id =", draft.id, "loaded draft.data.naicsCodes =", JSON.stringify(draft.data.naicsCodes), "hasUserEditedRef.current =", hasUserEditedRef.current);
 
         // If the user has already started editing by the time this load
         // resolves, do not clobber their in-progress work with a stale
@@ -474,10 +478,8 @@ export default function ProposalBuilder() {
         // updates this row instead of inserting a duplicate), but the
         // content itself is left alone.
         if (hasUserEditedRef.current) {
-          console.log("[NAICS DEBUG] draft-load SKIPPING setData (hasUserEditedRef was true)");
           return;
         }
-        console.log("[NAICS DEBUG] draft-load APPLYING setData(merged) — this will overwrite current form state");
 
         const merged = { ...initialState, ...draft.data };
 
@@ -684,13 +686,7 @@ export default function ProposalBuilder() {
         <Field label={`NAICS Code(s) — up to ${MAX_NAICS_SELECTIONS}, searched and selected, never typed`}>
           <NaicsSelector
             selected={data.naicsCodes}
-            onChange={(codes) => {
-              console.log("[NAICS DEBUG] calling site onChange received", JSON.stringify(codes));
-              setData((d) => {
-                console.log("[NAICS DEBUG] setData updater running, prev naicsCodes =", JSON.stringify(d.naicsCodes), "-> new naicsCodes =", JSON.stringify(codes));
-                return { ...d, naicsCodes: codes };
-              });
-            }}
+            onChange={(codes) => setData((d) => ({ ...d, naicsCodes: codes }))}
           />
         </Field>
         {data.unverifiedNaicsEntries.length > 0 && (
