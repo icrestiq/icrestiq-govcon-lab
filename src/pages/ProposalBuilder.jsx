@@ -410,7 +410,25 @@ function UpgradePrompt() {
 // ---------------------------------------------------------------------
 export default function ProposalBuilder() {
   const { profile, isAdmin } = useAuth();
-  const [data, setData] = useState(initialState);
+  // Tracks whether the user has made any edit yet. This exists because
+  // the draft-load effect below is async (two sequential Supabase round
+  // trips: getUser(), then the proposal_drafts SELECT) and, once it
+  // resolves, unconditionally overwrites the entire `data` object with
+  // whatever it loaded. If the user interacts with the form — e.g.
+  // searching for and clicking a NAICS code — before that load finishes,
+  // the load's setData(merged) call fires AFTER the click's own
+  // setData(...) and silently wipes out the edit, even though the click
+  // handler itself ran correctly. Wrapping setState here means every
+  // existing setData(...) call site in this file (there are many: set(),
+  // updateList(), addRow(), the NAICS selector's onChange, the signature
+  // upload callback, etc.) automatically marks this without needing to
+  // touch each one individually.
+  const hasUserEditedRef = useRef(false);
+  const [data, setDataRaw] = useState(initialState);
+  const setData = useCallback((updater) => {
+    hasUserEditedRef.current = true;
+    setDataRaw(updater);
+  }, []);
   const [logoUrl, setLogoUrl] = useState(null);
   const [mode, setMode] = useState("form");
   const [userId, setUserId] = useState(null);
@@ -435,6 +453,15 @@ export default function ProposalBuilder() {
       if (!error && drafts && drafts.length > 0) {
         const draft = drafts[0];
         setDraftId(draft.id);
+
+        // If the user has already started editing by the time this load
+        // resolves, do not clobber their in-progress work with a stale
+        // server snapshot — this is the actual fix for the race described
+        // above. draftId above is still set (needed so the next autosave
+        // updates this row instead of inserting a duplicate), but the
+        // content itself is left alone.
+        if (hasUserEditedRef.current) return;
+
         const merged = { ...initialState, ...draft.data };
 
         // Migration: pre-selector drafts stored free-text NAICS in `naics`,
