@@ -1,15 +1,16 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/AuthContext'
-import { Users, Package, MessageSquare, Plus, Trash2, Edit, Tag, Upload, X, Image as ImageIcon, Copy, Check } from 'lucide-react'
+import { Users, Package, MessageSquare, Plus, Trash2, Edit, Tag, Upload, X, Image as ImageIcon, Copy, Check, Mail, Download } from 'lucide-react'
 import styles from './AdminPanel.module.css'
 
 const TABS = [
-  { id: 'products',  label: 'Products',       icon: Package },
-  { id: 'discounts', label: 'Discount Codes',  icon: Tag },
-  { id: 'users',     label: 'Members',         icon: Users },
-  { id: 'messages',  label: 'Messages',        icon: MessageSquare },
-  { id: 'images',    label: 'Image Uploader',  icon: ImageIcon },
+  { id: 'products',    label: 'Products',       icon: Package },
+  { id: 'discounts',   label: 'Discount Codes',  icon: Tag },
+  { id: 'users',       label: 'Members',         icon: Users },
+  { id: 'messages',    label: 'Messages',        icon: MessageSquare },
+  { id: 'images',      label: 'Image Uploader',  icon: ImageIcon },
+  { id: 'subscribers', label: 'Subscribers',     icon: Mail },
 ]
 
 export default function AdminPanel() {
@@ -216,6 +217,9 @@ async function testMonthlyRewards() {
 
       {/* ── Image Uploader ── */}
       {tab === 'images' && <ImageUploaderTab />}
+
+      {/* ── Subscribers ── */}
+      {tab === 'subscribers' && <SubscribersTab />}
     </div>
   )
 }
@@ -652,6 +656,363 @@ function ImageUploaderTab() {
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+// ── Free digest subscriber list, with CSV export ──────────
+const SUBSCRIBER_PAGE_SIZE = 100
+
+function SubscribersTab() {
+  const [subscribers, setSubscribers] = useState([])
+  const [totalCount, setTotalCount] = useState(0)
+  const [pageIndex, setPageIndex] = useState(0)
+  const [loading, setLoading] = useState(true)
+
+  const [stats, setStats] = useState(null) // { confirmed, pending, newLast7Days, total }
+  const [sourceBreakdown, setSourceBreakdown] = useState([])
+  const [statsLoading, setStatsLoading] = useState(true)
+
+  const [search, setSearch] = useState('')
+  const [sourceFilter, setSourceFilter] = useState('all')
+  const [statsError, setStatsError] = useState('')
+  const [tableError, setTableError] = useState('')
+  const [exportError, setExportError] = useState('')
+  const [exporting, setExporting] = useState(false)
+
+  useEffect(() => { loadStatsAndBreakdown() }, [])
+  useEffect(() => { loadPage(pageIndex) }, [pageIndex])
+
+  // ── Aggregate stats: count-only queries (head: true), so these stay
+  // cheap and instant no matter how large digest_subscribers grows —
+  // never a payload of actual subscriber rows. ──
+  async function loadStatsAndBreakdown() {
+    setStatsLoading(true)
+    setStatsError('')
+    try {
+      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+
+      const [confirmedRes, totalRes, newRes, breakdownRes] = await Promise.all([
+        supabase.from('digest_subscribers').select('*', { count: 'exact', head: true }).eq('confirmed', true),
+        supabase.from('digest_subscribers').select('*', { count: 'exact', head: true }),
+        supabase.from('digest_subscribers').select('*', { count: 'exact', head: true }).gte('created_at', sevenDaysAgo),
+        supabase.rpc('digest_subscriber_source_breakdown'),
+      ])
+
+      if (confirmedRes.error) throw confirmedRes.error
+      if (totalRes.error) throw totalRes.error
+      if (newRes.error) throw newRes.error
+      if (breakdownRes.error) throw breakdownRes.error
+
+      const confirmed = confirmedRes.count || 0
+      const total = totalRes.count || 0
+      // Pending computed as total-confirmed, not a second .eq('confirmed', false)
+      // query — confirmed is nullable in the real schema, and a NULL row
+      // wouldn't match .eq(..., false) under SQL's three-valued logic.
+      setStats({
+        confirmed,
+        pending: Math.max(0, total - confirmed),
+        newLast7Days: newRes.count || 0,
+        total,
+      })
+      setSourceBreakdown(breakdownRes.data || [])
+    } catch (err) {
+      setStatsError(err.message)
+    } finally {
+      setStatsLoading(false)
+    }
+  }
+
+  // ── The paginated table itself: exactly one page (100 rows) per
+  // request via .range(), with { count: 'exact' } so we know the total
+  // for pagination controls without a separate query. Never fetches the
+  // full subscriber list. ──
+  async function loadPage(index) {
+    setLoading(true)
+    setTableError('')
+    try {
+      const from = index * SUBSCRIBER_PAGE_SIZE
+      const to = from + SUBSCRIBER_PAGE_SIZE - 1
+      const { data, count, error } = await supabase
+        .from('digest_subscribers')
+        .select('id, email, source, confirmed, created_at', { count: 'exact' })
+        .order('created_at', { ascending: false })
+        .range(from, to)
+      if (error) throw error
+      setSubscribers(data || [])
+      setTotalCount(count || 0)
+    } catch (err) {
+      setTableError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Search + source filter are both client-side, per spec — they filter
+  // the currently loaded page only, not the whole table. A search term
+  // that only matches a subscriber on a different page won't surface
+  // them; that's the explicit tradeoff of filtering client-side against
+  // a server-paginated list rather than re-querying per keystroke.
+  const filteredSubscribers = subscribers.filter(s => {
+    const matchesSearch = !search.trim() || s.email.toLowerCase().includes(search.trim().toLowerCase())
+    const matchesSource = sourceFilter === 'all' || s.source === sourceFilter
+    return matchesSearch && matchesSource
+  })
+
+  const pageCount = Math.max(1, Math.ceil(totalCount / SUBSCRIBER_PAGE_SIZE))
+  const rangeStart = totalCount === 0 ? 0 : pageIndex * SUBSCRIBER_PAGE_SIZE + 1
+  const rangeEnd = Math.min(totalCount, (pageIndex + 1) * SUBSCRIBER_PAGE_SIZE)
+
+  // Export is a deliberate, explicit, one-time action — unlike the page
+  // view above, it does need the full list. Fetched in 1,000-row chunks
+  // via repeated .range() calls rather than one unbounded request.
+  // Guards every CSV cell two ways: (1) a leading single quote on any
+  // value starting with =, +, -, or @ so Excel/Sheets treats it as
+  // literal text instead of executing it as a formula — the standard
+  // defense against CSV/formula injection, since `source` is
+  // user-suppliable to the raw API (subscribe.js doesn't restrict it to
+  // the UI's fixed values) and `email` only has to look like an email to
+  // a regex, not be a safe string; (2) wraps every field in quotes with
+  // internal quotes doubled, so a comma, newline, or stray quote in a
+  // malformed value can't break the file's column/row structure.
+  function csvSafeCell(value) {
+    let str = value === null || value === undefined ? '' : String(value)
+    if (/^[=+\-@]/.test(str)) str = "'" + str
+    return `"${str.replace(/"/g, '""')}"`
+  }
+
+  async function exportCsv() {
+    setExporting(true)
+    setExportError('')
+    try {
+      const chunkSize = 1000
+      let from = 0
+      let allRows = []
+      while (true) {
+        // Same filters as the on-screen search/source dropdown, applied
+        // server-side against the full table — not limited to whatever
+        // page happens to be loaded in the browser right now.
+        let query = supabase
+          .from('digest_subscribers')
+          .select('email, source, confirmed, created_at')
+          .order('created_at', { ascending: false })
+          .range(from, from + chunkSize - 1)
+
+        if (sourceFilter !== 'all') query = query.eq('source', sourceFilter)
+        if (search.trim()) query = query.ilike('email', `%${search.trim()}%`)
+
+        const { data, error } = await query
+        if (error) throw error
+        if (!data || data.length === 0) break
+        allRows = allRows.concat(data)
+        if (data.length < chunkSize) break
+        from += chunkSize
+      }
+
+      const header = ['email', 'source', 'status', 'created_at']
+      const rows = allRows.map(s => [
+        s.email,
+        s.source || '',
+        s.confirmed ? 'Confirmed' : 'Pending',
+        s.created_at ? new Date(s.created_at).toISOString() : '',
+      ])
+      const csv = [header, ...rows]
+        .map(row => row.map(csvSafeCell).join(','))
+        .join('\n')
+
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `digest-subscribers-${new Date().toISOString().slice(0, 10)}.csv`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      setExportError(err.message)
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  return (
+    <div>
+      <div className={styles.tabActions}>
+        <h2 className={styles.tabTitle}>Subscribers ({totalCount})</h2>
+        <button className="btn btn-primary" onClick={exportCsv} disabled={exporting || totalCount === 0}>
+          {exporting ? <div className="spinner" /> : <><Download size={16} /> Export CSV</>}
+        </button>
+      </div>
+
+      {exportError && (
+        <div className="alert alert-info" style={{ marginBottom: 'var(--sp-5)', borderColor: 'var(--red)', color: 'var(--red)' }}>
+          Export failed: {exportError}
+        </div>
+      )}
+
+      {/* ── Summary stats — no dedicated "stat card" component exists
+          anywhere in this codebase (checked AdminPanel.module.css and
+          Dashboard.module.css), so these reuse the existing global
+          `card` class and `badge` colors rather than a new style. ── */}
+      {statsError ? (
+        <div className="alert alert-info" style={{ marginBottom: 'var(--sp-6)', borderColor: 'var(--red)', color: 'var(--red)' }}>
+          <strong>Couldn't load subscriber stats:</strong> {statsError}
+          <div style={{ fontSize: '0.8125rem', marginTop: 'var(--sp-1)', opacity: 0.85 }}>
+            If this is a permissions error, check that the admin SELECT policy on digest_subscribers is actually applied.
+          </div>
+          <div style={{ marginTop: 'var(--sp-2)' }}>
+            <button className="btn btn-ghost" style={{ padding: '4px 10px', fontSize: '0.8125rem' }} onClick={loadStatsAndBreakdown}>
+              Retry
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 'var(--sp-4)', marginBottom: 'var(--sp-6)' }}>
+          <div className="card">
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 'var(--sp-2)' }}>Confirmed</div>
+            <div style={{ fontSize: '1.75rem', fontWeight: 700, color: 'var(--navy)' }}>
+              {statsLoading || !stats ? '—' : stats.confirmed}
+            </div>
+            <span className="badge badge-green" style={{ marginTop: 'var(--sp-2)' }}>Ready to send</span>
+          </div>
+          <div className="card">
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 'var(--sp-2)' }}>Pending confirmation</div>
+            <div style={{ fontSize: '1.75rem', fontWeight: 700, color: 'var(--navy)' }}>
+              {statsLoading || !stats ? '—' : stats.pending}
+            </div>
+            <span className="badge badge-amber" style={{ marginTop: 'var(--sp-2)' }}>Never clicked the link</span>
+          </div>
+          <div className="card">
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 'var(--sp-2)' }}>New in last 7 days</div>
+            <div style={{ fontSize: '1.75rem', fontWeight: 700, color: 'var(--navy)' }}>
+              {statsLoading || !stats ? '—' : stats.newLast7Days}
+            </div>
+            <span className="badge badge-blue" style={{ marginTop: 'var(--sp-2)' }}>Signups</span>
+          </div>
+        </div>
+      )}
+      {/* No "Unsubscribed" stat: digest_subscribers has no column that
+          tracks it (confirmed columns are: id, email, created_at, source,
+          confirmed, confirm_token, confirmed_at — verified against the
+          live schema). Per "only if the table tracks it," it's omitted
+          rather than shown as a fake always-zero number. */}
+
+      {/* ── Source breakdown — grouped by whatever `source` values
+          actually exist (via the RPC), not a hardcoded list. ── */}
+      <h3 style={{ fontSize: '0.9375rem', color: 'var(--navy)', marginBottom: 'var(--sp-3)' }}>By source</h3>
+      <div className={styles.table} style={{ marginBottom: 'var(--sp-6)' }}>
+        <div className={`${styles.tableRow} ${styles.tableHead}`} style={{ gridTemplateColumns: '1fr 1fr 1fr 1fr' }}>
+          <span>Source</span>
+          <span>Confirmed</span>
+          <span>Pending</span>
+          <span>Total</span>
+        </div>
+        {statsLoading && <div className={styles.tableEmpty}>Loading...</div>}
+        {!statsLoading && statsError && (
+          <div className={styles.tableEmpty} style={{ color: 'var(--red)' }}>
+            Couldn't load: {statsError}
+          </div>
+        )}
+        {!statsLoading && !statsError && sourceBreakdown.length === 0 && (
+          <div className={styles.tableEmpty}>No subscribers yet.</div>
+        )}
+        {!statsLoading && !statsError && sourceBreakdown.map(row => (
+          <div key={row.source} className={styles.tableRow} style={{ gridTemplateColumns: '1fr 1fr 1fr 1fr' }}>
+            <span><span className="badge badge-blue">{row.source}</span></span>
+            <span className="mono">{row.confirmed_count}</span>
+            <span className="mono">{row.pending_count}</span>
+            <span className="mono" style={{ fontWeight: 600 }}>{row.total_count}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* ── Filters — client-side, apply to the currently loaded page only ── */}
+      <div style={{ display: 'flex', gap: 'var(--sp-3)', marginBottom: 'var(--sp-4)', flexWrap: 'wrap' }}>
+        <input
+          className="input"
+          placeholder="Search email on this page…"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          style={{ maxWidth: 280 }}
+        />
+        <select className="input" value={sourceFilter} onChange={e => setSourceFilter(e.target.value)} style={{ maxWidth: 200 }}>
+          <option value="all">All sources</option>
+          {sourceBreakdown.map(row => (
+            <option key={row.source} value={row.source}>{row.source}</option>
+          ))}
+        </select>
+      </div>
+
+      {/* ── The subscriber list itself — one page (100 rows) at a time ── */}
+      <div className={styles.table}>
+        <div className={`${styles.tableRow} ${styles.tableHead}`}>
+          <span>Email</span>
+          <span>Source</span>
+          <span>Status</span>
+          <span>Signed Up</span>
+        </div>
+        {loading && <div className={styles.tableEmpty}>Loading...</div>}
+        {!loading && tableError && (
+          <div className={styles.tableEmpty} style={{ color: 'var(--red)' }}>
+            <div><strong>Couldn't load subscribers:</strong> {tableError}</div>
+            <div style={{ fontSize: '0.8125rem', marginTop: 'var(--sp-1)', opacity: 0.85 }}>
+              If this is a permissions error, check that the admin SELECT policy on digest_subscribers is actually applied.
+            </div>
+            <button className="btn btn-ghost" style={{ padding: '4px 10px', fontSize: '0.8125rem', marginTop: 'var(--sp-2)' }} onClick={() => loadPage(pageIndex)}>
+              Retry
+            </button>
+          </div>
+        )}
+        {!loading && !tableError && subscribers.length === 0 && (
+          <div className={styles.tableEmpty}>
+            No subscribers yet. The signup forms on the homepage and /go both feed this list.
+          </div>
+        )}
+        {!loading && !tableError && subscribers.length > 0 && filteredSubscribers.length === 0 && (
+          <div className={styles.tableEmpty}>No subscribers on this page match your filters.</div>
+        )}
+        {!loading && !tableError && filteredSubscribers.map(s => (
+          <div key={s.id} className={styles.tableRow}>
+            <span className="mono" style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>{s.email}</span>
+            <span><span className="badge badge-blue">{s.source || 'unknown'}</span></span>
+            <span>
+              <span className={`badge ${s.confirmed ? 'badge-green' : 'badge-amber'}`}>
+                {s.confirmed ? 'Confirmed' : 'Pending'}
+              </span>
+            </span>
+            <span className="mono" style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+              {s.created_at ? new Date(s.created_at).toLocaleDateString() : '—'}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {/* ── Pagination ── */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 'var(--sp-4)' }}>
+        <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+          {totalCount === 0 ? 'No subscribers' : `Showing ${rangeStart}–${rangeEnd} of ${totalCount}`}
+        </span>
+        <div style={{ display: 'flex', gap: 'var(--sp-2)' }}>
+          <button
+            className="btn btn-ghost"
+            disabled={pageIndex === 0 || loading}
+            onClick={() => setPageIndex(p => Math.max(0, p - 1))}
+          >
+            ← Previous
+          </button>
+          <span style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', alignSelf: 'center' }}>
+            Page {pageIndex + 1} of {pageCount}
+          </span>
+          <button
+            className="btn btn-ghost"
+            disabled={pageIndex + 1 >= pageCount || loading}
+            onClick={() => setPageIndex(p => p + 1)}
+          >
+            Next →
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
