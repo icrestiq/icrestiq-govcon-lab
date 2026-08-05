@@ -14,6 +14,45 @@
   min-width: 0;
 }
 
+.avatarWrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.avatarEditBtn {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--navy);
+  color: #FFFFFF;
+  border: 2px solid #FFFFFF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  transition: background 0.15s, transform 0.15s;
+}
+
+.avatarEditBtn:hover {
+  background: var(--navy-light);
+  transform: scale(1.05);
+}
+
+.avatarEditBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.avatarStatus {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: var(--sp-2);
+}
+
 .editHeader {
   display: flex;
   align-items: center;

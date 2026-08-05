@@ -6,6 +6,7 @@ import {
   LogOut, Menu, X, Shield, ChevronRight, CreditCard, User, Crown, FileText
 } from 'lucide-react'
 import Footer from './Footer'
+import Avatar from '../Avatar'
 import styles from './Layout.module.css'
 
 const NAV = [
@@ -27,12 +28,6 @@ export default function Layout() {
     await signOut()
     navigate('/')
   }
-
-  const initials = profile?.first_name && profile?.last_name
-    ? (profile.first_name[0] + profile.last_name[0]).toUpperCase()
-    : profile?.username
-      ? profile.username.slice(0, 2).toUpperCase()
-      : '??'
 
   const displayName = profile?.first_name
     ? `${profile.first_name} ${profile.last_name || ''}`.trim()
@@ -104,7 +99,12 @@ export default function Layout() {
         {user ? (
           <div className={styles.userSection}>
             <div className={styles.userInfo}>
-              <div className="avatar">{initials}</div>
+              <Avatar
+                avatarUrl={profile?.avatar_url}
+                firstName={profile?.first_name}
+                lastName={profile?.last_name}
+                username={profile?.username}
+              />
               <div className={styles.userMeta}>
                 <div className={styles.userName}>{displayName}</div>
                 <div className={styles.userRole}>{profile?.membership_tier || profile?.role || 'member'}</div>

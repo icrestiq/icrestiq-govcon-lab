@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { Crown } from 'lucide-react'
 import FounderBadge from '../components/FounderBadge'
+import Avatar from '../components/Avatar'
 import styles from './FoundersWall.module.css'
 
 const WALL_SIZE = 25
@@ -18,7 +19,7 @@ export default function FoundersWall() {
     try {
       const { data } = await supabase
         .from('profiles')
-        .select('id, username, first_name, last_name, created_at')
+        .select('id, username, first_name, last_name, avatar_url, created_at')
         .eq('membership_tier', 'founding')
         .order('created_at', { ascending: true })
         .limit(WALL_SIZE)
@@ -57,16 +58,17 @@ export default function FoundersWall() {
             const displayName = founder.first_name
               ? `${founder.first_name} ${founder.last_name || ''}`.trim()
               : founder.username || 'Member'
-            const initials = founder.first_name && founder.last_name
-              ? (founder.first_name[0] + founder.last_name[0]).toUpperCase()
-              : (founder.username || 'M').slice(0, 2).toUpperCase()
-
             return (
               <div key={founder.id} className={styles.card}>
                 <span className={styles.rank}>#{i + 1}</span>
-                <div className="avatar" style={{ width: 48, height: 48, fontSize: '1rem' }}>
-                  {initials}
-                </div>
+                <Avatar
+                  avatarUrl={founder.avatar_url}
+                  firstName={founder.first_name}
+                  lastName={founder.last_name}
+                  username={founder.username}
+                  size={48}
+                  fontSize="1rem"
+                />
                 <div className={styles.name}>{displayName}</div>
                 {founder.username && <div className={styles.username}>@{founder.username}</div>}
                 <FounderBadge tier="founding" />

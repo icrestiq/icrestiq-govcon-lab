@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/AuthContext'
 import { Users, Package, MessageSquare, Plus, Trash2, Edit, Tag, Upload, X, Image as ImageIcon, Copy, Check, Mail, Download } from 'lucide-react'
+import Avatar from '../components/Avatar'
 import styles from './AdminPanel.module.css'
 
 const TABS = [
@@ -195,10 +196,14 @@ async function testMonthlyRewards() {
             {users.map(u => (
               <div key={u.id} className={styles.tableRow}>
                 <span className={styles.cellTitle}>
-                  <div className="avatar" style={{ width: 28, height: 28, fontSize: '0.6875rem' }}>
-                    {(u.first_name || u.username || 'M').slice(0, 1).toUpperCase()}
-                    {(u.last_name || '').slice(0, 1).toUpperCase()}
-                  </div>
+                  <Avatar
+                    avatarUrl={u.avatar_url}
+                    firstName={u.first_name}
+                    lastName={u.last_name}
+                    username={u.username}
+                    size={28}
+                    fontSize="0.6875rem"
+                  />
                   {u.first_name ? `${u.first_name} ${u.last_name || ''}`.trim() : u.username}
                 </span>
                 <span className="mono" style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>{u.email}</span>

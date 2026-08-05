@@ -1,11 +1,16 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../lib/AuthContext'
 import { supabase } from '../lib/supabase'
-import { User, Activity, FileText, MessageCircle, Heart, Pencil, X } from 'lucide-react'
+import { User, Activity, FileText, MessageCircle, Heart, Pencil, X, Camera } from 'lucide-react'
 import ActivityHeatmap from '../components/ActivityHeatmap'
 import FounderBadge from '../components/FounderBadge'
+import Avatar from '../components/Avatar'
 import { isFoundingMember } from '../lib/tier'
 import styles from './Profile.module.css'
+
+const MAX_AVATAR_MB = 2
+const MAX_AVATAR_BYTES = MAX_AVATAR_MB * 1024 * 1024
+const ACCEPTED_AVATAR_TYPES = ['image/png', 'image/jpeg', 'image/webp']
 
 export default function Profile() {
   const { user, profile, updateProfile } = useAuth()
@@ -19,6 +24,11 @@ export default function Profile() {
   const [form, setForm] = useState({ first_name: '', last_name: '', username: '', bio: '' })
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
+
+  // ── Avatar upload ──
+  const [avatarUploading, setAvatarUploading] = useState(false)
+  const [avatarError, setAvatarError] = useState('')
+  const avatarInputRef = useRef(null)
 
   function startEditing() {
     setForm({
@@ -67,6 +77,40 @@ export default function Profile() {
     }
   }
 
+  async function handleAvatarFile(file) {
+    setAvatarError('')
+    if (!file || !user) return
+
+    if (!ACCEPTED_AVATAR_TYPES.includes(file.type)) {
+      setAvatarError('Please upload a PNG, JPG, or WEBP file.')
+      return
+    }
+    if (file.size > MAX_AVATAR_BYTES) {
+      setAvatarError(`File is too large (${(file.size / 1024 / 1024).toFixed(1)}MB). Maximum size is ${MAX_AVATAR_MB}MB.`)
+      return
+    }
+
+    setAvatarUploading(true)
+    try {
+      const ext = file.name.split('.').pop()
+      const path = `${user.id}/avatar.${ext}`
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(path, file, { upsert: true, cacheControl: '3600' })
+      if (uploadError) throw uploadError
+
+      const { data } = supabase.storage.from('avatars').getPublicUrl(path)
+      // cache-bust so a re-upload with the same filename shows immediately
+      const avatarUrl = `${data.publicUrl}?t=${Date.now()}`
+      await updateProfile({ avatar_url: avatarUrl })
+    } catch (err) {
+      console.error('Avatar upload error:', err)
+      setAvatarError('Upload failed. Please try again.')
+    } finally {
+      setAvatarUploading(false)
+    }
+  }
+
   useEffect(() => {
     if (tab === 'activity' && user) loadActivity()
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -103,10 +147,6 @@ export default function Profile() {
     ? `${profile.first_name} ${profile.last_name || ''}`.trim()
     : profile?.username || 'Member'
 
-  const initials = profile?.first_name && profile?.last_name
-    ? (profile.first_name[0] + profile.last_name[0]).toUpperCase()
-    : (profile?.username || 'M').slice(0, 2).toUpperCase()
-
   const joinedDate = profile?.created_at
     ? new Date(profile.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
     : null
@@ -114,7 +154,32 @@ export default function Profile() {
   return (
     <div className={styles.page}>
       <div className={styles.header}>
-        <div className="avatar" style={{ width: 64, height: 64, fontSize: '1.25rem' }}>{initials}</div>
+        <div className={styles.avatarWrap}>
+          <Avatar
+            avatarUrl={profile?.avatar_url}
+            firstName={profile?.first_name}
+            lastName={profile?.last_name}
+            username={profile?.username}
+            size={64}
+            fontSize="1.25rem"
+          />
+          <button
+            type="button"
+            className={styles.avatarEditBtn}
+            onClick={() => avatarInputRef.current?.click()}
+            disabled={avatarUploading}
+            title="Change photo"
+          >
+            <Camera size={13} />
+          </button>
+          <input
+            ref={avatarInputRef}
+            type="file"
+            accept={ACCEPTED_AVATAR_TYPES.join(',')}
+            style={{ display: 'none' }}
+            onChange={(e) => handleAvatarFile(e.target.files?.[0])}
+          />
+        </div>
         <div className={styles.headerInfo}>
           <h1 className={styles.name}>{displayName}</h1>
           <p className={styles.username}>@{profile?.username || 'member'}</p>
@@ -126,6 +191,8 @@ export default function Profile() {
             )}
             {joinedDate && <span className={styles.joined}>Member since {joinedDate}</span>}
           </div>
+          {avatarUploading && <p className={styles.avatarStatus}>Uploading photo…</p>}
+          {avatarError && <p className={styles.avatarStatus} style={{ color: 'var(--red)' }}>{avatarError}</p>}
         </div>
         {!isEditing && (
           <button type="button" className="btn btn-ghost" onClick={startEditing} style={{ marginLeft: 'auto' }}>
