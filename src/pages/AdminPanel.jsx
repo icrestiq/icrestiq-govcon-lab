@@ -661,7 +661,7 @@ function ImageUploaderTab() {
 }
 
 // ── Free digest subscriber list, with CSV export ──────────
-const SUBSCRIBER_PAGE_SIZE = 100
+const SUBSCRIBER_PAGE_SIZE = 2 // TEMPORARY — for live pagination+search verification, will be reverted to 100 right after
 
 function SubscribersTab() {
   const [subscribers, setSubscribers] = useState([])
