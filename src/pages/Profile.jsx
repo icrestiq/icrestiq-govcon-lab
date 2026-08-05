@@ -1,18 +1,71 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../lib/AuthContext'
 import { supabase } from '../lib/supabase'
-import { User, Activity, FileText, MessageCircle, Heart } from 'lucide-react'
+import { User, Activity, FileText, MessageCircle, Heart, Pencil, X } from 'lucide-react'
 import ActivityHeatmap from '../components/ActivityHeatmap'
 import FounderBadge from '../components/FounderBadge'
 import { isFoundingMember } from '../lib/tier'
 import styles from './Profile.module.css'
 
 export default function Profile() {
-  const { user, profile } = useAuth()
+  const { user, profile, updateProfile } = useAuth()
   const [tab, setTab] = useState('overview')
   const [activityData, setActivityData] = useState({})
   const [stats, setStats] = useState({ posts: 0, comments: 0, likesReceived: 0 })
   const [loading, setLoading] = useState(true)
+
+  // ── Edit profile ──
+  const [isEditing, setIsEditing] = useState(false)
+  const [form, setForm] = useState({ first_name: '', last_name: '', username: '', bio: '' })
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState('')
+
+  function startEditing() {
+    setForm({
+      first_name: profile?.first_name || '',
+      last_name: profile?.last_name || '',
+      username: profile?.username || '',
+      bio: profile?.bio || '',
+    })
+    setSaveError('')
+    setIsEditing(true)
+  }
+
+  function cancelEditing() {
+    setIsEditing(false)
+    setSaveError('')
+  }
+
+  async function saveProfile(e) {
+    e.preventDefault()
+    setSaveError('')
+
+    const username = form.username.trim()
+    if (!username) {
+      setSaveError('Username is required.')
+      return
+    }
+
+    setSaving(true)
+    try {
+      await updateProfile({
+        first_name: form.first_name.trim(),
+        last_name: form.last_name.trim(),
+        username,
+        bio: form.bio.trim(),
+      })
+      setIsEditing(false)
+    } catch (err) {
+      console.error('Profile update error:', err)
+      if (err?.code === '23505' || /duplicate key|unique/i.test(err?.message || '')) {
+        setSaveError('That username is already taken. Please choose another.')
+      } else {
+        setSaveError('Could not save your changes. Please try again.')
+      }
+    } finally {
+      setSaving(false)
+    }
+  }
 
   useEffect(() => {
     if (tab === 'activity' && user) loadActivity()
@@ -62,7 +115,7 @@ export default function Profile() {
     <div className={styles.page}>
       <div className={styles.header}>
         <div className="avatar" style={{ width: 64, height: 64, fontSize: '1.25rem' }}>{initials}</div>
-        <div>
+        <div className={styles.headerInfo}>
           <h1 className={styles.name}>{displayName}</h1>
           <p className={styles.username}>@{profile?.username || 'member'}</p>
           <div className={styles.badges}>
@@ -74,6 +127,11 @@ export default function Profile() {
             {joinedDate && <span className={styles.joined}>Member since {joinedDate}</span>}
           </div>
         </div>
+        {!isEditing && (
+          <button type="button" className="btn btn-ghost" onClick={startEditing} style={{ marginLeft: 'auto' }}>
+            <Pencil size={14} /> Edit Profile
+          </button>
+        )}
       </div>
 
       {/* Tabs */}
@@ -94,8 +152,76 @@ export default function Profile() {
 
       {tab === 'overview' && (
         <div className={styles.card}>
-          <h3 className={styles.cardTitle}>About</h3>
-          <p className={styles.bio}>{profile?.bio || 'No bio added yet.'}</p>
+          {isEditing ? (
+            <form onSubmit={saveProfile}>
+              <div className={styles.editHeader}>
+                <h3 className={styles.cardTitle}>Edit Profile</h3>
+                <button type="button" className="btn btn-ghost" onClick={cancelEditing} disabled={saving}>
+                  <X size={14} /> Cancel
+                </button>
+              </div>
+
+              {saveError && <div className="alert alert-error" style={{ marginBottom: 'var(--sp-4)' }}>{saveError}</div>}
+
+              <div className={styles.editRow}>
+                <div>
+                  <label className="label" htmlFor="first_name">First Name</label>
+                  <input
+                    id="first_name"
+                    className="input"
+                    value={form.first_name}
+                    onChange={(e) => setForm((f) => ({ ...f, first_name: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label className="label" htmlFor="last_name">Last Name</label>
+                  <input
+                    id="last_name"
+                    className="input"
+                    value={form.last_name}
+                    onChange={(e) => setForm((f) => ({ ...f, last_name: e.target.value }))}
+                  />
+                </div>
+              </div>
+
+              <div style={{ marginTop: 'var(--sp-4)' }}>
+                <label className="label" htmlFor="username">Username</label>
+                <input
+                  id="username"
+                  className="input"
+                  value={form.username}
+                  onChange={(e) => setForm((f) => ({ ...f, username: e.target.value }))}
+                  required
+                />
+              </div>
+
+              <div style={{ marginTop: 'var(--sp-4)' }}>
+                <label className="label" htmlFor="bio">Bio</label>
+                <textarea
+                  id="bio"
+                  className="input"
+                  rows={4}
+                  placeholder="Tell the community a bit about yourself and your company."
+                  value={form.bio}
+                  onChange={(e) => setForm((f) => ({ ...f, bio: e.target.value }))}
+                />
+              </div>
+
+              <div style={{ marginTop: 'var(--sp-5)', display: 'flex', gap: 'var(--sp-3)' }}>
+                <button type="submit" className="btn btn-primary" disabled={saving}>
+                  {saving ? 'Saving…' : 'Save Changes'}
+                </button>
+                <button type="button" className="btn btn-ghost" onClick={cancelEditing} disabled={saving}>
+                  Cancel
+                </button>
+              </div>
+            </form>
+          ) : (
+            <>
+              <h3 className={styles.cardTitle}>About</h3>
+              <p className={styles.bio}>{profile?.bio || 'No bio added yet.'}</p>
+            </>
+          )}
         </div>
       )}
 
