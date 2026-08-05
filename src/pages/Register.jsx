@@ -210,6 +210,8 @@ export default function Register() {
 
           <p className={styles.switchLink}>
             <Link to="/login">Go to sign in →</Link>
+            {' · '}
+            <Link to="/forgot-password">Reset your password →</Link>
           </p>
         </div>
       </div>

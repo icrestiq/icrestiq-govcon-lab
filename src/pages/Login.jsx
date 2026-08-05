@@ -156,6 +156,9 @@ export default function Login() {
               onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
               required
             />
+            <Link to="/forgot-password" style={{ display: 'inline-block', fontSize: '0.8125rem', marginTop: 'var(--sp-2)' }}>
+              Forgot your password?
+            </Link>
           </div>
           <button
             type="submit"

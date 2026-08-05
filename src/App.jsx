@@ -5,6 +5,8 @@ import Landing from './pages/Landing'
 import About from './pages/About'
 import Login from './pages/Login'
 import Register from './pages/Register'
+import ForgotPassword from './pages/ForgotPassword'
+import ResetPassword from './pages/ResetPassword'
 import Dashboard from './pages/Dashboard'
 import Chat from './pages/Chat'
 import Store from './pages/Store'
@@ -53,6 +55,15 @@ export default function App() {
       <Route path="/" element={user ? <Navigate to="/dashboard" /> : <Landing />} />
       <Route path="/login" element={user ? <Navigate to="/dashboard" /> : <Login />} />
       <Route path="/register" element={user ? <Navigate to="/dashboard" /> : <Register />} />
+      {/* Forgot/reset password are deliberately NOT wrapped in the
+          user-redirect pattern like /login and /register above.
+          /reset-password in particular must stay reachable even when the
+          visitor technically has a session — clicking the emailed
+          recovery link is itself what creates that session, so
+          redirecting away from this route for "already logged in" would
+          break the exact flow it exists to serve. */}
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/about" element={<About />} />
 
       {/* Stripe checkout result pages - public so Stripe can redirect */}
