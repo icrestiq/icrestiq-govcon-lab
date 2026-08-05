@@ -674,6 +674,7 @@ function SubscribersTab() {
   const [statsLoading, setStatsLoading] = useState(true)
 
   const [search, setSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
   const [sourceFilter, setSourceFilter] = useState('all')
   const [statsError, setStatsError] = useState('')
   const [tableError, setTableError] = useState('')
@@ -681,7 +682,28 @@ function SubscribersTab() {
   const [exporting, setExporting] = useState(false)
 
   useEffect(() => { loadStatsAndBreakdown() }, [])
-  useEffect(() => { loadPage(pageIndex) }, [pageIndex])
+
+  // Debounce the search box ~300ms so we're not re-querying the server on
+  // every keystroke — only once typing pauses.
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search.trim()), 300)
+    return () => clearTimeout(t)
+  }, [search])
+
+  // Reset to page 0 whenever the (debounced) search term or source filter
+  // actually changes — otherwise you could be sitting on page 3 when a new
+  // filter only has one page of results. The prev===0 check makes this a
+  // no-op (no extra render/fetch) in the common case where you're already
+  // on page 0 when you change a filter.
+  useEffect(() => {
+    setPageIndex(prev => (prev === 0 ? prev : 0))
+  }, [debouncedSearch, sourceFilter])
+
+  // The actual data load — server-side search/filter now, same as export
+  // already did. Re-runs on page change AND whenever the filters change.
+  useEffect(() => {
+    loadPage(pageIndex, debouncedSearch, sourceFilter)
+  }, [pageIndex, debouncedSearch, sourceFilter])
 
   // ── Aggregate stats: count-only queries (head: true), so these stay
   // cheap and instant no matter how large digest_subscribers grows —
@@ -726,18 +748,24 @@ function SubscribersTab() {
   // ── The paginated table itself: exactly one page (100 rows) per
   // request via .range(), with { count: 'exact' } so we know the total
   // for pagination controls without a separate query. Never fetches the
-  // full subscriber list. ──
-  async function loadPage(index) {
+  // full subscriber list. Search and source filter are now applied
+  // server-side, same as the export query below — a match beyond page 1
+  // is actually found instead of silently looking like a no-result. ──
+  async function loadPage(index, searchTerm, source) {
     setLoading(true)
     setTableError('')
     try {
       const from = index * SUBSCRIBER_PAGE_SIZE
       const to = from + SUBSCRIBER_PAGE_SIZE - 1
-      const { data, count, error } = await supabase
+      let query = supabase
         .from('digest_subscribers')
         .select('id, email, source, confirmed, created_at', { count: 'exact' })
         .order('created_at', { ascending: false })
-        .range(from, to)
+
+      if (source && source !== 'all') query = query.eq('source', source)
+      if (searchTerm) query = query.ilike('email', `%${searchTerm}%`)
+
+      const { data, count, error } = await query.range(from, to)
       if (error) throw error
       setSubscribers(data || [])
       setTotalCount(count || 0)
@@ -748,17 +776,7 @@ function SubscribersTab() {
     }
   }
 
-  // Search + source filter are both client-side, per spec — they filter
-  // the currently loaded page only, not the whole table. A search term
-  // that only matches a subscriber on a different page won't surface
-  // them; that's the explicit tradeoff of filtering client-side against
-  // a server-paginated list rather than re-querying per keystroke.
-  const filteredSubscribers = subscribers.filter(s => {
-    const matchesSearch = !search.trim() || s.email.toLowerCase().includes(search.trim().toLowerCase())
-    const matchesSource = sourceFilter === 'all' || s.source === sourceFilter
-    return matchesSearch && matchesSource
-  })
-
+  const isFiltered = Boolean(debouncedSearch) || sourceFilter !== 'all'
   const pageCount = Math.max(1, Math.ceil(totalCount / SUBSCRIBER_PAGE_SIZE))
   const rangeStart = totalCount === 0 ? 0 : pageIndex * SUBSCRIBER_PAGE_SIZE + 1
   const rangeEnd = Math.min(totalCount, (pageIndex + 1) * SUBSCRIBER_PAGE_SIZE)
@@ -931,7 +949,7 @@ function SubscribersTab() {
       <div style={{ display: 'flex', gap: 'var(--sp-3)', marginBottom: 'var(--sp-4)', flexWrap: 'wrap' }}>
         <input
           className="input"
-          placeholder="Search email on this page…"
+          placeholder="Search email…"
           value={search}
           onChange={e => setSearch(e.target.value)}
           style={{ maxWidth: 280 }}
@@ -959,20 +977,20 @@ function SubscribersTab() {
             <div style={{ fontSize: '0.8125rem', marginTop: 'var(--sp-1)', opacity: 0.85 }}>
               If this is a permissions error, check that the admin SELECT policy on digest_subscribers is actually applied.
             </div>
-            <button className="btn btn-ghost" style={{ padding: '4px 10px', fontSize: '0.8125rem', marginTop: 'var(--sp-2)' }} onClick={() => loadPage(pageIndex)}>
+            <button className="btn btn-ghost" style={{ padding: '4px 10px', fontSize: '0.8125rem', marginTop: 'var(--sp-2)' }} onClick={() => loadPage(pageIndex, debouncedSearch, sourceFilter)}>
               Retry
             </button>
           </div>
         )}
-        {!loading && !tableError && subscribers.length === 0 && (
+        {!loading && !tableError && subscribers.length === 0 && !isFiltered && (
           <div className={styles.tableEmpty}>
             No subscribers yet. The signup forms on the homepage and /go both feed this list.
           </div>
         )}
-        {!loading && !tableError && subscribers.length > 0 && filteredSubscribers.length === 0 && (
-          <div className={styles.tableEmpty}>No subscribers on this page match your filters.</div>
+        {!loading && !tableError && subscribers.length === 0 && isFiltered && (
+          <div className={styles.tableEmpty}>No subscribers match your search or filter.</div>
         )}
-        {!loading && !tableError && filteredSubscribers.map(s => (
+        {!loading && !tableError && subscribers.map(s => (
           <div key={s.id} className={styles.tableRow}>
             <span className="mono" style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>{s.email}</span>
             <span><span className="badge badge-blue">{s.source || 'unknown'}</span></span>
