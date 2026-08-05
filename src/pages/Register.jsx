@@ -14,6 +14,8 @@ function isSafeNextPath(next) {
 }
 
 const RESEND_COOLDOWN_SECONDS = 60
+const USERNAME_PATTERN = /^[a-zA-Z0-9_-]+$/
+const USERNAME_HELP = 'Letters, numbers, underscores, and dashes only — no spaces (e.g. john_atkinson or john-atkinson).'
 
 export default function Register() {
   const { signUp, resendConfirmation } = useAuth()
@@ -64,6 +66,10 @@ export default function Register() {
 
     if (!form.firstName.trim()) {
       setError('First name is required.')
+      return
+    }
+    if (form.username.trim() && !USERNAME_PATTERN.test(form.username.trim())) {
+      setError(`Username can only contain letters, numbers, underscores, and dashes. ${USERNAME_HELP}`)
       return
     }
     if (form.password !== form.confirm) {
@@ -271,7 +277,12 @@ export default function Register() {
               value={form.username}
               onChange={set('username')}
               minLength={3}
+              pattern="[a-zA-Z0-9_-]+"
+              title="Letters, numbers, underscores, and dashes only — no spaces."
             />
+            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 'var(--sp-2)' }}>
+              {USERNAME_HELP}
+            </p>
           </div>
 
           <div className="field">

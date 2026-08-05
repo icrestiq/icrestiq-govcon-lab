@@ -53,6 +53,12 @@
   margin-top: var(--sp-2);
 }
 
+.fieldHint {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: var(--sp-2);
+}
+
 .editHeader {
   display: flex;
   align-items: center;

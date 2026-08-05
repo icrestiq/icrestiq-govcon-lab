@@ -12,6 +12,10 @@ const MAX_AVATAR_MB = 2
 const MAX_AVATAR_BYTES = MAX_AVATAR_MB * 1024 * 1024
 const ACCEPTED_AVATAR_TYPES = ['image/png', 'image/jpeg', 'image/webp']
 
+const USERNAME_PATTERN = /^[a-zA-Z0-9_-]+$/
+const USERNAME_HELP = 'Letters, numbers, underscores, and dashes only — no spaces (e.g. john_atkinson or john-atkinson).'
+const BIO_MAX_LEN = 600
+
 export default function Profile() {
   const { user, profile, updateProfile } = useAuth()
   const [tab, setTab] = useState('overview')
@@ -55,6 +59,12 @@ export default function Profile() {
       setSaveError('Username is required.')
       return
     }
+    if (!USERNAME_PATTERN.test(username)) {
+      setSaveError(`Username can only contain letters, numbers, underscores, and dashes. ${USERNAME_HELP}`)
+      return
+    }
+
+    const bio = form.bio.trim().slice(0, BIO_MAX_LEN)
 
     setSaving(true)
     try {
@@ -62,7 +72,7 @@ export default function Profile() {
         first_name: form.first_name.trim(),
         last_name: form.last_name.trim(),
         username,
-        bio: form.bio.trim(),
+        bio,
       })
       setIsEditing(false)
     } catch (err) {
@@ -192,7 +202,12 @@ export default function Profile() {
             {joinedDate && <span className={styles.joined}>Member since {joinedDate}</span>}
           </div>
           {avatarUploading && <p className={styles.avatarStatus}>Uploading photo…</p>}
-          {avatarError && <p className={styles.avatarStatus} style={{ color: 'var(--red)' }}>{avatarError}</p>}
+          {!avatarUploading && avatarError && (
+            <p className={styles.avatarStatus} style={{ color: 'var(--red)' }}>{avatarError}</p>
+          )}
+          {!avatarUploading && !avatarError && (
+            <p className={styles.avatarStatus}>Photo: PNG, JPG, or WEBP · max 2MB</p>
+          )}
         </div>
         {!isEditing && (
           <button type="button" className="btn btn-ghost" onClick={startEditing} style={{ marginLeft: 'auto' }}>
@@ -258,8 +273,11 @@ export default function Profile() {
                   className="input"
                   value={form.username}
                   onChange={(e) => setForm((f) => ({ ...f, username: e.target.value }))}
+                  pattern="[a-zA-Z0-9_-]+"
+                  title="Letters, numbers, underscores, and dashes only — no spaces."
                   required
                 />
+                <p className={styles.fieldHint}>{USERNAME_HELP}</p>
               </div>
 
               <div style={{ marginTop: 'var(--sp-4)' }}>
@@ -268,10 +286,14 @@ export default function Profile() {
                   id="bio"
                   className="input"
                   rows={4}
+                  maxLength={BIO_MAX_LEN}
                   placeholder="Tell the community a bit about yourself and your company."
                   value={form.bio}
-                  onChange={(e) => setForm((f) => ({ ...f, bio: e.target.value }))}
+                  onChange={(e) => setForm((f) => ({ ...f, bio: e.target.value.slice(0, BIO_MAX_LEN) }))}
                 />
+                <p className={styles.fieldHint}>
+                  {form.bio.length}/{BIO_MAX_LEN} characters
+                </p>
               </div>
 
               <div style={{ marginTop: 'var(--sp-5)', display: 'flex', gap: 'var(--sp-3)' }}>
