@@ -1484,7 +1484,19 @@ function ProposalPreview({ data, logoUrl, totalPrice, onBack }) {
         .cover-signoff { margin-bottom: 4pt !important; }
         .cover-signature { margin-top: 4pt !important; line-height: 1.4; }
         .signature-rule { border-top: 1px solid #333; width: 3in; margin-top: 2pt; }
-        .enclosures-line { margin-top: 16pt; font-size: 0.9em; }
+        .enclosures-line { margin-top: 8pt; font-size: 0.9em; }
+        /* Cover-letter-only paragraph spacing — deliberately scoped here,
+           not applied to .doc-page p globally, so no other section's
+           layout shifts. This exists specifically to buy back a bit of
+           measured height: the cover letter has grown enough over time
+           (mini-letterhead, restructured subject block, exceptions
+           clause, signature area, Enclosures line) that it was landing
+           inside the page-boundary ambiguity tolerance in
+           computePageMap, which correctly refused to guess and left the
+           TOC/Matrix page numbers as em dashes rather than risk being
+           wrong. This trims real, if modest, whitespace to move clear of
+           that boundary — no content removed. */
+        .cover-letter-section p { margin-bottom: 8pt; }
 
         .personnel-table col.col-name { width: 22%; }
         .personnel-table col.col-role { width: 24%; }
@@ -1502,7 +1514,7 @@ function ProposalPreview({ data, logoUrl, totalPrice, onBack }) {
       <div aria-hidden="true" style={{ position: "absolute", left: -99999, top: 0, width: 624, visibility: "hidden", fontFamily: "Georgia, serif", lineHeight: 1.5 }}>
         <div className="doc-page">
           <div ref={setMeasureRef("letterhead")}>{renderLetterheadContent()}</div>
-          <div ref={setMeasureRef("cover-letter")}>{renderCoverLetterContent()}</div>
+          <div ref={setMeasureRef("cover-letter")} className="cover-letter-section">{renderCoverLetterContent()}</div>
           <div ref={setMeasureRef("toc")}>{renderTOCContent()}</div>
           {hasMatrix && <div ref={setMeasureRef("compliance-matrix")}>{renderComplianceMatrixContent()}</div>}
           <div ref={setMeasureRef("executive-summary")}>{renderExecutiveSummaryContent()}</div>
@@ -1538,7 +1550,7 @@ function ProposalPreview({ data, logoUrl, totalPrice, onBack }) {
 
       <div className="doc-page" style={{ maxWidth: 800, margin: "24px auto", background: PAPER, padding: "48px 56px", boxShadow: "0 2px 20px rgba(0,0,0,0.1)", fontFamily: "Georgia, serif", color: "#222", lineHeight: 1.5 }}>
         <div className="doc-letterhead">{renderLetterheadContent()}</div>
-        <div className="doc-section doc-section-break">{renderCoverLetterContent()}</div>
+        <div className="doc-section doc-section-break cover-letter-section">{renderCoverLetterContent()}</div>
         <div className="doc-section doc-section-break">{renderTOCContent()}</div>
         {hasMatrix && <div className="doc-section doc-section-break">{renderComplianceMatrixContent()}</div>}
         <div className="doc-section">{renderExecutiveSummaryContent()}</div>

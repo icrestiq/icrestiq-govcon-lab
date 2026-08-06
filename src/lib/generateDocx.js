@@ -149,7 +149,15 @@ export async function generateProposalDocx(data, logoUrl, totalPrice) {
   );
 
   // ── Cover Letter — unnumbered front matter, own page, same as the PDF ──
-  children.push(
+  const coverLetterChildren = [];
+  if (logoBuffer) {
+    coverLetterChildren.push(new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 120 },
+      children: [new ImageRun({ data: logoBuffer, transformation: { width: 160, height: 70 }, type: "png" })],
+    }));
+  }
+  coverLetterChildren.push(
     new Paragraph({ pageBreakBefore: true, alignment: AlignmentType.CENTER, children: [new TextRun({ text: data.companyName || "[Company Name]", bold: true, color: NAVY_HEX, size: 24 })] }),
     new Paragraph({
       alignment: AlignmentType.CENTER, spacing: { after: 300 },
@@ -171,16 +179,27 @@ export async function generateProposalDocx(data, logoUrl, totalPrice) {
     bodyParagraph(`${data.companyName} is pleased to submit the enclosed proposal in response to the above-referenced solicitation. We have reviewed the solicitation in its entirety and our proposal is fully compliant with the stated requirements, terms, and conditions.`),
   );
   if (data.noExceptions) {
-    children.push(bodyParagraph("We take no exception to the terms, conditions, and provisions of the solicitation."));
+    coverLetterChildren.push(bodyParagraph("We take no exception to the terms, conditions, and provisions of the solicitation."));
   } else if (data.exceptionsText && data.exceptionsText.trim()) {
-    children.push(heading("Exceptions", HeadingLevel.HEADING_2), bodyParagraph(data.exceptionsText.trim()));
+    coverLetterChildren.push(heading("Exceptions", HeadingLevel.HEADING_2), bodyParagraph(data.exceptionsText.trim()));
   }
-  children.push(
-    new Paragraph({ spacing: { after: 20 }, children: [new TextRun({ text: "Sincerely," })] }),
-    new Paragraph({ spacing: { after: 20 }, border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: "333333", space: 1 } }, children: [new TextRun({ text: "\u00A0" })] }),
+  coverLetterChildren.push(
+    // "Sincerely," followed by real blank space (0.6in, matching the PDF)
+    // before the signature line — was 20 twips (1pt), essentially none.
+    new Paragraph({ spacing: { after: 864 }, children: [new TextRun({ text: "Sincerely," })] }),
+    // A real signature line, not a full-page-width rule — narrowed via a
+    // right indent so only about 3in of the 6.5in content width carries
+    // the border, reading as an actual line to sign on.
+    new Paragraph({
+      spacing: { after: 20 },
+      indent: { right: 5040 },
+      border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: "333333", space: 1 } },
+      children: [new TextRun({ text: "\u00A0" })],
+    }),
     bodyParagraph(`${data.poc}\n${data.pocTitle}\n${data.phone} | ${data.email}`),
     new Paragraph({ spacing: { before: 200 }, children: [new TextRun({ text: `Enclosures: ${outline.map((s) => `${s.number}. ${s.title}`).join("; ")}`, size: 18 })] }),
   );
+  children.push(...coverLetterChildren);
 
   // ── Table of Contents — always present; Word's native field populates
   // itself from the heading-tagged paragraphs below regardless of which
@@ -195,8 +214,8 @@ export async function generateProposalDocx(data, logoUrl, totalPrice) {
     new Paragraph({
       spacing: { after: 200 },
       children: [new TextRun({
-        text: "Page numbers below will show as blank or 0 until updated. Right-click anywhere in the table below and choose \u201cUpdate Field\u201d (or press F9), then \u201cUpdate entire table,\u201d to populate them.",
-        italics: true, color: MUTED_HEX, size: 18,
+        text: "\uD83D\uDC49DELETE THESE INSTRUCTIONS PRIOR TO PRINTING...Page numbers below will show as blank or 0 until updated. Right-click anywhere in the table below and choose \u201cUpdate Field\u201d (or press F9), then \u201cUpdate entire table,\u201d to populate them.\uD83D\uDC48",
+        bold: true, color: "FF0000", size: 20,
       })],
     }),
     new TableOfContents("toc", { hyperlink: true, headingStyleRange: "1-2" }),
