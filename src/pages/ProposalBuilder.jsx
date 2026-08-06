@@ -235,24 +235,26 @@ function NaicsSelector({ selected, onChange }) {
   // TEMPORARY diagnostic logging — remove once the reported bug (selected
   // NAICS code not showing up / not persisting) is confirmed fixed.
 
-  const lastAddRef = useRef({ code: null, at: 0 });
+  const lastAddAtRef = useRef(0);
   const addCode = (code) => {
     if (atLimit || selected.includes(code)) return;
     const next = [...selected, code];
-    lastAddRef.current = { code, at: Date.now() };
+    lastAddAtRef.current = Date.now();
     onChange(next);
     setQuery("");
   };
-  // Confirmed via a live console trace: a second interaction — landing on
-  // this exact button — was firing immediately after addCode, on the code
-  // that had just been added, silently undoing the selection the instant
-  // it was made. This guard ignores a remove of the same code that just
-  // got added within the last second, since a real, deliberate removal
-  // click that fast is not a realistic user action, while the spurious
-  // one is exactly this shape every time.
+  // Confirmed via a live console trace: a second interaction fires
+  // immediately after addCode and lands on a chip's remove button,
+  // silently undoing a selection the instant it's made. With one chip
+  // already present, that phantom event was found to land on whichever
+  // chip's × happens to be under it after the layout shifts — not
+  // necessarily the code that was just added — so the guard has to
+  // suppress any remove right after any add, not just of the same code.
+  // A real, deliberate removal click this fast after adding a different
+  // code is not a realistic user action; the spurious one is exactly
+  // this shape every time.
   const removeCode = (code) => {
-    const last = lastAddRef.current;
-    if (last.code === code && Date.now() - last.at < 1000) return;
+    if (Date.now() - lastAddAtRef.current < 1000) return;
     onChange(selected.filter((c) => c !== code));
   };
 
