@@ -1009,7 +1009,8 @@ function ProposalPreview({ data, logoUrl, totalPrice, onBack }) {
   const measureOrder = [
     { id: "letterhead", forceBreak: false },
     { id: "cover-letter", forceBreak: true },
-    ...(hasMatrix ? [{ id: "toc", forceBreak: true }, { id: "compliance-matrix", forceBreak: true }] : []),
+    { id: "toc", forceBreak: true },
+    ...(hasMatrix ? [{ id: "compliance-matrix", forceBreak: true }] : []),
     { id: "executive-summary", forceBreak: false },
     { id: "technical-approach", forceBreak: false },
     { id: "key-personnel", forceBreak: false },
@@ -1502,7 +1503,7 @@ function ProposalPreview({ data, logoUrl, totalPrice, onBack }) {
         <div className="doc-page">
           <div ref={setMeasureRef("letterhead")}>{renderLetterheadContent()}</div>
           <div ref={setMeasureRef("cover-letter")}>{renderCoverLetterContent()}</div>
-          {hasMatrix && <div ref={setMeasureRef("toc")}>{renderTOCContent()}</div>}
+          <div ref={setMeasureRef("toc")}>{renderTOCContent()}</div>
           {hasMatrix && <div ref={setMeasureRef("compliance-matrix")}>{renderComplianceMatrixContent()}</div>}
           <div ref={setMeasureRef("executive-summary")}>{renderExecutiveSummaryContent()}</div>
           <div ref={setMeasureRef("technical-approach")}>{renderTechnicalApproachContent()}</div>
@@ -1538,7 +1539,7 @@ function ProposalPreview({ data, logoUrl, totalPrice, onBack }) {
       <div className="doc-page" style={{ maxWidth: 800, margin: "24px auto", background: PAPER, padding: "48px 56px", boxShadow: "0 2px 20px rgba(0,0,0,0.1)", fontFamily: "Georgia, serif", color: "#222", lineHeight: 1.5 }}>
         <div className="doc-letterhead">{renderLetterheadContent()}</div>
         <div className="doc-section doc-section-break">{renderCoverLetterContent()}</div>
-        {hasMatrix && <div className="doc-section doc-section-break">{renderTOCContent()}</div>}
+        <div className="doc-section doc-section-break">{renderTOCContent()}</div>
         {hasMatrix && <div className="doc-section doc-section-break">{renderComplianceMatrixContent()}</div>}
         <div className="doc-section">{renderExecutiveSummaryContent()}</div>
         <div className="doc-section">{renderTechnicalApproachContent()}</div>

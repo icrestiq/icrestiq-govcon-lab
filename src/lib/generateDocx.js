@@ -182,12 +182,16 @@ export async function generateProposalDocx(data, logoUrl, totalPrice) {
     new Paragraph({ spacing: { before: 200 }, children: [new TextRun({ text: `Enclosures: ${outline.map((s) => `${s.number}. ${s.title}`).join("; ")}`, size: 18 })] }),
   );
 
-  // ── Table of Contents + Compliance Matrix (only when the matrix has rows) ──
+  // ── Table of Contents — always present; Word's native field populates
+  // itself from the heading-tagged paragraphs below regardless of which
+  // optional sections exist ──
+  children.push(
+    new Paragraph({ pageBreakBefore: true, children: [new TextRun({ text: "Table of Contents", bold: true, size: 32, color: NAVY_HEX })] }),
+    new TableOfContents("Right-click and choose \u201cUpdate Field\u201d to populate page numbers.", { hyperlink: true, headingStyleRange: "1-2" }),
+  );
+
+  // ── Compliance Matrix (only when the matrix has rows) ──
   if (hasMatrix) {
-    children.push(
-      new Paragraph({ pageBreakBefore: true, children: [new TextRun({ text: "Table of Contents", bold: true, size: 32, color: NAVY_HEX })] }),
-      new TableOfContents("Right-click and choose \u201cUpdate Field\u201d to populate page numbers.", { hyperlink: true, headingStyleRange: "1-2" }),
-    );
     children.push(
       heading(`${numberOf("compliance-matrix")}. Compliance Cross-Reference Matrix`, HeadingLevel.HEADING_1, true),
       table(
