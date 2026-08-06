@@ -49,9 +49,9 @@ function heading(text, level, pageBreakBefore = false) {
   });
 }
 
-function bodyParagraph(text) {
+function bodyParagraph(text, spacingAfter = 200) {
   return new Paragraph({
-    spacing: { after: 200 },
+    spacing: { after: spacingAfter },
     children: (text || "").split("\n").flatMap((line, i, arr) =>
       i < arr.length - 1 ? [new TextRun({ text: line }), new TextRun({ break: 1 })] : [new TextRun({ text: line })]
     ),
@@ -165,10 +165,10 @@ export async function generateProposalDocx(data, logoUrl, totalPrice) {
     }),
     heading("Cover Letter", HeadingLevel.HEADING_1),
     bodyParagraph(data.submissionDate),
-    bodyParagraph(`${data.contractingOfficer}\n${data.agencyName}\n${data.agencyAddress}`),
-    bodyParagraph(`Subject: Proposal Submission for ${data.solicitationTitle}`),
+    bodyParagraph(`${data.contractingOfficer}\n${data.agencyName}\n${data.agencyAddress}`, 400),
+    bodyParagraph(`Subject: Proposal Submission for ${data.solicitationTitle}`, 400),
     new Paragraph({
-      spacing: { after: 200 },
+      spacing: { after: 400 },
       children: [
         new TextRun({ text: "Solicitation No. ", }),
         new TextRun({ text: data.solicitationNumber || "[Number]", bold: true }),
@@ -176,12 +176,12 @@ export async function generateProposalDocx(data, logoUrl, totalPrice) {
       ],
     }),
     bodyParagraph(`Dear ${data.contractingOfficer || "Contracting Officer"},`),
-    bodyParagraph(`${data.companyName} is pleased to submit the enclosed proposal in response to the above-referenced solicitation. We have reviewed the solicitation in its entirety and our proposal is fully compliant with the stated requirements, terms, and conditions.`),
+    bodyParagraph(`${data.companyName} is pleased to submit the enclosed proposal in response to the above-referenced solicitation. We have reviewed the solicitation in its entirety and our proposal is fully compliant with the stated requirements, terms, and conditions.`, 400),
   );
   if (data.noExceptions) {
-    coverLetterChildren.push(bodyParagraph("We take no exception to the terms, conditions, and provisions of the solicitation."));
+    coverLetterChildren.push(bodyParagraph("We take no exception to the terms, conditions, and provisions of the solicitation.", 400));
   } else if (data.exceptionsText && data.exceptionsText.trim()) {
-    coverLetterChildren.push(heading("Exceptions", HeadingLevel.HEADING_2), bodyParagraph(data.exceptionsText.trim()));
+    coverLetterChildren.push(heading("Exceptions", HeadingLevel.HEADING_2), bodyParagraph(data.exceptionsText.trim(), 400));
   }
   coverLetterChildren.push(
     // "Sincerely," followed by real blank space (0.6in, matching the PDF)
