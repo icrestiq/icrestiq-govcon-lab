@@ -184,10 +184,22 @@ export async function generateProposalDocx(data, logoUrl, totalPrice) {
 
   // ── Table of Contents — always present; Word's native field populates
   // itself from the heading-tagged paragraphs below regardless of which
-  // optional sections exist ──
+  // optional sections exist. Word does NOT auto-populate this field on
+  // open — it has to be updated once, manually, which is exactly what
+  // the note below tells the reader to do. (Note: passing a string as
+  // TableOfContents' first argument only sets an internal field alias —
+  // it is never shown to the reader. The actual visible instruction has
+  // to be its own separate paragraph, which is what's below.) ──
   children.push(
     new Paragraph({ pageBreakBefore: true, children: [new TextRun({ text: "Table of Contents", bold: true, size: 32, color: NAVY_HEX })] }),
-    new TableOfContents("Right-click and choose \u201cUpdate Field\u201d to populate page numbers.", { hyperlink: true, headingStyleRange: "1-2" }),
+    new Paragraph({
+      spacing: { after: 200 },
+      children: [new TextRun({
+        text: "Page numbers below will show as blank or 0 until updated. Right-click anywhere in the table below and choose \u201cUpdate Field\u201d (or press F9), then \u201cUpdate entire table,\u201d to populate them.",
+        italics: true, color: MUTED_HEX, size: 18,
+      })],
+    }),
+    new TableOfContents("toc", { hyperlink: true, headingStyleRange: "1-2" }),
   );
 
   // ── Compliance Matrix (only when the matrix has rows) ──
