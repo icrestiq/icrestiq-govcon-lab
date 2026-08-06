@@ -79,7 +79,6 @@ const initialState = {
   basisOfEstimate: "",
   assumptions: "", // one per line, rendered after Basis of Estimate
   fobTerm: "", // user-selected: "FOB Destination" or "FOB Origin" — blank until chosen, never defaulted
-  signatureUrl: "",
   // "Never print the no-exceptions statement by default" — starts false
   // (unchecked) and stays that way until the user explicitly checks it.
   noExceptions: false,
@@ -320,87 +319,6 @@ function NaicsSelector({ selected, onChange }) {
           )}
         </>
       )}
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------
-// Signature upload — same bucket as the logo (proposal-logos), same
-// user-folder-scoped RLS policy, just a different filename within the
-// user's own folder. No new bucket/policy needed since that policy scopes
-// on the folder (the user's own UID), not the filename.
-// ---------------------------------------------------------------------
-function SignatureUpload({ signatureUrl, onUploaded, userId }) {
-  const [uploading, setUploading] = useState(false);
-  const [error, setError] = useState("");
-  const inputRef = useRef(null);
-
-  const handleFile = async (file) => {
-    setError("");
-    if (!file) return;
-
-    if (!ACCEPTED_TYPES.includes(file.type)) {
-      setError(`File type not supported. Please upload a ${ACCEPTED_LABEL} file.`);
-      return;
-    }
-    if (file.size > MAX_LOGO_BYTES) {
-      setError(`File is too large (${(file.size / 1024 / 1024).toFixed(1)}MB). Maximum size is ${MAX_LOGO_MB}MB.`);
-      return;
-    }
-
-    setUploading(true);
-    try {
-      const ext = file.name.split(".").pop();
-      const path = `${userId}/signature.${ext}`;
-      const { error: uploadError } = await supabase.storage
-        .from("proposal-logos")
-        .upload(path, file, { upsert: true, cacheControl: "3600" });
-
-      if (uploadError) throw uploadError;
-
-      const { data } = supabase.storage.from("proposal-logos").getPublicUrl(path);
-      onUploaded(`${data.publicUrl}?t=${Date.now()}`);
-    } catch (e) {
-      setError("Upload failed. Please try again.");
-      console.error(e);
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  return (
-    <div>
-      <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 8 }}>
-        {signatureUrl ? (
-          <img src={signatureUrl} alt="Signature" style={{ maxHeight: 50, maxWidth: 200, objectFit: "contain", border: "1px solid #eee", borderRadius: 4, padding: 6 }} />
-        ) : (
-          <div style={{ height: 50, width: 140, border: "1px dashed #ccc", borderRadius: 4, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: "#999", textAlign: "center" }}>
-            No signature yet
-          </div>
-        )}
-        <div>
-          <button
-            type="button"
-            onClick={() => inputRef.current?.click()}
-            disabled={uploading}
-            style={{ ...addBtnStyle, cursor: uploading ? "wait" : "pointer" }}
-          >
-            {uploading ? "Uploading…" : signatureUrl ? "Replace Signature" : "Upload Signature"}
-          </button>
-          <input
-            ref={inputRef}
-            type="file"
-            accept={ACCEPTED_TYPES.join(",")}
-            style={{ display: "none" }}
-            onChange={(e) => handleFile(e.target.files?.[0])}
-          />
-        </div>
-      </div>
-      <p style={{ fontSize: 12, color: "#777", margin: "4px 0 0 0", lineHeight: 1.5 }}>
-        Optional. If you don't upload one, the cover letter leaves the signature area blank for a wet
-        (pen) signature on the printed copy.
-      </p>
-      {error && <p style={{ fontSize: 12, color: "#c44", marginTop: 6 }}>{error}</p>}
     </div>
   );
 }
@@ -727,16 +645,8 @@ export default function ProposalBuilder() {
         </div>
       </SectionCard>
 
-      <SectionCard title="Cover Letter Signature & Exceptions">
-        <Field label="Signature Image (optional)">
-          {userId ? (
-            <SignatureUpload signatureUrl={data.signatureUrl} userId={userId} onUploaded={(url) => setData((d) => ({ ...d, signatureUrl: url }))} />
-          ) : (
-            <p style={{ fontSize: 13, color: "#888" }}>Sign in to upload a signature image.</p>
-          )}
-        </Field>
-
-        <label style={{ display: "flex", alignItems: "flex-start", gap: 8, marginTop: 12, cursor: "pointer" }}>
+      <SectionCard title="Cover Letter Exceptions">
+        <label style={{ display: "flex", alignItems: "flex-start", gap: 8, cursor: "pointer" }}>
           <input
             type="checkbox"
             checked={data.noExceptions}
@@ -909,14 +819,12 @@ export default function ProposalBuilder() {
             </Field>
             <Field label="— or a Calendar Date">
               <input
-                style={inputStyle} placeholder="e.g. 2026-09-15"
+                type="date" style={inputStyle}
                 value={row.deliveryDate}
                 onChange={(e) => updateList("deliverySchedule", i, "deliveryDate", e.target.value)}
               />
             </Field>
-            {data.deliverySchedule.length > 1 && (
-              <button onClick={() => removeRow("deliverySchedule", i)} style={removeBtnStyle}>Remove</button>
-            )}
+            <button onClick={() => removeRow("deliverySchedule", i)} style={removeBtnStyle}>Remove</button>
           </div>
         ))}
         {data.deliverySchedule.length > 0 && (
@@ -1055,6 +963,31 @@ export default function ProposalBuilder() {
 function ProposalPreview({ data, logoUrl, totalPrice, onBack }) {
   const winThemeList = data.winThemes.split("\n").map(s => s.trim()).filter(Boolean);
   const naicsEntries = (data.naicsCodes || []).map((code) => ({ code, title: getNaicsTitle(code) }));
+  const [docxGenerating, setDocxGenerating] = useState(false);
+  const [docxError, setDocxError] = useState("");
+
+  async function handleDownloadDocx() {
+    setDocxGenerating(true);
+    setDocxError("");
+    try {
+      const { generateProposalDocx } = await import("../lib/generateDocx");
+      const blob = await generateProposalDocx(data, logoUrl, totalPrice);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const fileSafeName = (data.companyName || "proposal").replace(/[^a-z0-9]+/gi, "-").toLowerCase();
+      a.download = `${fileSafeName}-proposal.docx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error(err);
+      setDocxError("Could not generate the Word document. Please try again.");
+    } finally {
+      setDocxGenerating(false);
+    }
+  }
 
   const hasMatrix = Array.isArray(data.complianceRows) && data.complianceRows.length > 0;
   const outline = buildOutline(data);
@@ -1197,11 +1130,7 @@ function ProposalPreview({ data, logoUrl, totalPrice, onBack }) {
 
       <p className="cover-signoff">Sincerely,</p>
       <div>
-        {data.signatureUrl ? (
-          <img src={data.signatureUrl} alt="Signature" style={{ maxHeight: "0.55in", maxWidth: 220, objectFit: "contain", display: "block" }} />
-        ) : (
-          <div style={{ height: "0.6in" }} />
-        )}
+        <div style={{ height: "0.6in" }} />
         <div className="signature-rule" />
         <p className="cover-signature">{data.poc}<br />{data.pocTitle}<br />{data.phone} | {data.email}</p>
       </div>
@@ -1586,14 +1515,24 @@ function ProposalPreview({ data, logoUrl, totalPrice, onBack }) {
         </div>
       </div>
 
-      <div className="no-print" style={{ position: "sticky", top: 0, background: "#fff", borderBottom: "1px solid #ddd", padding: 12, display: "flex", gap: 10, justifyContent: "center", zIndex: 10 }}>
-        <button onClick={onBack} style={{ ...addBtnStyle, borderColor: "#999", color: "#333" }}>← Back to Edit</button>
-        <button
-          onClick={() => window.print()}
-          style={{ background: GOLD, color: "#fff", border: "none", borderRadius: 4, padding: "8px 20px", fontWeight: 600, cursor: "pointer" }}
-        >
-          Print / Save as PDF
-        </button>
+      <div className="no-print" style={{ position: "sticky", top: 0, background: "#fff", borderBottom: "1px solid #ddd", padding: 12, display: "flex", flexDirection: "column", alignItems: "center", gap: 8, zIndex: 10 }}>
+        <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
+          <button onClick={onBack} style={{ ...addBtnStyle, borderColor: "#999", color: "#333" }}>← Back to Edit</button>
+          <button
+            onClick={() => window.print()}
+            style={{ background: GOLD, color: "#fff", border: "none", borderRadius: 4, padding: "8px 20px", fontWeight: 600, cursor: "pointer" }}
+          >
+            Print / Save as PDF
+          </button>
+          <button
+            onClick={handleDownloadDocx}
+            disabled={docxGenerating}
+            style={{ background: NAVY, color: "#fff", border: "none", borderRadius: 4, padding: "8px 20px", fontWeight: 600, cursor: docxGenerating ? "wait" : "pointer" }}
+          >
+            {docxGenerating ? "Generating…" : "Download Word Doc"}
+          </button>
+        </div>
+        {docxError && <p style={{ color: "#c44", fontSize: 12, margin: 0 }}>{docxError}</p>}
       </div>
 
       <div className="doc-page" style={{ maxWidth: 800, margin: "24px auto", background: PAPER, padding: "48px 56px", boxShadow: "0 2px 20px rgba(0,0,0,0.1)", fontFamily: "Georgia, serif", color: "#222", lineHeight: 1.5 }}>
