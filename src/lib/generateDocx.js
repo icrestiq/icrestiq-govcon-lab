@@ -18,7 +18,7 @@
 import {
   Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType,
   Table, TableRow, TableCell, WidthType, PageBreak, TableOfContents,
-  ImageRun, ShadingType, BorderStyle,
+  ImageRun, ShadingType, BorderStyle, Footer, PageNumber, TabStopType, TabStopPosition,
 } from "docx";
 import { computeExtended, formatCurrency } from "./pricing";
 import { getNaicsTitle } from "./naics";
@@ -340,8 +340,32 @@ export async function generateProposalDocx(data, logoUrl, totalPrice) {
     (data.setAsideCategories || []).forEach((cat) => children.push(bulletParagraph(`Socioeconomic set-aside claimed: ${cat}`)));
   }
 
+  // ── Running footer — new for the Word export. Unlike the PDF's CSS
+  // @page margin-box attempt (which Chrome has never reliably rendered),
+  // this uses docx's native PageNumber fields inside a real Word footer,
+  // which Word computes against its own actual pagination every time the
+  // document is opened — this is a core, well-supported Word feature,
+  // not an edge-case spec feature, so it doesn't carry the same
+  // reliability caveat the PDF version does.
+  const footer = new Footer({
+    children: [
+      new Paragraph({
+        tabStops: [{ type: TabStopType.RIGHT, position: TabStopPosition.MAX }],
+        border: { top: { style: BorderStyle.SINGLE, size: 4, color: "CCCCCC", space: 4 } },
+        children: [
+          new TextRun({ text: `Solicitation No. ${data.solicitationNumber || "\u2014"}`, size: 17, color: "8A94A6" }),
+          new TextRun({ text: "\t" }),
+          new TextRun({ text: "Page ", size: 17, color: "8A94A6" }),
+          new TextRun({ children: [PageNumber.CURRENT], size: 17, color: "8A94A6" }),
+          new TextRun({ text: " of ", size: 17, color: "8A94A6" }),
+          new TextRun({ children: [PageNumber.TOTAL_PAGES], size: 17, color: "8A94A6" }),
+        ],
+      }),
+    ],
+  });
+
   const doc = new Document({
-    sections: [{ children }],
+    sections: [{ footers: { default: footer }, children }],
     styles: {
       default: {
         document: { run: { font: "Georgia", size: 22 } },
