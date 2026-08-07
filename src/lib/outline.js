@@ -133,9 +133,14 @@ export function buildOutline(data) {
 /** Flattened {id, label} list for the compliance row "Proposal section"
  *  dropdown — top-level sections and subsections that actually have user
  *  content, skipping the matrix itself (a row can't reference the matrix
- *  it lives in). */
+ *  it lives in). Cover Letter is prepended unconditionally: it's
+ *  unnumbered front matter (see the note at the top of this file) so it
+ *  never appears in `outline` itself, but it's a fixed part of every
+ *  proposal — always rendered — so it's always offered here, unlike the
+ *  numbered sections below it which only appear once the user has put
+ *  something in them. */
 export function outlineDropdownOptions(outline) {
-  const options = [];
+  const options = [{ id: 'cover-letter', label: 'Cover Letter' }];
   for (const sec of outline) {
     if (sec.id === 'compliance-matrix') continue;
     if (sec.filled) options.push({ id: sec.id, label: `${sec.number}. ${sec.title}` });
@@ -159,6 +164,7 @@ export function flattenOutlineIds(outline) {
 }
 
 export function findOutlineLabel(outline, id) {
+  if (id === 'cover-letter') return 'Cover Letter';
   for (const sec of outline) {
     if (sec.id === id) return `${sec.number}. ${sec.title}`;
     for (const sub of sec.subsections) {

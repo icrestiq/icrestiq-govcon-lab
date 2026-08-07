@@ -29,7 +29,7 @@ const PAPER = "#FDFCFA";
 
 // Fixed list — "Unit chosen from a fixed list," not free text, so a CLIN
 // line can't end up with an inconsistent or misspelled unit of measure.
-const UNIT_OPTIONS = ["EA", "SET", "PR", "HR", "LOT", "DZ", "BOX", "CS", "GAL", "LB", "FT", "YD", "RL", "MO", "DAY"];
+const UNIT_OPTIONS = ["EA", "SET", "KIT", "PR", "HR", "LOT", "DZ", "BOX", "CS", "GAL", "LB", "FT", "YD", "RL", "MO", "DAY"];
 
 const FOB_OPTIONS = ["FOB Destination", "FOB Origin"];
 
