@@ -1,4 +1,10 @@
 {
+  "functions": {
+    "api/proposal/pdf.js": {
+      "maxDuration": 60,
+      "memory": 2048
+    }
+  },
   "rewrites": [
     {
       "source": "/go",

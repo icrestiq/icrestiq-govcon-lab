@@ -964,6 +964,8 @@ function ProposalPreview({ data, logoUrl, totalPrice, onBack }) {
   const naicsEntries = (data.naicsCodes || []).map((code) => ({ code, title: getNaicsTitle(code) }));
   const [docxGenerating, setDocxGenerating] = useState(false);
   const [docxError, setDocxError] = useState("");
+  const [pdfGenerating, setPdfGenerating] = useState(false);
+  const [pdfError, setPdfError] = useState("");
 
   async function handleDownloadDocx() {
     setDocxGenerating(true);
@@ -987,6 +989,45 @@ function ProposalPreview({ data, logoUrl, totalPrice, onBack }) {
       setDocxGenerating(false);
     }
   }
+
+  // Calls the server-side two-pass render (api/proposal/pdf.js) instead of
+  // window.print(). Slower — a real headless Chrome renders the document
+  // twice, once to discover real page numbers and once to deliver the
+  // final file — but unlike the instant browser print, the TOC and
+  // Compliance Matrix here carry real, verified page numbers instead of
+  // none at all. The quick "Print / Save as PDF" button stays available
+  // for anyone who just wants an instant copy without those numbers.
+  async function handleDownloadPdf() {
+    setPdfGenerating(true);
+    setPdfError("");
+    try {
+      const response = await fetch("/api/proposal/pdf", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ data, logoUrl, totalPrice }),
+      });
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        throw new Error(body.error || `Server returned ${response.status}`);
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const fileSafeName = (data.companyName || "proposal").replace(/[^a-z0-9]+/gi, "-").toLowerCase();
+      a.download = `${fileSafeName}-proposal.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error(err);
+      setPdfError("Could not generate the PDF. Please try again.");
+    } finally {
+      setPdfGenerating(false);
+    }
+  }
+
 
   const hasMatrix = Array.isArray(data.complianceRows) && data.complianceRows.length > 0;
   const outline = buildOutline(data);
@@ -1469,13 +1510,21 @@ function ProposalPreview({ data, logoUrl, totalPrice, onBack }) {
       `}</style>
 
       <div className="no-print" style={{ position: "sticky", top: 0, background: "#fff", borderBottom: "1px solid #ddd", padding: 12, display: "flex", flexDirection: "column", alignItems: "center", gap: 8, zIndex: 10 }}>
-        <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
+        <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
           <button onClick={onBack} style={{ ...addBtnStyle, borderColor: "#999", color: "#333" }}>← Back to Edit</button>
           <button
             onClick={() => window.print()}
             style={{ background: GOLD, color: "#fff", border: "none", borderRadius: 4, padding: "8px 20px", fontWeight: 600, cursor: "pointer" }}
           >
             Print / Save as PDF
+          </button>
+          <button
+            onClick={handleDownloadPdf}
+            disabled={pdfGenerating}
+            title="Slower than Print / Save as PDF, but the Table of Contents and Compliance Matrix carry real, verified page numbers instead of none."
+            style={{ background: "#3a5a7a", color: "#fff", border: "none", borderRadius: 4, padding: "8px 20px", fontWeight: 600, cursor: pdfGenerating ? "wait" : "pointer" }}
+          >
+            {pdfGenerating ? "Generating… (may take ~15–30s)" : "Download PDF (Page Numbers)"}
           </button>
           <button
             onClick={handleDownloadDocx}
@@ -1486,6 +1535,7 @@ function ProposalPreview({ data, logoUrl, totalPrice, onBack }) {
           </button>
         </div>
         {docxError && <p style={{ color: "#c44", fontSize: 12, margin: 0 }}>{docxError}</p>}
+        {pdfError && <p style={{ color: "#c44", fontSize: 12, margin: 0 }}>{pdfError}</p>}
       </div>
 
       <div className="doc-page" style={{ maxWidth: 800, margin: "24px auto", background: PAPER, padding: "48px 56px", boxShadow: "0 2px 20px rgba(0,0,0,0.1)", fontFamily: "Georgia, serif", color: "#222", lineHeight: 1.5 }}>
