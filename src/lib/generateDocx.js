@@ -17,7 +17,7 @@
 
 import {
   Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType,
-  Table, TableRow, TableCell, WidthType, PageBreak, TableOfContents,
+  Table, TableRow, TableCell, WidthType,
   ImageRun, ShadingType, BorderStyle, Footer, PageNumber, TabStopType, TabStopPosition,
 } from "docx";
 import { computeExtended, formatCurrency } from "./pricing";
@@ -207,24 +207,25 @@ export async function generateProposalDocx(data, logoUrl, totalPrice) {
   );
   children.push(...coverLetterChildren);
 
-  // ── Table of Contents — always present; Word's native field populates
-  // itself from the heading-tagged paragraphs below regardless of which
-  // optional sections exist. Word does NOT auto-populate this field on
-  // open — it has to be updated once, manually, which is exactly what
-  // the note below tells the reader to do. (Note: passing a string as
-  // TableOfContents' first argument only sets an internal field alias —
-  // it is never shown to the reader. The actual visible instruction has
-  // to be its own separate paragraph, which is what's below.) ──
+  // ── Table of Contents — a static list, deliberately not a live Word
+  // field. Confirmed by actually rendering this document (LibreOffice
+  // headless conversion): docx's TableOfContents field generates no
+  // cached fallback content, so any viewer that doesn't actively
+  // recompute the field on open — which includes this exact rendering
+  // path, and evidently others too — shows a genuinely blank page where
+  // the TOC should be. A static list can never do that, and it matches
+  // the PDF version exactly: section list, no page numbers, same
+  // consistency the PDF's own TOC/Matrix already commit to. ──
   children.push(
     new Paragraph({ pageBreakBefore: true, children: [new TextRun({ text: "Table of Contents", bold: true, size: 32, color: NAVY_HEX })] }),
-    new Paragraph({
-      spacing: { after: 200 },
-      children: [new TextRun({
-        text: "\uD83D\uDC49DELETE THESE INSTRUCTIONS PRIOR TO PRINTING...Page numbers below will show as blank or 0 until updated. Right-click anywhere in the table below and choose \u201cUpdate Field\u201d (or press F9), then \u201cUpdate entire table,\u201d to populate them.\uD83D\uDC48",
-        bold: true, color: "FF0000", size: 20,
-      })],
-    }),
-    new TableOfContents("toc", { hyperlink: true, headingStyleRange: "1-2" }),
+    ...outline.flatMap((sec) => [
+      new Paragraph({ spacing: { after: 60 }, children: [new TextRun({ text: `${sec.number}. ${sec.title}`, bold: true })] }),
+      ...sec.subsections.map((sub) => new Paragraph({
+        indent: { left: 360 },
+        spacing: { after: 60 },
+        children: [new TextRun({ text: `${sub.number} ${sub.title}` })],
+      })),
+    ]),
   );
 
   // ── Compliance Matrix (only when the matrix has rows) ──
