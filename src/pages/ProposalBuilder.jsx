@@ -1,11 +1,10 @@
-import React, { useState, useEffect, useLayoutEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../lib/AuthContext";
 import { isPaidMember } from "../lib/tier";
 import { computeExtended, computeGrandTotal, formatCurrency } from "../lib/pricing";
 import { isValidNaicsCode, getNaicsTitle, searchNaics, MAX_NAICS_SELECTIONS } from "../lib/naics";
 import { buildOutline, outlineDropdownOptions, findOutlineLabel } from "../lib/outline";
-import { computePageMap } from "../lib/pagination";
 import { migrateProseList, isLegacyProseListValue } from "../lib/proseList";
 
 /**
@@ -999,74 +998,9 @@ function ProposalPreview({ data, logoUrl, totalPrice, onBack }) {
     return "";
   };
 
-  // Order these render in, with which ones force a fresh page — must match
-  // the .doc-section-break class assignments below exactly, since page
-  // numbers are computed by walking measured heights in this same order.
   const hasDeliverySchedule = outline.some((s) => s.id === "delivery-schedule");
   const hasWarranty = outline.some((s) => s.id === "warranty");
   const hasRepsCerts = outline.some((s) => s.id === "reps-certs");
-
-  const hasPriceBoe = Boolean(numberOf("price-boe"));
-  const hasPriceAssumptions = Boolean(numberOf("price-assumptions"));
-
-  const measureOrder = [
-    { id: "letterhead", forceBreak: false },
-    { id: "cover-letter", forceBreak: true },
-    { id: "toc", forceBreak: true },
-    ...(hasMatrix ? [{ id: "compliance-matrix", forceBreak: true }] : []),
-    // Executive Summary and Technical Approach are each decomposed into
-    // three chunks so 2.1/2.2/2.3 and 3.1/3.2/3.3 get their own resolved
-    // page instead of only the section as a whole ever resolving. The
-    // first chunk of each carries both the section heading and its first
-    // subsection heading — nothing renders between them, so they're
-    // always on the same page, hence ids: [...] rather than a single id.
-    { id: "executive-summary", aliasIds: ["exec-requirement"], forceBreak: false },
-    { id: "exec-winthemes", forceBreak: false },
-    { id: "exec-snapshot", forceBreak: false },
-    { id: "technical-approach", aliasIds: ["tech-methodology"], forceBreak: false },
-    { id: "tech-qc", forceBreak: false },
-    { id: "tech-risk", forceBreak: false },
-    { id: "key-personnel", forceBreak: false },
-    { id: "past-performance", forceBreak: false },
-    { id: "price-proposal", forceBreak: true },
-    ...(hasPriceBoe ? [{ id: "price-boe", forceBreak: false }] : []),
-    ...(hasPriceAssumptions ? [{ id: "price-assumptions", forceBreak: false }] : []),
-    ...(hasDeliverySchedule ? [{ id: "delivery-schedule", forceBreak: false }] : []),
-    ...(hasWarranty ? [{ id: "warranty", forceBreak: false }] : []),
-    ...(hasRepsCerts ? [{ id: "reps-certs", forceBreak: false }] : []),
-  ];
-
-  const [pageMap, setPageMap] = useState(new Map());
-  const measureRefs = useRef({});
-  const setMeasureRef = (id) => (el) => { measureRefs.current[id] = el; };
-
-  // Real page numbers, not estimates: measure the actual rendered height of
-  // each section at the exact width/fonts the print page uses (see the
-  // hidden clone below), then simulate the same forced-break/flowing rules
-  // the print CSS uses. See src/lib/pagination.js for the full explanation
-  // and its limits.
-  useLayoutEffect(() => {
-    let cancelled = false;
-    const measure = () => {
-      if (cancelled) return;
-      const blocks = measureOrder.map(({ id, aliasIds, forceBreak }) => ({
-        id,
-        aliasIds,
-        forceBreak,
-        heightPx: measureRefs.current[id]?.getBoundingClientRect().height,
-      }));
-      setPageMap(computePageMap(blocks));
-    };
-    if (typeof document !== "undefined" && document.fonts && document.fonts.ready) {
-      document.fonts.ready.then(measure);
-    } else {
-      measure();
-    }
-    return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [JSON.stringify(data), hasMatrix]);
-
-  const pageLabel = (id) => (pageMap.has(id) ? String(pageMap.get(id)) : "—");
 
   // Chrome's native print header/footer (when "Headers and footers" is
   // checked in the print dialog, which is its default) shows document.title
@@ -1165,12 +1099,10 @@ function ProposalPreview({ data, logoUrl, totalPrice, onBack }) {
             <React.Fragment key={sec.id}>
               <tr>
                 <td style={{ fontWeight: "bold" }}>{sec.number}. {sec.title}</td>
-                <td style={{ width: 60, textAlign: "right" }}>{pageLabel(sec.id)}</td>
               </tr>
               {sec.subsections.map((sub) => (
                 <tr key={sub.id}>
                   <td style={{ paddingLeft: 24 }}>{sub.number} {sub.title}</td>
-                  <td style={{ width: 60, textAlign: "right" }}>{pageLabel(sub.id)}</td>
                 </tr>
               ))}
             </React.Fragment>
@@ -1189,7 +1121,6 @@ function ProposalPreview({ data, logoUrl, totalPrice, onBack }) {
             <th>Solicitation Ref.</th>
             <th>Requirement</th>
             <th>Proposal Section</th>
-            <th style={{ width: 50 }}>Page</th>
           </tr>
         </thead>
         <tbody>
@@ -1198,7 +1129,6 @@ function ProposalPreview({ data, logoUrl, totalPrice, onBack }) {
               <td>{row.solicitationRef}</td>
               <td>{row.requirement}</td>
               <td>{row.sectionId ? findOutlineLabel(outline, row.sectionId) || "—" : "—"}</td>
-              <td style={{ textAlign: "right" }}>{row.sectionId ? pageLabel(row.sectionId) : "—"}</td>
             </tr>
           ))}
         </tbody>
@@ -1532,15 +1462,8 @@ function ProposalPreview({ data, logoUrl, totalPrice, onBack }) {
         .enclosures-line { margin-top: 8pt; font-size: 0.9em; }
         /* Cover-letter-only paragraph spacing — deliberately scoped here,
            not applied to .doc-page p globally, so no other section's
-           layout shifts. This exists specifically to buy back a bit of
-           measured height: the cover letter has grown enough over time
-           (mini-letterhead, restructured subject block, exceptions
-           clause, signature area, Enclosures line) that it was landing
-           inside the page-boundary ambiguity tolerance in
-           computePageMap, which correctly refused to guess and left the
-           TOC/Matrix page numbers as em dashes rather than risk being
-           wrong. This trims real, if modest, whitespace to move clear of
-           that boundary — no content removed. */
+           layout shifts. Slightly tighter than the document-wide default
+           to keep the cover letter compact. */
         .cover-letter-section p { margin-bottom: 8pt; }
 
         .personnel-table col.col-name { width: 22%; }
@@ -1548,36 +1471,6 @@ function ProposalPreview({ data, logoUrl, totalPrice, onBack }) {
         .personnel-table col.col-exp  { width: 42%; }
         .personnel-table col.col-alloc { width: 12%; }
       `}</style>
-
-      {/*
-        Hidden measurement clone — rendered at the exact print content
-        width (6.5in = 624px, matching the @page 1in margins on letter
-        paper) so the measured heights match what will actually print,
-        not the wider on-screen preview width. This is what makes the
-        Page column and Table of Contents real numbers instead of guesses.
-      */}
-      <div aria-hidden="true" style={{ position: "absolute", left: -99999, top: 0, width: 624, visibility: "hidden", fontFamily: "Georgia, serif", lineHeight: 1.5 }}>
-        <div className="doc-page">
-          <div ref={setMeasureRef("letterhead")}>{renderLetterheadContent()}</div>
-          <div ref={setMeasureRef("cover-letter")} className="cover-letter-section">{renderCoverLetterContent()}</div>
-          <div ref={setMeasureRef("toc")}>{renderTOCContent()}</div>
-          {hasMatrix && <div ref={setMeasureRef("compliance-matrix")}>{renderComplianceMatrixContent()}</div>}
-          <div ref={setMeasureRef("executive-summary")}>{renderExecSummaryChunkA()}</div>
-          <div ref={setMeasureRef("exec-winthemes")}>{renderExecSummaryChunkB()}</div>
-          <div ref={setMeasureRef("exec-snapshot")}>{renderExecSummaryChunkC()}</div>
-          <div ref={setMeasureRef("technical-approach")}>{renderTechApproachChunkA()}</div>
-          <div ref={setMeasureRef("tech-qc")}>{renderTechApproachChunkB()}</div>
-          <div ref={setMeasureRef("tech-risk")}>{renderTechApproachChunkC()}</div>
-          <div ref={setMeasureRef("key-personnel")}>{renderKeyPersonnelContent()}</div>
-          <div ref={setMeasureRef("past-performance")}>{renderPastPerformanceContent()}</div>
-          <div ref={setMeasureRef("price-proposal")}>{renderPriceProposalChunkA()}</div>
-          {hasPriceBoe && <div ref={setMeasureRef("price-boe")}>{renderPriceProposalChunkB()}</div>}
-          {hasPriceAssumptions && <div ref={setMeasureRef("price-assumptions")}>{renderPriceProposalChunkC()}</div>}
-          {hasDeliverySchedule && <div ref={setMeasureRef("delivery-schedule")}>{renderDeliveryScheduleContent()}</div>}
-          {hasWarranty && <div ref={setMeasureRef("warranty")}>{renderWarrantyContent()}</div>}
-          {hasRepsCerts && <div ref={setMeasureRef("reps-certs")}>{renderRepsCertsContent()}</div>}
-        </div>
-      </div>
 
       <div className="no-print" style={{ position: "sticky", top: 0, background: "#fff", borderBottom: "1px solid #ddd", padding: 12, display: "flex", flexDirection: "column", alignItems: "center", gap: 8, zIndex: 10 }}>
         <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>

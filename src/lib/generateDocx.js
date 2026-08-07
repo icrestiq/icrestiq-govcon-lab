@@ -240,7 +240,7 @@ export async function generateProposalDocx(data, logoUrl, totalPrice) {
   }
 
   // ── Executive Summary ──
-  children.push(heading(`${numberOf("executive-summary")}. Executive Summary`, HeadingLevel.HEADING_1, true));
+  children.push(heading(`${numberOf("executive-summary")}. Executive Summary`, HeadingLevel.HEADING_1));
   if (data.requirementSummary) children.push(heading(`${numberOf("exec-requirement")} Understanding of the Requirement`, HeadingLevel.HEADING_2), bodyParagraph(data.requirementSummary));
   const winThemes = (data.winThemes || "").split("\n").map((s) => s.trim()).filter(Boolean);
   if (winThemes.length) {
@@ -256,7 +256,7 @@ export async function generateProposalDocx(data, logoUrl, totalPrice) {
   }
 
   // ── Technical Approach ──
-  children.push(heading(`${numberOf("technical-approach")}. Technical Approach`, HeadingLevel.HEADING_1, true));
+  children.push(heading(`${numberOf("technical-approach")}. Technical Approach`, HeadingLevel.HEADING_1));
   if (data.methodology) children.push(heading(`${numberOf("tech-methodology")} Proposed Methodology`, HeadingLevel.HEADING_2), bodyParagraph(data.methodology));
 
   function renderProseList(sectionNum, title, value) {
@@ -272,12 +272,12 @@ export async function generateProposalDocx(data, logoUrl, totalPrice) {
 
   // ── Key Personnel ──
   children.push(
-    heading(`${numberOf("key-personnel")}. Key Personnel`, HeadingLevel.HEADING_1, true),
+    heading(`${numberOf("key-personnel")}. Key Personnel`, HeadingLevel.HEADING_1),
     table(["Name", "Role", "Experience", "% Allocation"], data.personnel.map((p) => [p.name, p.role, p.experience, p.allocation]), [20, 20, 45, 15])
   );
 
   // ── Past Performance ──
-  children.push(heading(`${numberOf("past-performance")}. Past Performance`, HeadingLevel.HEADING_1, true));
+  children.push(heading(`${numberOf("past-performance")}. Past Performance`, HeadingLevel.HEADING_1));
   data.pastPerformance.forEach((pp, i) => {
     const rows = [
       ["Contract #", pp.contractNumber], ["Agency", pp.agency], ["Period", pp.period], ["Value", pp.value],
@@ -315,7 +315,7 @@ export async function generateProposalDocx(data, logoUrl, totalPrice) {
   // ── Delivery Schedule (fully optional) ──
   if (outline.some((s) => s.id === "delivery-schedule")) {
     children.push(
-      heading(`${numberOf("delivery-schedule")}. Delivery Schedule`, HeadingLevel.HEADING_1, true),
+      heading(`${numberOf("delivery-schedule")}. Delivery Schedule`, HeadingLevel.HEADING_1),
       table(
         ["CLIN", "Destination", "Quantity", "Delivery"],
         data.deliverySchedule.map((row) => [row.clin, row.destination, row.quantity, row.daysAfterReceipt ? `${row.daysAfterReceipt} days after receipt of order` : (row.deliveryDate || "")]),
@@ -326,14 +326,14 @@ export async function generateProposalDocx(data, logoUrl, totalPrice) {
 
   // ── Warranty (fully optional) ──
   if (outline.some((s) => s.id === "warranty")) {
-    children.push(heading(`${numberOf("warranty")}. Warranty`, HeadingLevel.HEADING_1, true));
+    children.push(heading(`${numberOf("warranty")}. Warranty`, HeadingLevel.HEADING_1));
     if (data.warrantyPeriod) children.push(boldParagraph(`Warranty Period: ${data.warrantyPeriod}`));
     if (data.warrantyTerms) children.push(bodyParagraph(data.warrantyTerms));
   }
 
   // ── Representations & Certifications (fully optional) ──
   if (outline.some((s) => s.id === "reps-certs")) {
-    children.push(heading(`${numberOf("reps-certs")}. Representations and Certifications`, HeadingLevel.HEADING_1, true));
+    children.push(heading(`${numberOf("reps-certs")}. Representations and Certifications`, HeadingLevel.HEADING_1));
     if (data.samRegistrationActive) {
       children.push(bulletParagraph(`SAM registration: Active${data.uei ? ` (UEI: ${data.uei})` : ""}${data.samExpirationDate ? `, expires ${data.samExpirationDate}` : ""}`));
     }
