@@ -1206,9 +1206,18 @@ function ProposalPreview({ data, logoUrl, totalPrice, onBack }) {
     </>
   );
 
-  const keepTogether = (children) => (
-    <div style={{ breakInside: "avoid", pageBreakInside: "avoid" }}>{children}</div>
-  );
+  // Deliberately NOT wrapping in break-inside:avoid anymore — that was
+  // forcing whole subsection chunks (400-600px each) to jump to a fresh
+  // page wholesale whenever they didn't perfectly fit what was left of
+  // the current page, which was the actual dominant cause of large gaps
+  // in the printed output (confirmed by tracing the real measured
+  // heights through the page-fitting math). Content now flows and splits
+  // naturally like ordinary paragraphs, relying on the existing
+  // `h2, h3 { page-break-after: avoid }` (a heading is never left alone
+  // at the bottom of a page) and `p, li { orphans: 3; widows: 3 }` (a
+  // paragraph never splits with fewer than 3 lines on either side) for
+  // reasonable typographic behavior instead of atomic block movement.
+  const keepTogether = (children) => <>{children}</>;
 
   // Decomposed into three chunks so each subsection gets its own measured
   // position instead of only the section as a whole. Chunk A carries both
