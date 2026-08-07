@@ -6,19 +6,27 @@
 // two output formats can't silently drift apart (e.g. a numbering change
 // made to one and forgotten in the other).
 //
-// One meaningful difference from the PDF: the Table of Contents uses
-// Word's own native TOC field (via HeadingLevel-tagged paragraphs), which
-// Word recalculates against its own real pagination the moment the
-// document is opened — so, unlike the PDF's own best-effort page-number
-// resolver, this TOC is never an em dash. The tradeoff: Word requires the
-// reader to right-click the TOC and choose "Update Field" (or it does
-// this automatically depending on their settings) to see final page
-// numbers rather than always showing them instantly.
+// The Table of Contents uses Word's own native TOC field (via
+// HeadingLevel-tagged paragraphs), so it carries real page numbers —
+// computed by Word itself against its own actual pagination, not
+// estimated ahead of time the way the PDF preview would have to. The
+// field populates the moment Word opens the file (docx sets
+// updateFields: true below, which tells Word to refresh all fields on
+// open automatically, so no manual "right-click > Update Field" step is
+// needed in practice). One real caveat: viewers that don't execute
+// Word's field-update logic — LibreOffice headless conversion, Google
+// Docs preview, quick-look style previews — will render the field's
+// last-cached value, which for a freshly generated document is blank.
+// A visible note is added directly under the TOC heading so a reader in
+// one of those viewers understands why and knows to open the file in
+// Word (or press Ctrl+A then F9) rather than assuming the export is
+// broken.
 
 import {
   Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType,
   Table, TableRow, TableCell, WidthType,
   ImageRun, ShadingType, BorderStyle, Footer, PageNumber, TabStopType, TabStopPosition,
+  TableOfContents,
 } from "docx";
 import { computeExtended, formatCurrency } from "./pricing";
 import { getNaicsTitle } from "./naics";
@@ -89,8 +97,8 @@ function table(headerCells, rows, widths) {
       insideVertical: { style: BorderStyle.SINGLE, size: 2, color: "DDDDDD" },
     },
     rows: [
-      new TableRow({ children: headerCells.map((h, i) => cell(h, { header: true, width: widths?.[i] })) }),
-      ...rows.map((row) => new TableRow({ children: row.map((c, i) => cell(c, { width: widths?.[i] })) })),
+      new TableRow({ cantSplit: true, children: headerCells.map((h, i) => cell(h, { header: true, width: widths?.[i] })) }),
+      ...rows.map((row) => new TableRow({ cantSplit: true, children: row.map((c, i) => cell(c, { width: widths?.[i] })) })),
     ],
   });
 }
@@ -107,6 +115,7 @@ function keyValueTable(pairs) {
       insideVertical: { style: BorderStyle.SINGLE, size: 2, color: "DDDDDD" },
     },
     rows: pairs.map(([label, value]) => new TableRow({
+      cantSplit: true,
       children: [cell(label, { width: 30 }), cell(value, { width: 70 })],
     })),
   });
@@ -207,25 +216,19 @@ export async function generateProposalDocx(data, logoUrl, totalPrice) {
   );
   children.push(...coverLetterChildren);
 
-  // ── Table of Contents — a static list, deliberately not a live Word
-  // field. Confirmed by actually rendering this document (LibreOffice
-  // headless conversion): docx's TableOfContents field generates no
-  // cached fallback content, so any viewer that doesn't actively
-  // recompute the field on open — which includes this exact rendering
-  // path, and evidently others too — shows a genuinely blank page where
-  // the TOC should be. A static list can never do that, and it matches
-  // the PDF version exactly: section list, no page numbers, same
-  // consistency the PDF's own TOC/Matrix already commit to. ──
+  // ── Table of Contents — a native Word field with real page numbers.
+  // Populates from the HeadingLevel-tagged section/subsection paragraphs
+  // pushed throughout this document. `updateFields: true` on the Document
+  // (below) tells Word to refresh this — and the footer's page fields —
+  // the moment the file opens, which is standard behavior for any Word
+  // document containing an auto-generated TOC. ──
   children.push(
     new Paragraph({ pageBreakBefore: true, children: [new TextRun({ text: "Table of Contents", bold: true, size: 32, color: NAVY_HEX })] }),
-    ...outline.flatMap((sec) => [
-      new Paragraph({ spacing: { after: 60 }, children: [new TextRun({ text: `${sec.number}. ${sec.title}`, bold: true })] }),
-      ...sec.subsections.map((sub) => new Paragraph({
-        indent: { left: 360 },
-        spacing: { after: 60 },
-        children: [new TextRun({ text: `${sub.number} ${sub.title}` })],
-      })),
-    ]),
+    new Paragraph({
+      spacing: { after: 200 },
+      children: [new TextRun({ text: "(Page numbers refresh automatically when opened in Word. If viewing in another application, select the table and press F9, or right-click and choose Update Field.)", italics: true, size: 18, color: MUTED_HEX })],
+    }),
+    new TableOfContents("Table of Contents", { hyperlink: true, headingStyleRange: "1-2" }),
   );
 
   // ── Compliance Matrix (only when the matrix has rows) ──
@@ -366,6 +369,7 @@ export async function generateProposalDocx(data, logoUrl, totalPrice) {
   });
 
   const doc = new Document({
+    features: { updateFields: true },
     sections: [{ footers: { default: footer }, children }],
     styles: {
       default: {
