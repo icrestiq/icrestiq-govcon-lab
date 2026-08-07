@@ -18,7 +18,7 @@
 // are offered as a compliance-row reference, per "populated from the
 // sections the user has actually filled in."
 
-import { proseListHasContent } from './proseList';
+import { proseListHasContent } from './proseList.js';
 
 function hasText(v) {
   return typeof v === 'string' && v.trim().length > 0;
