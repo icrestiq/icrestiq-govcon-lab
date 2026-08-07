@@ -46,10 +46,20 @@ function isCloseToBoundary(value, boundary) {
 }
 
 /**
- * blocks: ordered array of { id, heightPx, forceBreak }, measured from the
- * DOM in the exact order those blocks render. forceBreak = true for
- * sections with page-break-before: always (Cover Letter, TOC, Compliance
- * Matrix, Price Proposal); false for sections that flow continuously.
+ * blocks: ordered array of { id, aliasIds, heightPx, forceBreak }, measured
+ * from the DOM in the exact order those blocks render. forceBreak = true
+ * for sections with page-break-before: always (Cover Letter, TOC,
+ * Compliance Matrix, Price Proposal); false for sections that flow
+ * continuously.
+ *
+ * Each block resolves to one page number, computed from its own
+ * heightPx, and recorded under `id`. Pass `aliasIds` (an array) when a
+ * single measured chunk actually represents more than one heading with
+ * nothing rendered between them — e.g. a section's own heading
+ * immediately followed by its first subsection's heading — since those
+ * are structurally guaranteed to always land on the same page and don't
+ * need (or get) separate measurement; the resolved page is recorded
+ * under `id` AND every entry in `aliasIds`.
  *
  * Returns Map<id, pageNumber>, 1-indexed — as a confident PREFIX of the
  * list. As soon as one block's placement is too close to a boundary to
@@ -72,7 +82,9 @@ export function computePageMap(blocks) {
   let currentPage = 1;
   let usedOnCurrentPage = 0; // px already consumed on currentPage
 
-  for (const { id, heightPx, forceBreak } of blocks) {
+  for (const { id, aliasIds, heightPx, forceBreak } of blocks) {
+    const blockIds = aliasIds && aliasIds.length ? [id, ...aliasIds] : [id];
+
     if (forceBreak) {
       if (usedOnCurrentPage > 0) currentPage += 1;
       usedOnCurrentPage = 0;
@@ -93,11 +105,11 @@ export function computePageMap(blocks) {
     const pagesFloat = totalOnThisRun / PAGE_CONTENT_HEIGHT_PX;
     const nearestBoundary = Math.round(pagesFloat);
     if (nearestBoundary >= 1 && Math.abs(pagesFloat - nearestBoundary) * PAGE_CONTENT_HEIGHT_PX < BOUNDARY_TOLERANCE_PX) {
-      map.set(id, currentPage);
+      for (const bid of blockIds) map.set(bid, currentPage);
       return map;
     }
 
-    map.set(id, currentPage);
+    for (const bid of blockIds) map.set(bid, currentPage);
     currentPage += Math.floor(totalOnThisRun / PAGE_CONTENT_HEIGHT_PX);
     usedOnCurrentPage = totalOnThisRun % PAGE_CONTENT_HEIGHT_PX;
   }

@@ -1006,16 +1006,31 @@ function ProposalPreview({ data, logoUrl, totalPrice, onBack }) {
   const hasWarranty = outline.some((s) => s.id === "warranty");
   const hasRepsCerts = outline.some((s) => s.id === "reps-certs");
 
+  const hasPriceBoe = Boolean(numberOf("price-boe"));
+  const hasPriceAssumptions = Boolean(numberOf("price-assumptions"));
+
   const measureOrder = [
     { id: "letterhead", forceBreak: false },
     { id: "cover-letter", forceBreak: true },
     { id: "toc", forceBreak: true },
     ...(hasMatrix ? [{ id: "compliance-matrix", forceBreak: true }] : []),
-    { id: "executive-summary", forceBreak: false },
-    { id: "technical-approach", forceBreak: false },
+    // Executive Summary and Technical Approach are each decomposed into
+    // three chunks so 2.1/2.2/2.3 and 3.1/3.2/3.3 get their own resolved
+    // page instead of only the section as a whole ever resolving. The
+    // first chunk of each carries both the section heading and its first
+    // subsection heading — nothing renders between them, so they're
+    // always on the same page, hence ids: [...] rather than a single id.
+    { id: "executive-summary", aliasIds: ["exec-requirement"], forceBreak: false },
+    { id: "exec-winthemes", forceBreak: false },
+    { id: "exec-snapshot", forceBreak: false },
+    { id: "technical-approach", aliasIds: ["tech-methodology"], forceBreak: false },
+    { id: "tech-qc", forceBreak: false },
+    { id: "tech-risk", forceBreak: false },
     { id: "key-personnel", forceBreak: false },
     { id: "past-performance", forceBreak: false },
     { id: "price-proposal", forceBreak: true },
+    ...(hasPriceBoe ? [{ id: "price-boe", forceBreak: false }] : []),
+    ...(hasPriceAssumptions ? [{ id: "price-assumptions", forceBreak: false }] : []),
     ...(hasDeliverySchedule ? [{ id: "delivery-schedule", forceBreak: false }] : []),
     ...(hasWarranty ? [{ id: "warranty", forceBreak: false }] : []),
     ...(hasRepsCerts ? [{ id: "reps-certs", forceBreak: false }] : []),
@@ -1034,8 +1049,9 @@ function ProposalPreview({ data, logoUrl, totalPrice, onBack }) {
     let cancelled = false;
     const measure = () => {
       if (cancelled) return;
-      const blocks = measureOrder.map(({ id, forceBreak }) => ({
+      const blocks = measureOrder.map(({ id, aliasIds, forceBreak }) => ({
         id,
+        aliasIds,
         forceBreak,
         heightPx: measureRefs.current[id]?.getBoundingClientRect().height,
       }));
@@ -1194,17 +1210,23 @@ function ProposalPreview({ data, logoUrl, totalPrice, onBack }) {
     <div style={{ breakInside: "avoid", pageBreakInside: "avoid" }}>{children}</div>
   );
 
-  const renderExecutiveSummaryContent = () => (
+  // Decomposed into three chunks so each subsection gets its own measured
+  // position instead of only the section as a whole. Chunk A carries both
+  // the "2. Executive Summary" heading and the "2.1" subsection heading —
+  // they're rendered with nothing between them, so they're structurally
+  // guaranteed to always land on the same page; see the ids: [...] usage
+  // in measureOrder below.
+  const renderExecSummaryChunkA = () => keepTogether(<>
+    <h2>{numberOf("executive-summary")}. Executive Summary</h2>
+    <h3>{numberOf("exec-requirement")} Understanding of the Requirement</h3>
+    <p>{data.requirementSummary}</p>
+  </>);
+  const renderExecSummaryChunkB = () => keepTogether(<>
+    <h3>{numberOf("exec-winthemes")} Win Themes</h3>
+    <ul>{winThemeList.map((t, i) => <li key={i}>{t}</li>)}</ul>
+  </>);
+  const renderExecSummaryChunkC = () => (
     <>
-      {keepTogether(<>
-        <h2>{numberOf("executive-summary")}. Executive Summary</h2>
-        <h3>{numberOf("exec-requirement")} Understanding of the Requirement</h3>
-        <p>{data.requirementSummary}</p>
-      </>)}
-      {keepTogether(<>
-        <h3>{numberOf("exec-winthemes")} Win Themes</h3>
-        <ul>{winThemeList.map((t, i) => <li key={i}>{t}</li>)}</ul>
-      </>)}
       {keepTogether(<>
         <h3>{numberOf("exec-snapshot")} Company Snapshot</h3>
         <p>{data.companySnapshot}</p>
@@ -1222,6 +1244,9 @@ function ProposalPreview({ data, logoUrl, totalPrice, onBack }) {
       )}
     </>
   );
+  const renderExecutiveSummaryContent = () => (
+    <>{renderExecSummaryChunkA()}{renderExecSummaryChunkB()}{renderExecSummaryChunkC()}</>
+  );
 
   const renderProseList = (value) => {
     const items = Array.isArray(value?.items) ? value.items.map((s) => s.trim()).filter(Boolean) : [];
@@ -1234,22 +1259,21 @@ function ProposalPreview({ data, logoUrl, totalPrice, onBack }) {
     );
   };
 
+  const renderTechApproachChunkA = () => keepTogether(<>
+    <h2>{numberOf("technical-approach")}. Technical Approach</h2>
+    <h3>{numberOf("tech-methodology")} Proposed Methodology</h3>
+    <p>{data.methodology}</p>
+  </>);
+  const renderTechApproachChunkB = () => keepTogether(<>
+    <h3>{numberOf("tech-qc")} Quality Control Plan</h3>
+    {renderProseList(data.qualityControl)}
+  </>);
+  const renderTechApproachChunkC = () => keepTogether(<>
+    <h3>{numberOf("tech-risk")} Risk Management</h3>
+    {renderProseList(data.riskManagement)}
+  </>);
   const renderTechnicalApproachContent = () => (
-    <>
-      {keepTogether(<>
-        <h2>{numberOf("technical-approach")}. Technical Approach</h2>
-        <h3>{numberOf("tech-methodology")} Proposed Methodology</h3>
-        <p>{data.methodology}</p>
-      </>)}
-      {keepTogether(<>
-        <h3>{numberOf("tech-qc")} Quality Control Plan</h3>
-        {renderProseList(data.qualityControl)}
-      </>)}
-      {keepTogether(<>
-        <h3>{numberOf("tech-risk")} Risk Management</h3>
-        {renderProseList(data.riskManagement)}
-      </>)}
-    </>
+    <>{renderTechApproachChunkA()}{renderTechApproachChunkB()}{renderTechApproachChunkC()}</>
   );
 
   const renderKeyPersonnelContent = () => (
@@ -1315,7 +1339,7 @@ function ProposalPreview({ data, logoUrl, totalPrice, onBack }) {
   // heuristics behave.
   const sep = (content) => <>{content}{"\u00A0"}</>;
 
-  const renderPriceProposalContent = () => (
+  const renderPriceProposalChunkA = () => (
     <>
       <h2>{numberOf("price-proposal")}. Price Proposal</h2>
       <table>
@@ -1346,20 +1370,23 @@ function ProposalPreview({ data, logoUrl, totalPrice, onBack }) {
         </tbody>
       </table>
       {data.fobTerm && <p><strong>{data.fobTerm}</strong></p>}
-      {numberOf("price-boe") && (
-        <>
-          <h3>{numberOf("price-boe")} Basis of Estimate</h3>
-          <p>{data.basisOfEstimate}</p>
-        </>
-      )}
-      {numberOf("price-assumptions") && (
-        <>
-          <h3>{numberOf("price-assumptions")} Assumptions</h3>
-          <ul>
-            {data.assumptions.split("\n").map((s) => s.trim()).filter(Boolean).map((line, i) => <li key={i}>{line}</li>)}
-          </ul>
-        </>
-      )}
+    </>
+  );
+  const renderPriceProposalChunkB = () => keepTogether(<>
+    <h3>{numberOf("price-boe")} Basis of Estimate</h3>
+    <p>{data.basisOfEstimate}</p>
+  </>);
+  const renderPriceProposalChunkC = () => keepTogether(<>
+    <h3>{numberOf("price-assumptions")} Assumptions</h3>
+    <ul>
+      {data.assumptions.split("\n").map((s) => s.trim()).filter(Boolean).map((line, i) => <li key={i}>{line}</li>)}
+    </ul>
+  </>);
+  const renderPriceProposalContent = () => (
+    <>
+      {renderPriceProposalChunkA()}
+      {numberOf("price-boe") && renderPriceProposalChunkB()}
+      {numberOf("price-assumptions") && renderPriceProposalChunkC()}
     </>
   );
 
@@ -1517,11 +1544,17 @@ function ProposalPreview({ data, logoUrl, totalPrice, onBack }) {
           <div ref={setMeasureRef("cover-letter")} className="cover-letter-section">{renderCoverLetterContent()}</div>
           <div ref={setMeasureRef("toc")}>{renderTOCContent()}</div>
           {hasMatrix && <div ref={setMeasureRef("compliance-matrix")}>{renderComplianceMatrixContent()}</div>}
-          <div ref={setMeasureRef("executive-summary")}>{renderExecutiveSummaryContent()}</div>
-          <div ref={setMeasureRef("technical-approach")}>{renderTechnicalApproachContent()}</div>
+          <div ref={setMeasureRef("executive-summary")}>{renderExecSummaryChunkA()}</div>
+          <div ref={setMeasureRef("exec-winthemes")}>{renderExecSummaryChunkB()}</div>
+          <div ref={setMeasureRef("exec-snapshot")}>{renderExecSummaryChunkC()}</div>
+          <div ref={setMeasureRef("technical-approach")}>{renderTechApproachChunkA()}</div>
+          <div ref={setMeasureRef("tech-qc")}>{renderTechApproachChunkB()}</div>
+          <div ref={setMeasureRef("tech-risk")}>{renderTechApproachChunkC()}</div>
           <div ref={setMeasureRef("key-personnel")}>{renderKeyPersonnelContent()}</div>
           <div ref={setMeasureRef("past-performance")}>{renderPastPerformanceContent()}</div>
-          <div ref={setMeasureRef("price-proposal")}>{renderPriceProposalContent()}</div>
+          <div ref={setMeasureRef("price-proposal")}>{renderPriceProposalChunkA()}</div>
+          {hasPriceBoe && <div ref={setMeasureRef("price-boe")}>{renderPriceProposalChunkB()}</div>}
+          {hasPriceAssumptions && <div ref={setMeasureRef("price-assumptions")}>{renderPriceProposalChunkC()}</div>}
           {hasDeliverySchedule && <div ref={setMeasureRef("delivery-schedule")}>{renderDeliveryScheduleContent()}</div>}
           {hasWarranty && <div ref={setMeasureRef("warranty")}>{renderWarrantyContent()}</div>}
           {hasRepsCerts && <div ref={setMeasureRef("reps-certs")}>{renderRepsCertsContent()}</div>}

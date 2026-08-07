@@ -151,14 +151,20 @@ export async function generateProposalDocx(data, logoUrl, totalPrice) {
   // ── Cover Letter — unnumbered front matter, own page, same as the PDF ──
   const coverLetterChildren = [];
   if (logoBuffer) {
+    // pageBreakBefore goes here, on the actual first element of this
+    // page — it was previously on the paragraph after this one, which
+    // meant the logo rendered wherever the title page's flow happened to
+    // leave off (not on the cover letter page at all) and the break
+    // landed the company name on a fresh page without it.
     coverLetterChildren.push(new Paragraph({
+      pageBreakBefore: true,
       alignment: AlignmentType.CENTER,
       spacing: { after: 120 },
       children: [new ImageRun({ data: logoBuffer, transformation: { width: 160, height: 70 }, type: "png" })],
     }));
   }
   coverLetterChildren.push(
-    new Paragraph({ pageBreakBefore: true, alignment: AlignmentType.CENTER, children: [new TextRun({ text: data.companyName || "[Company Name]", bold: true, color: NAVY_HEX, size: 24 })] }),
+    new Paragraph({ pageBreakBefore: !logoBuffer, alignment: AlignmentType.CENTER, children: [new TextRun({ text: data.companyName || "[Company Name]", bold: true, color: NAVY_HEX, size: 24 })] }),
     new Paragraph({
       alignment: AlignmentType.CENTER, spacing: { after: 300 },
       children: [new TextRun({ text: [data.companyAddress, data.uei && `UEI: ${data.uei}`, data.cageCode && `CAGE: ${data.cageCode}`].filter(Boolean).join(" | "), size: 18, color: MUTED_HEX })],
