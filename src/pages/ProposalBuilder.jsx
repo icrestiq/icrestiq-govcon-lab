@@ -1277,7 +1277,7 @@ function ProposalPreview({ data, logoUrl, totalPrice, onBack }) {
   );
 
   const renderKeyPersonnelContent = () => (
-    <div style={{ breakInside: "avoid", pageBreakInside: "avoid" }}>
+    <>
       <h2>{numberOf("key-personnel")}. Key Personnel</h2>
       <table className="personnel-table">
         <colgroup>
@@ -1290,7 +1290,7 @@ function ProposalPreview({ data, logoUrl, totalPrice, onBack }) {
           ))}
         </tbody>
       </table>
-    </div>
+    </>
   );
 
   const renderPastPerformanceContent = () => (
@@ -1486,7 +1486,16 @@ function ProposalPreview({ data, logoUrl, totalPrice, onBack }) {
         @media print {
           .doc-page { box-shadow: none !important; margin: 0 !important; padding: 0 !important; max-width: none !important; }
           .doc-section-break { page-break-before: always; break-before: page; }
-          .doc-page table { page-break-inside: avoid; break-inside: avoid; }
+          /* Tables are now allowed to split across a page boundary — a
+             table with more rows than fit in the remaining space on the
+             current page continues on the next, rather than the whole
+             table jumping wholesale to a fresh page and leaving whatever
+             was left of the current one blank. Only individual rows
+             (and the personnel/past-performance row-groups below) are
+             still protected from being cut in half. thead repeating
+             ensures a split table's continuation still shows column
+             labels instead of an unlabeled row of data. */
+          .doc-page table thead { display: table-header-group; }
           .doc-page table tr { page-break-inside: avoid; break-inside: avoid; }
           .personnel-row, .pastperf-block { page-break-inside: avoid; break-inside: avoid; }
           .doc-page p, .doc-page li { orphans: 3; widows: 3; }
