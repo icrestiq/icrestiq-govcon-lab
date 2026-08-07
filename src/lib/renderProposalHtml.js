@@ -24,9 +24,16 @@
 //   passes), now with real numbers in the TOC and Matrix. This second
 //   render is the one actually delivered to the user.
 
-import { computeExtended, formatCurrency } from "./pricing";
-import { getNaicsTitle } from "./naics";
-import { buildOutline, findOutlineLabel } from "./outline";
+// Explicit .js extensions below are required, not stylistic: Vite (which
+// builds the frontend that also imports this file) resolves extensionless
+// relative imports automatically, but this file also runs standalone
+// inside api/proposal/pdf.js on Vercel's native Node ESM runtime, which
+// does NOT do that resolution — omitting the extension previously caused
+// a production-only "Cannot find module '/var/task/src/lib/pricing'"
+// crash that Vite's dev server and build never surfaced.
+import { computeExtended, formatCurrency } from "./pricing.js";
+import { getNaicsTitle } from "./naics.js";
+import { buildOutline, findOutlineLabel } from "./outline.js";
 
 const NAVY = "#1F3864";
 const GOLD = "#B08D57";
