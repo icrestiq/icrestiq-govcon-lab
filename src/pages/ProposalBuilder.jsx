@@ -1299,10 +1299,6 @@ function ProposalPreview({ data, logoUrl, totalPrice, onBack }) {
             </tr>
           ))}
           <tr>
-            <td colSpan={5} style={{ fontWeight: "bold", textAlign: "right" }}>TOTAL</td>
-            <td style={{ fontWeight: "bold" }}>{formatCurrency(totalPrice)}</td>
-          </tr>
-          <tr>
             <td colSpan={5} style={{ fontWeight: "bold", textAlign: "right" }}>Total Evaluated Price</td>
             <td style={{ fontWeight: "bold" }}>{formatCurrency(totalPrice)}</td>
           </tr>

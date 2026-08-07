@@ -298,7 +298,6 @@ export async function generateProposalDocx(data, logoUrl, totalPrice) {
       ["CLIN", "Description", "Quantity", "Unit", "Unit Price", "Ext. Price"],
       [
         ...data.pricing.map((row) => [row.clin, row.description, row.quantity, row.unitOfMeasure, formatCurrency(row.unitPrice), formatCurrency(computeExtended(row.quantity, row.unitPrice))]),
-        ["", "", "", "", "TOTAL", formatCurrency(totalPrice)],
         ["", "", "", "", "Total Evaluated Price", formatCurrency(totalPrice)],
       ],
       [10, 35, 12, 10, 16, 17]
