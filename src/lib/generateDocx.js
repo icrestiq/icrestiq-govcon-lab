@@ -80,6 +80,22 @@ function cell(text, opts = {}) {
     shading: opts.header ? { fill: NAVY_HEX, type: ShadingType.CLEAR, color: "auto" } : undefined,
     margins: { top: 80, bottom: 80, left: 100, right: 100 },
     children: [new Paragraph({
+      // keepNext ties this cell's paragraph to whatever immediately
+      // follows it — when set on every row but the last in a table, it
+      // tells Word "never break a page between these rows," so the whole
+      // table moves as one unit instead of splitting. Used below only for
+      // keyValueTable (past-performance records): each one is a bounded,
+      // single-topic block where a lone trailing row (e.g. just "CPARS
+      // Rating: Exceptional") stranded alone on an otherwise-blank page —
+      // immediately followed by Price Proposal's own forced page break —
+      // reads as broken. table() (Compliance Matrix, Key Personnel,
+      // Delivery Schedule, Pricing) deliberately does NOT get this: those
+      // routinely run longer than a page, and forcing a big multi-row
+      // table to jump wholesale when it doesn't fit is the "large blank
+      // gap" failure mode already fixed once before elsewhere in this
+      // file — this is a narrow fix for one specific adjacency, not a
+      // general "keep tables together" rule.
+      keepNext: !!opts.keepNext,
       children: [new TextRun({ text: text == null ? "" : String(text), bold: !!opts.header, color: opts.header ? "FFFFFF" : undefined, size: 20 })],
     })],
   });
@@ -114,9 +130,12 @@ function keyValueTable(pairs) {
       insideHorizontal: { style: BorderStyle.SINGLE, size: 2, color: "DDDDDD" },
       insideVertical: { style: BorderStyle.SINGLE, size: 2, color: "DDDDDD" },
     },
-    rows: pairs.map(([label, value]) => new TableRow({
+    rows: pairs.map(([label, value], i) => new TableRow({
       cantSplit: true,
-      children: [cell(label, { width: 30 }), cell(value, { width: 70 })],
+      children: [
+        cell(label, { width: 30, keepNext: i < pairs.length - 1 }),
+        cell(value, { width: 70, keepNext: i < pairs.length - 1 }),
+      ],
     })),
   });
 }

@@ -38,6 +38,21 @@ import puppeteer from "puppeteer-core";
 import chromium from "@sparticuz/chromium";
 import { renderProposalHtml } from "../../src/lib/renderProposalHtml.js";
 
+// @sparticuz/chromium only unpacks and wires up the shared libraries
+// Chromium needs (libnss3.so among them) when it detects it's running
+// inside a Lambda-shaped Node 20+/22+ container — it checks for
+// AWS_EXECUTION_ENV or AWS_LAMBDA_JS_RUNTIME containing "20.x"/"22.x"
+// (see @sparticuz/chromium/build/helper.js, isRunningInAwsLambdaNode20).
+// Vercel's functions run on the same kind of container but don't set
+// either variable, so that check silently fails, the AL2023 library pack
+// never gets extracted, and Chromium fails to launch with "libnss3.so:
+// cannot open shared object file" — confirmed from the actual production
+// error log. Setting this ourselves (only if not already set, so it never
+// overrides a real Lambda/Netlify environment) makes the detection match
+// unconditionally, on every environment tier, without depending on a
+// Vercel dashboard setting someone has to remember to add.
+process.env.AWS_LAMBDA_JS_RUNTIME ??= "nodejs22.x";
+
 export const config = {
   maxDuration: 60,
 };
