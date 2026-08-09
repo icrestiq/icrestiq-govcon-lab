@@ -1,8 +1,18 @@
 // api/digest/confirm.js
 // Public endpoint hit by the confirmation link in the digest signup email.
-// Marks the row confirmed=true, invalidates the token so the link can't be
-// reused, sends the welcome email with the 5 free tools (best-effort, never
-// blocks the redirect), then redirects to a plain result page.
+// Marks the row confirmed=true, sends the welcome email with the 5 free
+// tools (best-effort, never blocks the redirect), then redirects to a plain
+// result page.
+//
+// NOTE: the confirm_token is intentionally NOT cleared after use. Many email
+// clients and corporate security gateways (Outlook Safe Links, spam filters,
+// etc.) auto-visit links inside incoming emails to scan them before the
+// person ever clicks — which consumes a one-time token before the real
+// visitor gets to it. Leaving the token valid means a second (real) click
+// still confirms successfully instead of showing a false "invalid" page.
+// This is low-risk: at worst, someone re-hits their own confirm link later
+// and it just re-confirms an already-confirmed row. welcome_sent_at still
+// prevents the welcome email from ever going out twice.
 
 import { createClient } from '@supabase/supabase-js'
 import nodemailer from 'nodemailer'
@@ -138,7 +148,6 @@ export default async function handler(req, res) {
       .from('digest_subscribers')
       .update({
         confirmed: true,
-        confirm_token: null,
         confirmed_at: new Date().toISOString(),
       })
       .eq('confirm_token', token)
