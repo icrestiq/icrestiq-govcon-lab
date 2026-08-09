@@ -68,7 +68,11 @@ export default async function handler(req, res) {
       if (error) throw error
     }
 
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://govconlab.com'
+    // Canonical www domain — the raw Vercel preview/prod domain was leaking
+    // into outbound links when NEXT_PUBLIC_SITE_URL wasn't set. If that env
+    // var is set to something other than the www domain, update it in the
+    // Vercel dashboard; this fallback only covers the case where it's unset.
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.govconlab.com'
     const confirmUrl = `${baseUrl}/api/digest/confirm?token=${token}`
 
     if (process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD) {
@@ -78,6 +82,7 @@ export default async function handler(req, res) {
         subject: 'Confirm your GovCon Lab weekly digest',
         text: [
           `One click and you're on the list for Monday's digest of real federal product solicitations.`,
+          `Confirm and your 5 free tools arrive immediately.`,
           ``,
           confirmUrl,
           ``,

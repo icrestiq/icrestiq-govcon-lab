@@ -3,11 +3,11 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>GovCon Lab — Free Monday list of federal product solicitations</title>
-<meta name="description" content="I quote federal solicitations every week. Get my Monday list of real federal product solicitations — free, no card." />
+<title>GovCon Lab — 5 free GovCon tools + Monday's list of federal solicitations</title>
+<meta name="description" content="Get 5 free GovCon tools — compliance matrix, SAM.gov/UEI checklist, DIBBS/DLA guide, capability statement template, accounting starter sheet — plus my Monday list of real federal product solicitations. Free, no card." />
 <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-<meta property="og:title" content="Get my Monday list of federal solicitations — free" />
-<meta property="og:description" content="Real DIBBS and SAM.gov product solicitations, sent every Monday by an operator who actually quotes them." />
+<meta property="og:title" content="5 free GovCon tools — plus my Monday list of federal solicitations" />
+<meta property="og:description" content="Real DIBBS and SAM.gov product solicitations, sent every Monday by an operator who actually quotes them. Sign up and get 5 free tools right away." />
 <meta property="og:type" content="website" />
 <meta property="og:url" content="https://www.govconlab.com/go" />
 <meta name="robots" content="index,follow" />
@@ -62,6 +62,17 @@
   .msg{font-size:14.5px;margin-top:10px;padding:11px 13px;border-radius:8px;display:none}
   .msg.ok{display:block;background:rgba(201,168,76,.14);border:1px solid var(--gold-dim);color:#F0E4C2}
   .msg.err{display:block;background:rgba(197,48,48,.14);border:1px solid #C53030;color:#FFD9D9}
+
+  /* ── hero two-column layout (graphic + form) ──────────── */
+  .hero-inner{display:flex;flex-direction:column;gap:28px}
+  .hero-media{display:flex;justify-content:center}
+  .hero-media img{width:100%;max-width:420px;height:auto;display:block}
+  .hero-content{min-width:0}
+  @media (min-width:900px){
+    .hero .wrap{max-width:920px}
+    .hero-inner{display:grid;grid-template-columns:420px 1fr;gap:48px;align-items:center}
+    .hero-media img{max-width:100%}
+  }
 
   /* ── proof ──────────────────────────────────────────── */
   section{padding:34px 0}
@@ -138,19 +149,30 @@
       <div class="mark">iQ</div>
       <div class="brandname">GovCon Lab</div>
     </div>
-    <div class="eyebrow">Every Monday · Free</div>
-    <h1>I quote federal solicitations every week. <em>Get my list.</em></h1>
-    <p class="sub">Real DIBBS and SAM.gov product solicitations — NSNs, quantities, set-asides,
-      deadlines — sent every Monday morning. Written by an operator who bids them, not a newsletter
-      that scrapes them.</p>
 
-    <form id="digest" novalidate>
-      <input id="email" type="email" name="email" required autocomplete="email"
-             inputmode="email" placeholder="you@company.com" aria-label="Your email address" />
-      <button class="btn" type="submit" id="sub">Send me Monday's list →</button>
-      <div class="micro">Free forever · No card · Unsubscribe in one click</div>
-      <div class="msg" id="msg" role="status"></div>
-    </form>
+    <div class="hero-inner">
+      <div class="hero-media">
+        <img src="/images/go/5-free-govcon-tools.png"
+             alt="5 free GovCon tools: compliance matrix template, SAM.gov & UEI registration checklist, DIBBS/DLA quick-start guide, capability statement template, first 90 days GovCon accounting starter sheet"
+             loading="lazy" width="1004" height="1600" />
+      </div>
+
+      <div class="hero-content">
+        <div class="eyebrow">5 Free Tools · Every Monday</div>
+        <h1>Get 5 free GovCon tools — <em>and my Monday list of real federal solicitations.</em></h1>
+        <p class="sub">Real DIBBS and SAM.gov product solicitations — NSNs, quantities, set-asides,
+          deadlines — sent every Monday morning, plus the compliance matrix, SAM.gov/UEI checklist,
+          DIBBS/DLA guide, capability statement template, and accounting starter sheet, free.</p>
+
+        <form id="digest" novalidate>
+          <input id="email" type="email" name="email" required autocomplete="email"
+                 inputmode="email" placeholder="you@company.com" aria-label="Your email address" />
+          <button class="btn" type="submit" id="sub">Email me the 5 tools</button>
+          <div class="micro">Free forever · No card · Unsubscribe in one click</div>
+          <div class="msg" id="msg" role="status"></div>
+        </form>
+      </div>
+    </div>
   </div>
 </header>
 
@@ -294,20 +316,20 @@
       var r = await fetch('/api/digest/subscribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email, source: 'link-in-bio' })
+        body: JSON.stringify({ email: email, source: '5-free-tools' })
       });
       var d = await r.json();
       if (!r.ok) throw new Error(d.error || 'Something went wrong. Please try again.');
       if (d.status === 'already-confirmed') {
         show('ok', "You're already on the list — Monday's issue is on its way.");
       } else {
-        show('ok', 'Check your inbox and click the confirm link. That is the last step.');
+        show('ok', 'Check your email and click the confirm link — your 5 downloads are in the email right after.');
       }
       f.reset();
       b.textContent = 'Done ✓';
     } catch (err) {
       show('err', err.message);
-      b.disabled = false; b.textContent = "Send me Monday's list →";
+      b.disabled = false; b.textContent = 'Email me the 5 tools';
     }
   });
 })();
