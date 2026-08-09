@@ -70,7 +70,7 @@ export default function DigestConfirmed() {
             <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 var(--sp-4, 16px)', display: 'grid', gap: 10 }}>
               {DOWNLOADS.map((d) => (
                 <li key={d.href}>
-                  
+                  <a
                     href={d.href}
                     style={{ color: 'var(--navy, #1B2A4A)', fontWeight: 500, textDecoration: 'underline' }}
                   >
