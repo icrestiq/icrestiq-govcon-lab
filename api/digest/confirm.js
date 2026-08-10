@@ -16,6 +16,7 @@
 
 import { createClient } from '@supabase/supabase-js'
 import nodemailer from 'nodemailer'
+import { SITE_URL } from '../_lib/site-url.js'
 
 const supabase = createClient(
   process.env.VITE_SUPABASE_URL,
@@ -30,7 +31,7 @@ const transporter = nodemailer.createTransport({
   },
 })
 
-const DOWNLOAD_BASE = 'https://www.govconlab.com/downloads/starter-kit'
+const DOWNLOAD_BASE = `${SITE_URL}/downloads/starter-kit`
 
 const TOOLS = [
   {
@@ -70,7 +71,7 @@ function welcomeText() {
     lines.push(`${DOWNLOAD_BASE}/${t.file}`)
     lines.push(``)
   }
-  lines.push(`When you're ready to go further, GovCon Lab membership adds the Proposal Builder, community rooms, and the foundation course: https://www.govconlab.com/membership`)
+  lines.push(`When you're ready to go further, GovCon Lab membership adds the Proposal Builder, community rooms, and the foundation course: ${SITE_URL}/membership`)
   return lines.join('\n')
 }
 
@@ -92,7 +93,7 @@ function welcomeHtml() {
       ${rows}
     </table>
     <p style="font-size:14px;line-height:1.55;color:#4A5568;">
-      When you're ready to go further, <a href="https://www.govconlab.com/membership" style="color:#1B2A4A;">GovCon Lab membership</a>
+      When you're ready to go further, <a href="${SITE_URL}/membership" style="color:#1B2A4A;">GovCon Lab membership</a>
       adds the Proposal Builder, community rooms, and the foundation course.
     </p>
   </div>`
@@ -133,14 +134,10 @@ async function sendWelcomeIfNeeded(row) {
 }
 
 export default async function handler(req, res) {
-  // Canonical www domain — see matching note in subscribe.js. Update
-  // NEXT_PUBLIC_SITE_URL in the Vercel dashboard if it's currently set to
-  // the raw *.vercel.app domain; this fallback only covers it being unset.
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.govconlab.com'
   const token = req.query?.token
 
   if (!token || typeof token !== 'string') {
-    return res.redirect(302, `${baseUrl}/digest-confirmed?status=invalid`)
+    return res.redirect(302, `${SITE_URL}/digest-confirmed?status=invalid`)
   }
 
   try {
@@ -155,7 +152,7 @@ export default async function handler(req, res) {
       .maybeSingle()
 
     if (error || !data) {
-      return res.redirect(302, `${baseUrl}/digest-confirmed?status=invalid`)
+      return res.redirect(302, `${SITE_URL}/digest-confirmed?status=invalid`)
     }
 
     // Best-effort welcome email. Awaited so the function doesn't exit before
@@ -167,9 +164,9 @@ export default async function handler(req, res) {
       console.error('digest welcome email error:', mailErr)
     }
 
-    return res.redirect(302, `${baseUrl}/digest-confirmed?status=ok`)
+    return res.redirect(302, `${SITE_URL}/digest-confirmed?status=ok`)
   } catch (err) {
     console.error('digest confirm error:', err)
-    return res.redirect(302, `${baseUrl}/digest-confirmed?status=invalid`)
+    return res.redirect(302, `${SITE_URL}/digest-confirmed?status=invalid`)
   }
 }

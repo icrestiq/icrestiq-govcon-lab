@@ -8,6 +8,7 @@
 import { createClient } from '@supabase/supabase-js'
 import nodemailer from 'nodemailer'
 import crypto from 'crypto'
+import { SITE_URL } from '../_lib/site-url.js'
 
 const supabase = createClient(
   process.env.VITE_SUPABASE_URL,
@@ -68,12 +69,7 @@ export default async function handler(req, res) {
       if (error) throw error
     }
 
-    // Canonical www domain — the raw Vercel preview/prod domain was leaking
-    // into outbound links when NEXT_PUBLIC_SITE_URL wasn't set. If that env
-    // var is set to something other than the www domain, update it in the
-    // Vercel dashboard; this fallback only covers the case where it's unset.
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.govconlab.com'
-    const confirmUrl = `${baseUrl}/api/digest/confirm?token=${token}`
+    const confirmUrl = `${SITE_URL}/api/digest/confirm?token=${token}`
 
     if (process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD) {
       await transporter.sendMail({
