@@ -1,8 +1,14 @@
 // api/digest/confirm.js
 // Public endpoint hit by the confirmation link in the digest signup email.
-// Marks the row confirmed=true, sends the welcome email with the 5 free
-// tools (best-effort, never blocks the redirect), then redirects to a plain
-// result page.
+// Marks the row confirmed=true, sends the welcome email (best-effort, never
+// blocks the redirect), then redirects to a plain result page.
+//
+// The welcome email branches on the subscriber's stored `source`: the
+// homepage/default digest signup gets the 5 free starter-kit tools, while
+// a 'sample-proposal' signup (from the /sample page's "get the full
+// 14-page PDF" form) gets the sample PDF link instead. Without this branch,
+// every subscriber — regardless of what they actually signed up for — was
+// getting the 5-tools email, which is the bug this file fixes.
 //
 // NOTE: the confirm_token is intentionally NOT cleared after use. Many email
 // clients and corporate security gateways (Outlook Safe Links, spam filters,
@@ -32,6 +38,7 @@ const transporter = nodemailer.createTransport({
 })
 
 const DOWNLOAD_BASE = `${SITE_URL}/downloads/starter-kit`
+const SAMPLE_PDF_URL = `${SITE_URL}/images/samples/govcon-lab-sample-proposal.pdf`
 
 const TOOLS = [
   {
@@ -99,6 +106,37 @@ function welcomeHtml() {
   </div>`
 }
 
+function sampleWelcomeText() {
+  return [
+    `Here's the full 14-page sample proposal — the actual, unedited output of the GovCon Lab Proposal Builder:`,
+    ``,
+    SAMPLE_PDF_URL,
+    ``,
+    `Same fictional example company shown on the page — all 14 pages, full size.`,
+    ``,
+    `When you're ready to build your own, GovCon Lab membership gets you the Proposal Builder itself, plus the community rooms: ${SITE_URL}/membership`,
+  ].join('\n')
+}
+
+function sampleWelcomeHtml() {
+  return `
+  <div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;margin:0 auto;color:#1B2A4A;">
+    <p style="font-size:16px;line-height:1.55;">Here's the full 14-page sample proposal — the actual, unedited output of the GovCon Lab Proposal Builder.</p>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:12px 0;">
+      <tr>
+        <td style="padding:14px 0;border-bottom:1px solid #DDE1EA;">
+          <a href="${SAMPLE_PDF_URL}" style="color:#1B2A4A;font-weight:600;font-size:15px;text-decoration:underline;">Open the full 14-page sample PDF</a>
+          <div style="color:#4A5568;font-size:13px;margin-top:4px;">Same fictional example company shown on the page — all 14 pages, full size.</div>
+        </td>
+      </tr>
+    </table>
+    <p style="font-size:14px;line-height:1.55;color:#4A5568;">
+      When you're ready to build your own, <a href="${SITE_URL}/membership" style="color:#1B2A4A;">GovCon Lab membership</a>
+      gets you the Proposal Builder itself, plus the community rooms.
+    </p>
+  </div>`
+}
+
 async function sendWelcomeIfNeeded(row) {
   // If welcome_sent_at is already set, skip — already sent.
   // If the column doesn't exist yet (migration not run), row.welcome_sent_at
@@ -111,12 +149,14 @@ async function sendWelcomeIfNeeded(row) {
     return
   }
 
+  const isSample = row?.source === 'sample-proposal'
+
   await transporter.sendMail({
     from: process.env.GMAIL_USER,
     to: row.email,
-    subject: 'Your 5 free GovCon tools',
-    text: welcomeText(),
-    html: welcomeHtml(),
+    subject: isSample ? 'Your full 14-page sample proposal' : 'Your 5 free GovCon tools',
+    text: isSample ? sampleWelcomeText() : welcomeText(),
+    html: isSample ? sampleWelcomeHtml() : welcomeHtml(),
   })
 
   try {
