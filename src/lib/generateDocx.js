@@ -31,6 +31,7 @@ import {
 import { computeExtended, formatCurrency } from "./pricing";
 import { getNaicsTitle } from "./naics";
 import { buildOutline, findOutlineLabel } from "./outline";
+import { assertProposalTotalsMatch } from "./validateProposal";
 
 const NAVY_HEX = "1F3864";
 const GOLD_HEX = "B08D57";
@@ -141,6 +142,13 @@ function keyValueTable(pairs) {
 }
 
 export async function generateProposalDocx(data, logoUrl, totalPrice) {
+  // Pre-export check: block generation if narrative prose (most often
+  // Basis of Estimate) states a "total price" that disagrees with the
+  // CLIN table — see validateProposal.js for why this can't be silently
+  // auto-corrected. Left uncaught on purpose: the caller (ProposalBuilder.jsx's
+  // handleDownloadDocx) already catches and displays whatever this throws.
+  assertProposalTotalsMatch(data);
+
   const outline = buildOutline(data);
   const hasMatrix = Array.isArray(data.complianceRows) && data.complianceRows.length > 0;
   const numberOf = (id) => {

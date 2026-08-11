@@ -35,6 +35,7 @@
 // a genuinely rare case; not done here. Flagged in case it ever matters.
 
 import { renderProposalHtml } from "../../src/lib/renderProposalHtml.js";
+import { assertProposalTotalsMatch } from "../../src/lib/validateProposal.js";
 
 // pdfjs-dist loads its parsing engine through a separate "worker" module
 // (pdf.worker.mjs) — even in Node, where there's no real Worker thread,
@@ -140,6 +141,21 @@ export default async function handler(req, res) {
   if (!data || typeof data !== "object") {
     res.status(400).json({ error: "Missing proposal data" });
     return;
+  }
+
+  // Same pre-export check as the Word export (see validateProposal.js) —
+  // this endpoint is a second, independent export path, so it needs its
+  // own call rather than relying on the client having already checked.
+  // A blocked validation is a 400 (the request itself is invalid — bad
+  // input, not a server failure), not a 500.
+  try {
+    assertProposalTotalsMatch(data);
+  } catch (err) {
+    if (err.isValidationError) {
+      res.status(400).json({ error: err.message });
+      return;
+    }
+    throw err;
   }
 
   // Puppeteer's footerTemplate doesn't support arbitrary server-side

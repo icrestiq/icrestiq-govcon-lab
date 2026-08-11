@@ -6,6 +6,7 @@ import { computeExtended, computeGrandTotal, formatCurrency } from "../lib/prici
 import { isValidNaicsCode, getNaicsTitle, searchNaics, MAX_NAICS_SELECTIONS } from "../lib/naics";
 import { buildOutline, outlineDropdownOptions, findOutlineLabel } from "../lib/outline";
 import { migrateProseList, isLegacyProseListValue } from "../lib/proseList";
+import { assertProposalTotalsMatch } from "../lib/validateProposal";
 
 /**
  * GovCon Lab — Proposal Builder
@@ -984,9 +985,25 @@ function ProposalPreview({ data, logoUrl, totalPrice, onBack }) {
       URL.revokeObjectURL(url);
     } catch (err) {
       console.error(err);
-      setDocxError("Could not generate the Word document. Please try again.");
+      setDocxError(err?.isValidationError ? err.message : "Could not generate the Word document. Please try again.");
     } finally {
       setDocxGenerating(false);
+    }
+  }
+
+  // Runs the same narrative-vs-total check the exports use, so the quick
+  // Print / Save as PDF path can't slip a stale total past the person
+  // either — it just has to do it inline, synchronously, since there's no
+  // request/response round trip to hang an error on the way the other two
+  // export paths do.
+  const [printError, setPrintError] = useState("");
+  function handlePrint() {
+    setPrintError("");
+    try {
+      assertProposalTotalsMatch(data);
+      window.print();
+    } catch (err) {
+      setPrintError(err?.isValidationError ? err.message : "Could not prepare the document for printing. Please try again.");
     }
   }
 
@@ -1008,7 +1025,9 @@ function ProposalPreview({ data, logoUrl, totalPrice, onBack }) {
       });
       if (!response.ok) {
         const body = await response.json().catch(() => ({}));
-        throw new Error(body.error || `Server returned ${response.status}`);
+        const err = new Error(body.error || `Server returned ${response.status}`);
+        err.isValidationError = response.status === 400;
+        throw err;
       }
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
@@ -1022,7 +1041,7 @@ function ProposalPreview({ data, logoUrl, totalPrice, onBack }) {
       URL.revokeObjectURL(url);
     } catch (err) {
       console.error(err);
-      setPdfError("Could not generate the PDF. Please try again.");
+      setPdfError(err?.isValidationError ? err.message : "Could not generate the PDF. Please try again.");
     } finally {
       setPdfGenerating(false);
     }
@@ -1513,7 +1532,7 @@ function ProposalPreview({ data, logoUrl, totalPrice, onBack }) {
         <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
           <button onClick={onBack} style={{ ...addBtnStyle, borderColor: "#999", color: "#333" }}>← Back to Edit</button>
           <button
-            onClick={() => window.print()}
+            onClick={handlePrint}
             style={{ background: GOLD, color: "#fff", border: "none", borderRadius: 4, padding: "8px 20px", fontWeight: 600, cursor: "pointer" }}
           >
             Print / Save as PDF
@@ -1534,6 +1553,7 @@ function ProposalPreview({ data, logoUrl, totalPrice, onBack }) {
             {docxGenerating ? "Generating…" : "Download Word Doc"}
           </button>
         </div>
+        {printError && <p style={{ color: "#c44", fontSize: 12, margin: 0 }}>{printError}</p>}
         {docxError && <p style={{ color: "#c44", fontSize: 12, margin: 0 }}>{docxError}</p>}
         {pdfError && <p style={{ color: "#c44", fontSize: 12, margin: 0 }}>{pdfError}</p>}
       </div>
