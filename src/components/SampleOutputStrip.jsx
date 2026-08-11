@@ -4,7 +4,7 @@ export default function SampleOutputStrip() {
   return (
     <div className={styles.strip}>
       <div className={styles.track}>
-        
+        <a
           href="/sample"
           className={styles.imgLink}
           aria-label="See the full sample proposal — Compliance Cross-Reference Matrix page"
@@ -18,7 +18,7 @@ export default function SampleOutputStrip() {
             className={styles.img}
           />
         </a>
-        
+        <a
           href="/sample"
           className={styles.imgLink}
           aria-label="See the full sample proposal — Price Proposal page"
@@ -32,7 +32,7 @@ export default function SampleOutputStrip() {
             className={styles.img}
           />
         </a>
-        
+        <a
           href="/sample"
           className={styles.imgLink}
           aria-label="See the full sample proposal — Cover page"
