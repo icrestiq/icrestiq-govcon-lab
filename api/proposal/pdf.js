@@ -36,6 +36,26 @@
 
 import { renderProposalHtml } from "../../src/lib/renderProposalHtml.js";
 
+// pdfjs-dist loads its parsing engine through a separate "worker" module
+// (pdf.worker.mjs) — even in Node, where there's no real Worker thread,
+// it still dynamically imports that same file to run as a "fake worker"
+// in-process. That dynamic import path is invisible to Vercel's static
+// file tracer, which decides what to include in the deployed function
+// bundle by following actual import/require statements it can see at
+// build time — so the worker file was silently left out, and the
+// function crashed at runtime with "Cannot find module
+// .../pdf.worker.mjs" (confirmed from the production error log). This
+// import does nothing on its own — it's never referenced below — its
+// only job is to give the tracer a static import it CAN see, so it
+// bundles the file. Confirmed locally, using Vercel's own tracer
+// (@vercel/nft) against this exact file: absent, the worker module is
+// excluded; with it, included. Also confirmed the import itself is inert
+// or Node — it doesn't throw or register anything global, so it's safe
+// as a plain side-effect import; pdfjs-dist's own "fake worker" path
+// relies on being able to import this same file directly, in-process,
+// so this is expected, supported usage rather than a hack.
+import "pdfjs-dist/legacy/build/pdf.worker.mjs";
+
 // @sparticuz/chromium only unpacks and wires up the shared libraries
 // Chromium needs (libnss3.so among them) when it detects it's running
 // inside a Lambda-shaped Node 20+/22+ container — it checks for
