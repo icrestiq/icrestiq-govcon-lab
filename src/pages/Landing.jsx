@@ -8,6 +8,7 @@ import RecentWins from '../components/RecentWins'
 import DigestSignup from '../components/DigestSignup'
 import FoundingSpotsCounter, { useFoundingSpotsRemaining } from '../components/FoundingSpotsCounter'
 import ProofSection from '../components/ProofSection'
+import SampleOutputStrip from '../components/SampleOutputStrip'
 import styles from './Landing.module.css'
 
 const FEATURES = [
@@ -210,6 +211,10 @@ export default function Landing() {
               <p className={styles.featureDesc}>{desc}</p>
             </div>
           ))}
+        </div>
+
+        <div style={{ marginTop: 'var(--sp-8, 48px)' }}>
+          <SampleOutputStrip />
         </div>
       </section>
 

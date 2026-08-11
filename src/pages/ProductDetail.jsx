@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react'
 import { useParams, useLocation, Link } from 'react-router-dom'
 import { ArrowLeft, Package, ShoppingCart } from 'lucide-react'
@@ -6,6 +5,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/AuthContext'
 import { isFoundingMember } from '../lib/tier'
 import FounderBadge from '../components/FounderBadge'
+import SampleOutputStrip from '../components/SampleOutputStrip'
 import styles from './ProductDetail.module.css'
 
 export default function ProductDetail() {
@@ -35,6 +35,18 @@ export default function ProductDetail() {
       setLoading(false)
     }
   }
+
+  // Matches on the product record itself — name or slug containing
+  // "Proposal Builder" (case-insensitive). Checks every plausible field
+  // name (name, slug, title) rather than assuming the schema, and never
+  // an id or price, so this doesn't break if the record is renamed or
+  // re-priced.
+  const isProposalBuilderPlaybook = Boolean(
+    product &&
+    [product.name, product.slug, product.title]
+      .filter(Boolean)
+      .some((value) => String(value).toLowerCase().includes('proposal builder'))
+  )
 
   if (loading) return (
     <div style={{ padding: 'var(--sp-8)' }}>
@@ -80,6 +92,12 @@ export default function ProductDetail() {
               {product.long_description.split('\n').map((line, i) => (
                 <p key={i}>{line}</p>
               ))}
+            </div>
+          )}
+
+          {isProposalBuilderPlaybook && (
+            <div style={{ marginTop: 'var(--sp-6)' }}>
+              <SampleOutputStrip />
             </div>
           )}
         </div>
