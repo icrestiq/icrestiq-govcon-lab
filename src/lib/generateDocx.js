@@ -245,7 +245,12 @@ export async function generateProposalDocx(data, logoUrl, totalPrice) {
     new Paragraph({ pageBreakBefore: true, children: [new TextRun({ text: "Table of Contents", bold: true, size: 32, color: NAVY_HEX })] }),
     new Paragraph({
       spacing: { after: 200 },
-      children: [new TextRun({ text: "(Page numbers refresh automatically when opened in Word. If viewing in another application, select the table and press F9, or right-click and choose Update Field.)", italics: true, size: 18, color: MUTED_HEX })],
+      children: [new TextRun({
+        text: "(Page numbers refresh automatically when opened in Word. If viewing in another application, select the table and press F9, or right-click and choose Update Field. Delete this note before printing or submitting the proposal.)",
+        bold: true,
+        color: "FF0000",
+        size: 18,
+      })],
     }),
     new TableOfContents("Table of Contents", { hyperlink: true, headingStyleRange: "1-2" }),
   );

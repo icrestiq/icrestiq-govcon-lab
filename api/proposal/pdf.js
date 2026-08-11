@@ -34,23 +34,33 @@
 // third time would close that gap completely, but doubles render time for
 // a genuinely rare case; not done here. Flagged in case it ever matters.
 
-import puppeteer from "puppeteer-core";
-import chromium from "@sparticuz/chromium";
 import { renderProposalHtml } from "../../src/lib/renderProposalHtml.js";
 
 // @sparticuz/chromium only unpacks and wires up the shared libraries
 // Chromium needs (libnss3.so among them) when it detects it's running
 // inside a Lambda-shaped Node 20+/22+ container — it checks for
 // AWS_EXECUTION_ENV or AWS_LAMBDA_JS_RUNTIME containing "20.x"/"22.x"
-// (see @sparticuz/chromium/build/helper.js, isRunningInAwsLambdaNode20).
+// (see @sparticuz/chromium/build/helper.js, isRunningInAwsLambdaNode20)
+// in a block that runs ONCE, at module import time, not per-request.
 // Vercel's functions run on the same kind of container but don't set
 // either variable, so that check silently fails, the AL2023 library pack
 // never gets extracted, and Chromium fails to launch with "libnss3.so:
 // cannot open shared object file" — confirmed from the actual production
-// error log. Setting this ourselves (only if not already set, so it never
-// overrides a real Lambda/Netlify environment) makes the detection match
-// unconditionally, on every environment tier, without depending on a
-// Vercel dashboard setting someone has to remember to add.
+// error log.
+//
+// A first attempt at this fix set the env var as a plain statement below
+// a static `import chromium from "@sparticuz/chromium"` — and still
+// failed the same way in production, because ES module imports are
+// hoisted and fully evaluated before any of the importing file's own
+// top-level code runs, static-import position in the file is irrelevant.
+// So chromium's module-level detection ran (and failed) before this env
+// var was ever set, no matter where the assignment line sat in the file.
+// Confirmed by reproducing that exact ordering locally: LD_LIBRARY_PATH
+// came back undefined every time with a static import, and correctly
+// populated once chromium was imported dynamically instead — a dynamic
+// `import()` only runs at the point it's actually called in the code, so
+// doing it inside the handler, after this assignment, guarantees the
+// ordering actually holds.
 process.env.AWS_LAMBDA_JS_RUNTIME ??= "nodejs22.x";
 
 export const config = {
@@ -120,6 +130,14 @@ export default async function handler(req, res) {
 
   let browser;
   try {
+    // Dynamic imports, not static ones — see the comment above the
+    // AWS_LAMBDA_JS_RUNTIME assignment for why this matters here
+    // specifically: these two modules must load after that env var is
+    // set, and only a dynamic import (evaluated at this exact point in
+    // the code) guarantees that ordering.
+    const { default: puppeteer } = await import("puppeteer-core");
+    const { default: chromium } = await import("@sparticuz/chromium");
+
     browser = await puppeteer.launch({
       args: chromium.args,
       defaultViewport: chromium.defaultViewport,
