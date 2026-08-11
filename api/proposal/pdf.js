@@ -1,7 +1,8 @@
 // api/proposal/pdf.js
 //
 // Server-side proposal PDF export with real, trustworthy TOC and
-// Compliance Matrix page numbers.
+// Compliance Matrix page numbers, and no internal markers left in the
+// delivered file.
 //
 // Why this exists: the in-browser "Print / Save as PDF" button (still the
 // default, still instant) can't know its own final page numbers ahead of
@@ -12,27 +13,12 @@
 // it would land on and had to blank the numbers rather than risk showing
 // a wrong one.
 //
-// This endpoint sidesteps prediction entirely by rendering twice with a
-// real headless Chromium (the exact browser doing the real pagination) and
-// reading the answer back out of the actual finished PDF rather than
-// guessing at it beforehand:
-//
-//   Pass 1 — render the proposal with no page numbers in the TOC/Matrix
-//   (they're not known yet), but with an invisible, uniquely-tokened
-//   marker at the top of every heading. Print it to a real PDF. Scan that
-//   PDF's actual per-page text (via pdfjs) for each token to learn which
-//   page Chromium's own layout put each heading on.
-//
-//   Pass 2 — render again, identical HTML/CSS (so nothing shifts height
-//   between passes), this time with those real page numbers filled into
-//   the TOC and Compliance Matrix. This is the PDF actually returned.
-//
-// One known edge case: if adding page numbers to the TOC itself changes
-// its height enough to push a later heading onto a different page (rare —
-// appending " (p. 6)" to a line essentially never wraps it), that specific
-// number could be off by one in pass 2. Re-scanning pass 2's own output a
-// third time would close that gap completely, but doubles render time for
-// a genuinely rare case; not done here. Flagged in case it ever matters.
+// This endpoint sidesteps prediction by rendering with a real headless
+// Chromium (the exact browser doing the real pagination) and reading the
+// answer back out of the actual finished PDF rather than guessing at it
+// beforehand — see resolvePageNumbers below for how that resolution
+// actually converges to something self-consistent rather than trusting a
+// single measurement.
 
 import { renderProposalHtml } from "../../src/lib/renderProposalHtml.js";
 import { assertProposalTotalsMatch } from "../../src/lib/validateProposal.js";
@@ -131,6 +117,74 @@ async function renderPdf(browser, html, footerSolNum) {
   }
 }
 
+// Resolves TOC / Compliance Matrix page numbers to a fixed point instead
+// of trusting a single measurement.
+//
+// THE BUG THIS REPLACES: a two-pass version of this rendered once with no
+// page numbers to measure where headings landed, then rendered again with
+// those numbers filled into the TOC and Matrix — and returned that second
+// render unconditionally, on the assumption that filling in the numbers
+// couldn't meaningfully change anything above where they were measured.
+// That assumption breaks whenever adding " (p. 6)" (or, on a long enough
+// document, " (p. 14)") to a Compliance Matrix row or TOC line pushes
+// that line onto a second line — confirmed by reproducing it directly: a
+// large-enough Compliance Matrix, referencing a section repeatedly, grew
+// tall enough between passes to push "3. Technical Approach" from the
+// page it was measured on straight onto the next one, while the TOC and
+// Matrix — built from the first pass's now-stale measurement — kept
+// showing the old number. Every other entry was unaffected because
+// nothing else happened to sit close enough to that particular page
+// boundary to be pushed over it.
+//
+// THE FIX: after every render, re-measure the SAME render's own output.
+// If what was used to build a render matches what that render actually
+// contains, the numbers are self-consistent and safe to deliver — stop.
+// If not, the new measurement becomes the next attempt's input, and it
+// tries again. Capped at MAX_ATTEMPTS renders (each is a few seconds; a
+// document that hasn't stabilized in that many attempts is treated as
+// unable to resolve, not looped on indefinitely). Any id that's still
+// disagreeing with itself when the cap is hit is marked unresolved and
+// prints as an em dash in one final render — never a number that was
+// measured but never actually confirmed against the file being handed
+// back.
+async function resolvePageNumbers(browser, data, logoUrl, totalPrice, footerSolNum) {
+  const MAX_ATTEMPTS = 4;
+  let pageNumbers = null;
+  let html, pdf, measured;
+
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    html = renderProposalHtml(data, logoUrl, totalPrice, { pageNumbers, includeMarkers: true });
+    pdf = await renderPdf(browser, html, footerSolNum);
+    measured = await extractPageNumbers(pdf);
+
+    if (pageNumbers !== null) {
+      const usedKeys = Object.keys(pageNumbers);
+      const selfConsistent = usedKeys.length > 0 && usedKeys.every((id) => pageNumbers[id] === measured[id]);
+      if (selfConsistent) {
+        return { pageNumbers, unresolvedCount: 0 };
+      }
+    }
+    pageNumbers = measured;
+  }
+
+  // Didn't reach a fixed point within the attempt cap. `pageNumbers` here
+  // is what the LAST render was built from; `measured` is what that same
+  // render actually turned out to contain. Anywhere those still disagree
+  // is genuinely unresolved — mark it with the em-dash sentinel rather
+  // than shipping a number that was never confirmed.
+  const finalMap = {};
+  let unresolvedCount = 0;
+  for (const id of Object.keys(measured)) {
+    if (pageNumbers[id] === measured[id]) {
+      finalMap[id] = measured[id];
+    } else {
+      finalMap[id] = "\u2014";
+      unresolvedCount++;
+    }
+  }
+  return { pageNumbers: finalMap, unresolvedCount };
+}
+
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     res.status(405).json({ error: "Method not allowed" });
@@ -181,13 +235,21 @@ export default async function handler(req, res) {
       headless: chromium.headless,
     });
 
-    // ── Pass 1: discover real page numbers ──
-    const draftHtml = renderProposalHtml(data, logoUrl, totalPrice, { pageNumbers: null });
-    const draftPdf = await renderPdf(browser, draftHtml, footerSolNum);
-    const pageNumbers = await extractPageNumbers(draftPdf);
+    const { pageNumbers, unresolvedCount } = await resolvePageNumbers(browser, data, logoUrl, totalPrice, footerSolNum);
+    if (unresolvedCount > 0) {
+      console.warn(`Proposal PDF: ${unresolvedCount} section(s) could not resolve a stable page number after retrying; printed as em dash.`);
+    }
 
-    // ── Pass 2: final render with real numbers filled in ──
-    const finalHtml = renderProposalHtml(data, logoUrl, totalPrice, { pageNumbers });
+    // The render actually delivered to the user. includeMarkers: false —
+    // no PMARK token reaches this HTML at all, so none can reach the
+    // exported PDF's text layer. Not re-verified against a fresh
+    // measurement afterward, because doing so is impossible by
+    // construction (there are no marker tokens left to scan for) — this
+    // relies on removing a set of near-zero-height, near-zero-width
+    // invisible spans not being able to meaningfully change page breaks,
+    // which is the same property that made them safe to treat as
+    // effectively weightless during measurement in the first place.
+    const finalHtml = renderProposalHtml(data, logoUrl, totalPrice, { pageNumbers, includeMarkers: false });
     const finalPdfRaw = await renderPdf(browser, finalHtml, footerSolNum);
 
     const fileSafeName = (data.companyName || "proposal").replace(/[^a-z0-9]+/gi, "-").toLowerCase();

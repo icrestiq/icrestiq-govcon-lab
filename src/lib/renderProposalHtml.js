@@ -10,19 +10,28 @@
 // helpers (buildOutline, pricing, naics) so numbers and section numbering
 // can't drift, even if markup has to be duplicated.
 //
-// TOC / Compliance Matrix page numbers work in two passes, driven by the
-// caller (api/proposal/pdf.js):
-//   Pass 1: render with pageNumbers = null. Real content, but the TOC and
-//   Compliance Matrix show no page column. Each section/subsection heading
-//   carries an invisible marker span with a unique token. The caller
-//   renders this to a real PDF with Puppeteer, then scans the actual
-//   per-page text (via pdfjs) for each token to learn which page Chromium's
-//   own print layout put it on — a fact read back from the finished PDF,
-//   not a prediction made ahead of time.
-//   Pass 2: render again with pageNumbers populated from that scan. Same
-//   HTML structure (markers stay in, so nothing shifts height between
-//   passes), now with real numbers in the TOC and Matrix. This second
-//   render is the one actually delivered to the user.
+// TOC / Compliance Matrix page numbers are resolved by the caller
+// (api/proposal/pdf.js, resolvePageNumbers) through repeated real
+// Puppeteer renders, not predicted ahead of time. Each section/subsection
+// heading carries an invisible marker span with a unique token; the
+// caller renders to a real PDF and scans the actual per-page text (via
+// pdfjs) for each token to learn which page Chromium's own print layout
+// put it on — a fact read back from a finished PDF, not a guess.
+//
+// This needs more than one render, and the render count isn't fixed at
+// two: adding a page-number suffix like " (p. 6)" to a TOC or Compliance
+// Matrix line changes that line's rendered width, which can occasionally
+// wrap it onto a second line and shift everything after it down by one —
+// so a number measured before that text existed can go stale the moment
+// it's actually printed. resolvePageNumbers re-renders and re-measures
+// until a render's own output matches what was used to build it (a fixed
+// point), up to a small retry cap; anything still unstable after that is
+// marked unresolved and prints as an em dash rather than a number that
+// was never actually verified against the delivered file.
+//
+// Whichever render is ultimately returned to the user is built with
+// includeMarkers: false, so no PMARK token — used only for measurement —
+// ever reaches an exported file.
 
 // Explicit .js extensions below are required, not stylistic: Vite (which
 // builds the frontend that also imports this file) resolves extensionless
@@ -49,26 +58,47 @@ function nl2br(v) {
   return esc(v).split("\n").join("<br />");
 }
 
-// Invisible per-heading marker, read back out of the rendered PDF's text
-// layer in pass 1. Chromium's print-to-PDF renderer silently drops any
-// text run painted with color:transparent (and visibility:hidden) before
-// it ever reaches the PDF's text layer — confirmed by testing — so this
-// can't use the usual "transparent + tiny font" trick. color:white at a
-// near-zero font size does survive into the text layer (it's still a real
-// glyph paint operation, just white-on-white and effectively unreadable
-// at 1px), so that's what's used here instead.
-function marker(id) {
-  return `<span data-pagemarker="${esc(id)}" style="font-size:1px;line-height:0;color:#ffffff;">\u00abPMARK:${esc(id)}\u00bb</span>`;
-}
-
+// A resolved page number is a positive integer. An id that's present in
+// the map but mapped to the literal string "\u2014" means resolution was
+// attempted and could not be trusted (see resolvePageNumbers in
+// api/proposal/pdf.js) — printed as an em dash, never a guessed number.
+// An id simply absent from the map (or pageNumbers === null, pass 1)
+// means "not computed yet" and renders no page reference at all.
 function pageRef(pageNumbers, id) {
-  if (!pageNumbers) return "";
+  if (!pageNumbers || !(id in pageNumbers)) return "";
   const n = pageNumbers[id];
-  return n ? ` <span style="color:#8A94A6;">(p. ${n})</span>` : "";
+  return ` <span style="color:#8A94A6;">(p. ${n})</span>`;
 }
 
 export function renderProposalHtml(data, logoUrl, totalPrice, opts = {}) {
   const pageNumbers = opts.pageNumbers || null;
+
+  // Invisible per-heading marker, read back out of the rendered PDF's text
+  // layer during page-number resolution. Chromium's print-to-PDF renderer
+  // silently drops any text run painted with color:transparent (and
+  // visibility:hidden) before it ever reaches the PDF's text layer —
+  // confirmed by testing — so this can't use the usual "transparent +
+  // tiny font" trick. color:white at a near-zero font size does survive
+  // into the text layer (it's still a real glyph paint operation, just
+  // white-on-white and effectively unreadable at 1px), so that's what's
+  // used here instead.
+  //
+  // includeMarkers defaults to true because every resolution pass needs
+  // them present to measure anything at all. The one render that's
+  // actually returned to the user is built with includeMarkers: false —
+  // see resolvePageNumbers in api/proposal/pdf.js — so no PMARK token
+  // ever reaches an exported file. This was a real defect, not a
+  // theoretical one: markers were leaking into delivered PDFs, extractable
+  // by copy/paste, Ctrl+F, and screen readers despite being invisible on
+  // screen. Emptying the function here, once, rather than deleting each
+  // of the ~12 call sites below, is what guarantees a later heading that
+  // forgets to strip its own marker can't reintroduce the leak.
+  const includeMarkers = opts.includeMarkers !== false;
+  function marker(id) {
+    if (!includeMarkers) return "";
+    return `<span data-pagemarker="${esc(id)}" style="font-size:1px;line-height:0;color:#ffffff;">\u00abPMARK:${esc(id)}\u00bb</span>`;
+  }
+
 
   const winThemeList = (data.winThemes || "").split("\n").map((s) => s.trim()).filter(Boolean);
   const naicsEntries = (data.naicsCodes || []).map((code) => ({ code, title: getNaicsTitle(code) }));
