@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Sample GovCon Proposal — Actual Proposal Builder Output | GovCon Lab</title>
+<meta name="description" content="See the unedited output of the GovCon Lab Proposal Builder for a fictional example company: auto-numbered sections, real Table of Contents and Compliance Matrix page numbers, computed CLIN pricing, and a print-ready running footer." />
+<link rel="canonical" href="https://www.govconlab.com/sample" />
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<link rel="shortcut icon" href="/favicon.svg" />
+
+<meta property="og:title" content="Sample GovCon Proposal — Actual Proposal Builder Output" />
+<meta property="og:description" content="The unedited output of the GovCon Lab Proposal Builder for a fictional example company — auto-numbered sections, real TOC/Compliance Matrix page numbers, computed CLIN pricing, running footer." />
+<meta property="og:type" content="website" />
+<meta property="og:url" content="https://www.govconlab.com/sample" />
+<meta property="og:image" content="https://www.govconlab.com/images/samples/sample-p2.webp" />
+<meta property="og:image:width" content="1275" />
+<meta property="og:image:height" content="1651" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="Sample GovCon Proposal — Actual Proposal Builder Output" />
+<meta name="twitter:description" content="The unedited output of the GovCon Lab Proposal Builder for a fictional example company — auto-numbered sections, real TOC/Compliance Matrix page numbers, computed CLIN pricing, running footer." />
+<meta name="twitter:image" content="https://www.govconlab.com/images/samples/sample-p2.webp" />
+<meta name="robots" content="index,follow" />
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+
+<style>
+  :root {
+    --navy: #1B2A4A;
+    --navy-light: #2C4070;
+    --gold: #C9A84C;
+    --gold-dim: #B8963E;
+    --text-secondary: #4A5568;
+    --text-muted: #8A94A6;
+    --border: #DDE1EA;
+    --surface: #FFFFFF;
+    --void: #F6F7F9;
+    --display: "Space Grotesk", system-ui, sans-serif;
+    --body-font: "Inter", system-ui, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    font-family: var(--body-font);
+    color: var(--navy);
+    background: var(--surface);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+  a { color: inherit; }
+  img { max-width: 100%; display: block; }
+  .wrap { width: 100%; max-width: 1040px; margin: 0 auto; padding: 0 18px; }
+
+  h1, h2, h3 { font-family: var(--display); font-weight: 600; letter-spacing: -0.01em; color: var(--navy); }
+  h1 { font-size: clamp(26px, 6.4vw, 40px); line-height: 1.15; font-weight: 700; }
+  h2 { font-size: clamp(20px, 4.4vw, 26px); line-height: 1.25; margin-bottom: 14px; }
+  h3 { font-size: 15px; }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--gold-dim);
+  }
+
+  /* ── disclaimer badge: the single most important element on this page ── */
+  .disclaimer {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.03em;
+    color: var(--navy);
+    background: var(--void);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--gold-dim);
+    padding: 9px 14px;
+    border-radius: 4px;
+    line-height: 1.4;
+  }
+  .disclaimer strong { font-weight: 600; }
+
+  /* ── header ── */
+  header.hero { background: var(--navy); color: #fff; padding: 30px 0 34px; position: relative; }
+  header.hero::after {
+    content: ""; position: absolute; inset: auto 0 0 0; height: 3px;
+    background: linear-gradient(90deg, var(--gold) 0%, var(--gold-dim) 60%, transparent 100%);
+  }
+  .brandrow { display: flex; align-items: center; gap: 9px; margin-bottom: 22px; }
+  .mark {
+    width: 26px; height: 26px; border-radius: 4px; background: var(--gold); color: var(--navy);
+    font-family: var(--display); font-weight: 700; font-size: 13px;
+    display: grid; place-items: center; flex-shrink: 0;
+  }
+  .brandname { font-family: var(--display); font-weight: 600; font-size: 15px; }
+  header.hero .disclaimer { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.18); color: #fff; margin-bottom: 16px; }
+  header.hero h1 { color: #fff; margin-bottom: 14px; }
+  header.hero h1 em { font-style: normal; color: var(--gold); }
+  header.hero .sub { color: #C6CEDD; font-size: 16px; max-width: 640px; }
+
+  /* ── gallery ── */
+  section.gallery { padding: 34px 0 8px; }
+  .gallery-note { font-size: 14px; color: var(--text-secondary); margin-bottom: 20px; }
+  .grid { display: grid; grid-template-columns: 1fr; gap: 16px; }
+  .shot {
+    display: block; border: 1px solid var(--border); border-radius: 6px; overflow: hidden;
+    background: var(--void); text-decoration: none;
+  }
+  .shot img { width: 100%; height: auto; aspect-ratio: 1275 / 1651; object-fit: cover; object-position: top; }
+  .shot-cap {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    font-family: var(--mono); font-size: 11.5px; color: var(--text-secondary);
+    padding: 9px 12px; border-top: 1px solid var(--border); background: var(--surface);
+  }
+  .shot-cap .open { color: var(--gold-dim); font-weight: 500; white-space: nowrap; }
+
+  /* ── produced-automatically list ── */
+  section.produced { padding: 30px 0; }
+  .produced ul { list-style: none; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+  .produced li {
+    padding: 14px 16px; font-size: 14.5px; color: var(--navy); border-bottom: 1px solid var(--border);
+    display: flex; gap: 10px; align-items: baseline;
+  }
+  .produced li:last-child { border-bottom: none; }
+  .produced li::before {
+    content: "—"; font-family: var(--mono); color: var(--gold-dim); flex-shrink: 0;
+  }
+
+  /* ── download gate ── */
+  section.gate { padding: 30px 0 40px; }
+  .gate-box { background: var(--void); border: 1px solid var(--border); border-radius: 8px; padding: 24px 20px; }
+  .gate-box h2 { margin-bottom: 6px; }
+  .gate-box .sub { font-size: 14px; color: var(--text-secondary); margin-bottom: 18px; }
+  form.gate-form { display: flex; flex-direction: column; gap: 10px; }
+  input[type=email] {
+    font-family: var(--body-font); font-size: 16px; padding: 13px 14px; border-radius: 6px;
+    border: 1px solid var(--border); background: #fff; color: var(--navy); width: 100%;
+  }
+  input[type=email]::placeholder { color: var(--text-muted); }
+  input[type=email]:focus { outline: 2px solid var(--gold); outline-offset: 1px; }
+  .btn {
+    font-family: var(--display); font-weight: 600; font-size: 15px; padding: 13px 18px; border: 0;
+    border-radius: 6px; background: var(--gold); color: var(--navy); cursor: pointer; width: 100%;
+    text-align: center; transition: background .15s ease;
+  }
+  .btn:hover { background: var(--gold-dim); }
+  .btn[disabled] { opacity: .6; cursor: default; }
+  .micro { font-size: 12px; color: var(--text-muted); }
+  .msg { font-size: 13.5px; padding: 10px 12px; border-radius: 5px; display: none; line-height: 1.5; }
+  .msg.show { display: block; }
+  .msg.ok { background: #EAF6EE; color: #1E5C34; border: 1px solid #C8E6D0; }
+  .msg.err { background: #FDECEC; color: #9B2C2C; border: 1px solid #F4C7C7; }
+
+  .direct-link { display: none; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); }
+  .direct-link.show { display: block; }
+  .direct-link a {
+    font-family: var(--display); font-weight: 600; font-size: 14.5px; color: var(--navy-light);
+    text-decoration: underline; text-underline-offset: 3px;
+  }
+  .direct-link .note { font-size: 12.5px; color: var(--text-muted); margin-top: 4px; }
+
+  /* ── further links ── */
+  section.further { padding: 6px 0 40px; }
+  .further-links { display: flex; flex-direction: column; gap: 10px; }
+  .further-links a {
+    display: block; padding: 14px 16px; border: 1px solid var(--border); border-radius: 6px;
+    text-decoration: none; font-size: 14.5px; color: var(--navy); background: #fff;
+  }
+  .further-links a span.tag {
+    display: block; font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--gold-dim); margin-bottom: 4px;
+  }
+  .further-links a .arrow { color: var(--text-muted); }
+
+  footer { padding: 22px 0 40px; border-top: 1px solid var(--border); }
+  footer .disclaimer { margin-bottom: 14px; }
+  footer .fine { font-size: 12px; color: var(--text-muted); }
+  footer .fine a { color: var(--text-secondary); text-decoration: underline; }
+
+  /* ── ≥600px ── */
+  @media (min-width: 600px) {
+    .wrap { padding: 0 28px; }
+    .grid { grid-template-columns: repeat(6, 1fr); }
+    .shot.g-featured { grid-column: 1 / 7; }
+    .shot.g-second   { grid-column: 1 / 4; }
+    .shot.g-third    { grid-column: 4 / 7; }
+    .shot.g-fourth   { grid-column: 1 / 3; }
+    .shot.g-fifth    { grid-column: 3 / 5; }
+    .shot.g-sixth    { grid-column: 5 / 7; }
+    .further-links { flex-direction: row; }
+    .further-links a { flex: 1; }
+  }
+
+  /* ── ≥860px ── */
+  @media (min-width: 860px) {
+    header.hero { padding: 44px 0 50px; }
+    section.gallery { padding: 46px 0 10px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <div class="brandrow">
+      <div class="mark">G</div>
+      <div class="brandname">GovCon Lab</div>
+    </div>
+    <div class="disclaimer">
+      <strong>SAMPLE</strong> — fictional example company, illustrative only. Not a real submitted proposal or an awarded contract.
+    </div>
+    <h1>This is the <em>actual, unedited</em> output of the GovCon Lab Proposal Builder.</h1>
+    <p class="sub">No cropping, no touch-ups. What follows is exactly what the tool generated for a fictional example company responding to a fictional solicitation — so you can see the real formatting, numbering, and pricing before you build your own.</p>
+  </div>
+</header>
+
+<section class="gallery">
+  <div class="wrap">
+    <h2>Six pages from the 14-page export</h2>
+    <p class="gallery-note">Tap or click any page to open it full size.</p>
+    <div class="grid">
+      <a class="shot g-featured" href="/images/samples/sample-p2.webp" target="_blank" rel="noopener" aria-label="Open Compliance Cross-Reference Matrix page full size">
+        <img src="/images/samples/sample-p2.webp" width="1275" height="1651" loading="eager" decoding="async"
+             alt="Compliance Cross-Reference Matrix page mapping each solicitation requirement to a proposal section and page number" />
+        <span class="shot-cap">Compliance Cross-Reference Matrix <span class="open">Open full size →</span></span>
+      </a>
+      <a class="shot g-second" href="/images/samples/sample-p5.webp" target="_blank" rel="noopener" aria-label="Open Price Proposal page full size">
+        <img src="/images/samples/sample-p5.webp" width="1275" height="1651" loading="lazy" decoding="async"
+             alt="Price Proposal page showing the CLIN pricing table with unit prices, extended prices, and Total Evaluated Price" />
+        <span class="shot-cap">Price Proposal <span class="open">Open full size →</span></span>
+      </a>
+      <a class="shot g-third" href="/images/samples/sample-p1.webp" target="_blank" rel="noopener" aria-label="Open cover page full size">
+        <img src="/images/samples/sample-p1.webp" width="1275" height="1651" loading="lazy" decoding="async"
+             alt="Cover page of the sample technical and price proposal, with company letterhead and solicitation number" />
+        <span class="shot-cap">Cover Page <span class="open">Open full size →</span></span>
+      </a>
+      <a class="shot g-fourth" href="/images/samples/sample-p3.webp" target="_blank" rel="noopener" aria-label="Open Technical Approach page full size">
+        <img src="/images/samples/sample-p3.webp" width="1275" height="1651" loading="lazy" decoding="async"
+             alt="Technical Approach page describing proposed methodology, quality control, and risk management" />
+        <span class="shot-cap">Technical Approach <span class="open">Open full size →</span></span>
+      </a>
+      <a class="shot g-fifth" href="/images/samples/sample-p4.webp" target="_blank" rel="noopener" aria-label="Open Key Personnel page full size">
+        <img src="/images/samples/sample-p4.webp" width="1275" height="1651" loading="lazy" decoding="async"
+             alt="Key Personnel page listing names, roles, experience, and percent allocation in a table" />
+        <span class="shot-cap">Key Personnel <span class="open">Open full size →</span></span>
+      </a>
+      <a class="shot g-sixth" href="/images/samples/sample-p6.webp" target="_blank" rel="noopener" aria-label="Open Delivery Schedule and Warranty page full size">
+        <img src="/images/samples/sample-p6.webp" width="1275" height="1651" loading="lazy" decoding="async"
+             alt="Delivery Schedule and Warranty page showing CLIN delivery dates and warranty terms" />
+        <span class="shot-cap">Delivery Schedule &amp; Warranty <span class="open">Open full size →</span></span>
+      </a>
+    </div>
+  </div>
+</section>
+
+<section class="produced">
+  <div class="wrap">
+    <h2>What the tool produced automatically</h2>
+    <ul>
+      <li>Sections and subsections numbered from one outline, used consistently in the Word export, the PDF export, and the on-screen preview</li>
+      <li>Table of Contents and Compliance Matrix page numbers read from the rendered position of each heading after layout, not predicted in advance</li>
+      <li>CLIN extended prices and the Total Evaluated Price calculated from quantity × unit price, the same total wherever it appears in the document</li>
+      <li>A print stylesheet with a running footer — solicitation number and page X of Y — on every page</li>
+    </ul>
+  </div>
+</section>
+
+<section class="gate">
+  <div class="wrap">
+    <div class="gate-box">
+      <h2>Get the full 14-page PDF</h2>
+      <p class="sub">Every page, not just the six above.</p>
+      <form class="gate-form" id="gate-form" novalidate>
+        <label for="gate-email" class="micro" style="margin-bottom:2px;">Email address</label>
+        <input id="gate-email" type="email" name="email" required autocomplete="email" inputmode="email"
+               placeholder="you@company.com" aria-label="Your email address" />
+        <button class="btn" type="submit" id="gate-btn">Email me the full 14-page PDF</button>
+        <div class="micro">Double opt-in — confirm the email and the direct link unlocks right here too.</div>
+        <div class="msg" id="gate-msg" role="status"></div>
+      </form>
+      <div class="direct-link" id="direct-link">
+        <a href="/images/samples/govcon-lab-sample-proposal.pdf" target="_blank" rel="noopener">Open the full 14-page sample PDF →</a>
+        <div class="note">Same fictional example — all 14 pages, full size.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="further">
+  <div class="wrap">
+    <div class="further-links">
+      <a href="/store?q=Proposal%20Builder%20Playbook">
+        <span class="tag">Ebook</span>
+        Proposal Builder Playbook — section-by-section walkthrough <span class="arrow">→</span>
+      </a>
+      <a href="/membership">
+        <span class="tag">Membership</span>
+        Get the Proposal Builder itself, plus the community rooms <span class="arrow">→</span>
+      </a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="disclaimer">
+      <strong>Reminder:</strong> Extreme Climate Gear LLC and the solicitation shown are fictional, used for illustration only. This is not a real proposal, submission, or contract award.
+    </div>
+    <div class="fine">
+      <a href="/">govconlab.com</a> · iCrestiQ LLC · Easley, SC
+    </div>
+  </div>
+</footer>
+
+<script>
+(function () {
+  var f = document.getElementById('gate-form'),
+      i = document.getElementById('gate-email'),
+      b = document.getElementById('gate-btn'),
+      m = document.getElementById('gate-msg'),
+      d = document.getElementById('direct-link');
+
+  function showMsg(kind, text) {
+    m.className = 'msg show' + (kind ? ' ' + kind : '');
+    m.textContent = text;
+  }
+
+  function revealDirectLink() {
+    d.className = 'direct-link show';
+  }
+
+  f.addEventListener('submit', async function (e) {
+    e.preventDefault();
+    var email = i.value.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
+      showMsg('err', 'That email address does not look right.');
+      return;
+    }
+    b.disabled = true;
+    b.textContent = 'Sending…';
+    showMsg('', '');
+
+    try {
+      var r = await fetch('/api/digest/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email, source: 'sample-proposal' })
+      });
+      var data = {};
+      try { data = await r.json(); } catch (parseErr) { /* fall through to generic error below */ }
+
+      if (!r.ok) {
+        throw new Error(data.error || 'Something went wrong. Please try again.');
+      }
+
+      if (data.status === 'already-confirmed') {
+        showMsg('ok', "You're already on the list — and the direct PDF link is unlocked below.");
+      } else {
+        showMsg('ok', "Check your email and click the confirm link — that's the double opt-in. The direct PDF link is unlocked below too, so you're not stuck waiting on email.");
+      }
+      revealDirectLink();
+      b.textContent = 'Done ✓';
+    } catch (err) {
+      showMsg('err', err.message || 'Something went wrong. Please try again.');
+      b.disabled = false;
+      b.textContent = 'Email me the full 14-page PDF';
+    }
+  });
+})();
+</script>
+
+</body>
+</html>

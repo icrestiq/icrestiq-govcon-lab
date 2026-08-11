@@ -11,6 +11,14 @@
       "destination": "/go/index.html"
     },
     {
+      "source": "/sample",
+      "destination": "/sample/index.html"
+    },
+    {
+      "source": "/sample/",
+      "destination": "/sample/index.html"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
