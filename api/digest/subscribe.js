@@ -20,7 +20,10 @@
 //      the form first rendered. Scripted submissions that fire in well
 //      under a second get rejected; a real person takes at least ~1.5s to
 //      read the field and type an email.
-//   3. MX record check — before inserting a row or sending mail, verify
+//   3. Gmail dot-spam pattern — addresses like "an.s.on..c.h.a.u.9@gmail.com"
+//      that abuse Gmail's dot-insensitivity to look like unique real people.
+//      See looksLikeGmailDotSpam() below for the detection logic.
+//   4. MX record check — before inserting a row or sending mail, verify
 //      the email's domain actually has mail servers. This catches typo'd
 //      or nonexistent domains (e.g. a signup for "webshoppe.net" that
 //      doesn't resolve) immediately, instead of silently bouncing later
@@ -73,6 +76,47 @@ async function domainCanReceiveMail(domain) {
   } catch (err) {
     return false
   }
+}
+
+// Detects the "dot-spam" pattern seen in a batch of bot signups on
+// 2026-08-14 — addresses like "an.s.on..c.h.a.u.9@gmail.com". Gmail (and
+// Google Workspace / googlemail.com) ignores dots in the local part of an
+// address entirely, so these all route to a normal-looking inbox that
+// isn't the one that signed up, or to no one at all. Real Gmail addresses
+// almost never have more than 1-2 dots; bots generating "unique-looking"
+// variants of a base address tend to sprinkle a dot near every letter,
+// producing a high dot-to-length ratio or literal consecutive dots (which
+// is invalid syntax and always hard-bounces on Gmail's own SMTP relay).
+//
+// Only applied to gmail.com / googlemail.com — dot-insensitivity is a
+// Gmail-specific quirk, so this check would misfire on other providers
+// where dots are meaningful and dense-looking names are just names.
+const GMAIL_DOMAINS = new Set(['gmail.com', 'googlemail.com'])
+
+function looksLikeGmailDotSpam(localPart, domain) {
+  if (!GMAIL_DOMAINS.has(domain)) return false
+
+  // Consecutive dots are invalid RFC 5321 syntax — Gmail hard-rejects
+  // these at SMTP time every time. No point ever sending.
+  if (localPart.includes('..')) return true
+
+  const segments = localPart.split('.').filter(Boolean)
+  if (segments.length < 3) return false // 1-2 dots is normal, don't flag
+
+  const dotCount = (localPart.match(/\./g) || []).length
+  const ratio = dotCount / localPart.length
+  const avgSegmentLen = segments.reduce((sum, s) => sum + s.length, 0) / segments.length
+
+  // Repeated identical segment (e.g. "fc.fc.f.db") is a strong bot tell
+  // on its own, regardless of overall length or ratio.
+  const hasDuplicateSegment = new Set(segments).size < segments.length
+
+  // A real address like "jane.q.public" has a handful of dots but each
+  // segment is still a recognizable word or initial of reasonable length.
+  // The bot pattern seen here chops the local part into many 1-2 char
+  // fragments — average segment length around 1.5-2 chars, vs 3+ for a
+  // typical real name segment.
+  return dotCount >= 4 || ratio >= 0.3 || avgSegmentLen <= 2.2 || hasDuplicateSegment
 }
 
 // Confirmation-email copy, keyed by source. Anything not explicitly listed
@@ -140,12 +184,21 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Enter a valid email address.' })
     }
 
-    // --- Bot check 3: MX record validation ---------------------------
-    const domain = email.split('@')[1]
-    const canReceive = await domainCanReceiveMail(domain)
+    // --- Bot check 3: Gmail dot-spam pattern -------------------------
+    // Applied before the MX check since it's a cheap in-memory check and
+    // Gmail always has valid MX records anyway, so the MX check alone
+    // would never catch this pattern. Silent fake-success, same reasoning
+    // as the honeypot check above.
+    const [localPart, emailDomain] = email.split('@')
+    if (looksLikeGmailDotSpam(localPart, emailDomain)) {
+      return res.status(200).json({ status: 'check-email' })
+    }
+
+    // --- Bot check 4: MX record validation ---------------------------
+    const canReceive = await domainCanReceiveMail(emailDomain)
     if (!canReceive) {
       return res.status(400).json({
-        error: `We couldn't verify that "${domain}" can receive email. Double-check for a typo.`,
+        error: `We couldn't verify that "${emailDomain}" can receive email. Double-check for a typo.`,
       })
     }
 
