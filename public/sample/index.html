@@ -278,6 +278,20 @@
       <h2>Get the full 14-page PDF</h2>
       <p class="sub">Every page, not just the six above.</p>
       <form class="gate-form" id="gate-form" novalidate>
+        <!--
+          Honeypot field. Visually hidden and pulled out of tab order so
+          real visitors never see or reach it, but bots that blindly fill
+          every input on the page will populate it — which flags the
+          submission as automated server-side (see api/digest/subscribe.js).
+          Do not use display:none or type="hidden"; some bots skip fields
+          styled that way. Off-screen positioning plus aria-hidden is the
+          more robust pattern.
+        -->
+        <div aria-hidden="true" style="position:absolute; left:-9999px; width:1px; height:1px; overflow:hidden;">
+          <label for="gate-company">Company (leave this blank)</label>
+          <input id="gate-company" name="company" type="text" tabindex="-1" autocomplete="off" />
+        </div>
+
         <label for="gate-email" class="micro" style="margin-bottom:2px;">Email address</label>
         <input id="gate-email" type="email" name="email" required autocomplete="email" inputmode="email"
                placeholder="you@company.com" aria-label="Your email address" />
@@ -323,9 +337,11 @@
 (function () {
   var f = document.getElementById('gate-form'),
       i = document.getElementById('gate-email'),
+      c = document.getElementById('gate-company'), // honeypot — real visitors never fill this
       b = document.getElementById('gate-btn'),
       m = document.getElementById('gate-msg'),
-      d = document.getElementById('direct-link');
+      d = document.getElementById('direct-link'),
+      renderedAt = Date.now();
 
   function showMsg(kind, text) {
     m.className = 'msg show' + (kind ? ' ' + kind : '');
@@ -351,7 +367,12 @@
       var r = await fetch('/api/digest/subscribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email, source: 'sample-proposal' })
+        body: JSON.stringify({
+          email: email,
+          source: 'sample-proposal',
+          company: c.value,
+          renderedAt: renderedAt
+        })
       });
       var data = {};
       try { data = await r.json(); } catch (parseErr) { /* fall through to generic error below */ }

@@ -1,10 +1,12 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import styles from './DigestSignup.module.css'
 
 export default function DigestSignup() {
   const [email, setEmail] = useState('')
+  const [company, setCompany] = useState('') // honeypot — real visitors never fill this
   const [status, setStatus] = useState('idle') // idle | loading | check-email | already-confirmed | error
   const [error, setError] = useState('')
+  const renderedAt = useRef(Date.now())
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -14,7 +16,12 @@ export default function DigestSignup() {
       const res = await fetch('/api/digest/subscribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, source: 'homepage' }),
+        body: JSON.stringify({
+          email,
+          source: 'homepage',
+          company, // honeypot field — should always be empty for real users
+          renderedAt: renderedAt.current,
+        }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Something went wrong. Please try again.')
@@ -45,6 +52,28 @@ export default function DigestSignup() {
           </p>
         ) : (
           <form className={styles.form} onSubmit={handleSubmit}>
+            {/*
+              Honeypot field. Visually hidden and pulled out of tab order so
+              real visitors never see or reach it, but bots that blindly
+              fill every input on the page will populate it — which flags
+              the submission as automated server-side (see api/digest/
+              subscribe.js). Do not add `display: none` or `type="hidden"`;
+              some bots skip fields styled that way. Off-screen positioning
+              plus aria-hidden is the more robust pattern.
+            */}
+            <div aria-hidden="true" style={{ position: 'absolute', left: '-9999px', width: 1, height: 1, overflow: 'hidden' }}>
+              <label htmlFor="digest-company">Company (leave this blank)</label>
+              <input
+                id="digest-company"
+                name="company"
+                type="text"
+                tabIndex={-1}
+                autoComplete="off"
+                value={company}
+                onChange={e => setCompany(e.target.value)}
+              />
+            </div>
+
             <input
               type="email"
               required
