@@ -99,6 +99,7 @@ async function sendWave({ wave, windowMs, timestampColumn }) {
 
   let sent = 0
   let failed = 0
+  let permanentlyRejected = 0
   const errors = []
 
   for (const row of rows || []) {
@@ -124,13 +125,35 @@ async function sendWave({ wave, windowMs, timestampColumn }) {
       failed += 1
       errors.push(`${row.email}: ${err?.message || err}`)
       console.error(`send-reminders (${wave}) error for ${row.email}:`, err)
-      // Deliberately do NOT stamp the timestamp column on failure, so a
-      // transient error (e.g. a momentary SMTP hiccup) gets retried on the
-      // next cron run rather than being silently skipped forever.
+
+      // A 5xx SMTP response (e.g. 550/553/554) means the receiving server
+      // has permanently rejected the address — malformed syntax, no such
+      // mailbox, no such domain. Retrying this on the next cron run can
+      // never succeed; it only repeats the same rejected RCPT TO against
+      // Gmail's SMTP relay every 5 minutes forever, which risks the
+      // sending account being flagged for abuse. Stamp the timestamp
+      // column so we stop trying, same as a successful send.
+      //
+      // A 4xx response, or no response code at all (network blip, auth
+      // hiccup, timeout), is treated as transient and left unstamped so
+      // it's retried on the next run.
+      const code = err?.responseCode
+      const isPermanent = typeof code === 'number' && code >= 500 && code < 600
+
+      if (isPermanent) {
+        permanentlyRejected += 1
+        const { error: updateError } = await supabase
+          .from('digest_subscribers')
+          .update({ [timestampColumn]: new Date().toISOString() })
+          .eq('id', row.id)
+        if (updateError) {
+          console.error(`send-reminders (${wave}) failed to stamp permanent-rejection for ${row.email}:`, updateError)
+        }
+      }
     }
   }
 
-  return { wave, attempted: (rows || []).length, sent, failed, errors }
+  return { wave, attempted: (rows || []).length, sent, failed, permanentlyRejected, errors }
 }
 
 export default async function handler(req, res) {
