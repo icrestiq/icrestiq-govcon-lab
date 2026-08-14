@@ -5,6 +5,12 @@
       "memory": 2048
     }
   },
+  "crons": [
+    {
+      "path": "/api/digest/send-reminders",
+      "schedule": "*/5 * * * *"
+    }
+  ],
   "rewrites": [
     {
       "source": "/go",
