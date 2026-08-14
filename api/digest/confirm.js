@@ -204,7 +204,13 @@ export default async function handler(req, res) {
       console.error('digest welcome email error:', mailErr)
     }
 
-    return res.redirect(302, `${SITE_URL}/digest-confirmed?status=ok`)
+    // Pass source through so the confirmed landing page shows the right
+    // content — a sample-proposal confirmer should see the PDF link, not
+    // the 5 starter-kit tools (matching what the welcome email above just
+    // sent them). Without this, the redirect always showed the same
+    // generic tools list regardless of what was actually requested.
+    const sourceParam = data?.source ? `&source=${encodeURIComponent(data.source)}` : ''
+    return res.redirect(302, `${SITE_URL}/digest-confirmed?status=ok${sourceParam}`)
   } catch (err) {
     console.error('digest confirm error:', err)
     return res.redirect(302, `${SITE_URL}/digest-confirmed?status=invalid`)

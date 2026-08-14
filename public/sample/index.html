@@ -158,14 +158,6 @@
   .msg.ok { background: #EAF6EE; color: #1E5C34; border: 1px solid #C8E6D0; }
   .msg.err { background: #FDECEC; color: #9B2C2C; border: 1px solid #F4C7C7; }
 
-  .direct-link { display: none; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); }
-  .direct-link.show { display: block; }
-  .direct-link a {
-    font-family: var(--display); font-weight: 600; font-size: 14.5px; color: var(--navy-light);
-    text-decoration: underline; text-underline-offset: 3px;
-  }
-  .direct-link .note { font-size: 12.5px; color: var(--text-muted); margin-top: 4px; }
-
   /* ── further links ── */
   section.further { padding: 6px 0 40px; }
   .further-links { display: flex; flex-direction: column; gap: 10px; }
@@ -296,13 +288,9 @@
         <input id="gate-email" type="email" name="email" required autocomplete="email" inputmode="email"
                placeholder="you@company.com" aria-label="Your email address" />
         <button class="btn" type="submit" id="gate-btn">Email me the full 14-page PDF</button>
-        <div class="micro">Double opt-in — confirm the email and the direct link unlocks right here too.</div>
+        <div class="micro">You'll need to confirm your email before the PDF is sent — that's the double opt-in step.</div>
         <div class="msg" id="gate-msg" role="status"></div>
       </form>
-      <div class="direct-link" id="direct-link">
-        <a href="/images/samples/govcon-lab-sample-proposal.pdf" target="_blank" rel="noopener">Open the full 14-page sample PDF →</a>
-        <div class="note">Same fictional example — all 14 pages, full size.</div>
-      </div>
     </div>
   </div>
 </section>
@@ -340,16 +328,11 @@
       c = document.getElementById('gate-company'), // honeypot — real visitors never fill this
       b = document.getElementById('gate-btn'),
       m = document.getElementById('gate-msg'),
-      d = document.getElementById('direct-link'),
       renderedAt = Date.now();
 
   function showMsg(kind, text) {
     m.className = 'msg show' + (kind ? ' ' + kind : '');
     m.textContent = text;
-  }
-
-  function revealDirectLink() {
-    d.className = 'direct-link show';
   }
 
   f.addEventListener('submit', async function (e) {
@@ -382,12 +365,11 @@
       }
 
       if (data.status === 'already-confirmed') {
-        showMsg('ok', "You're already on the list — and the direct PDF link is unlocked below.");
+        showMsg('ok', "You're already confirmed — check your inbox, we've sent the PDF link before.");
       } else {
-        showMsg('ok', "Check your email and click the confirm link — that's the double opt-in. The direct PDF link is unlocked below too, so you're not stuck waiting on email.");
+        showMsg('ok', "Almost there — check your email and click the confirm link. We only send the PDF once you've verified your email, so this step is required.");
       }
-      revealDirectLink();
-      b.textContent = 'Done ✓';
+      b.textContent = 'Check your email ✓';
     } catch (err) {
       showMsg('err', err.message || 'Something went wrong. Please try again.');
       b.disabled = false;

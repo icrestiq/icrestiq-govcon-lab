@@ -128,12 +128,13 @@ function confirmationCopyFor(source) {
     return {
       subject: 'Confirm to get the full 14-page sample proposal',
       bodyLines: (confirmUrl) => [
-        `One click and we'll send you the full 14-page sample proposal — the actual, unedited output of the GovCon Lab Proposal Builder.`,
-        `Confirm and the PDF link arrives immediately.`,
+        `Thanks for requesting the full 14-page sample proposal — the actual, unedited output of the GovCon Lab Proposal Builder.`,
+        ``,
+        `One thing first: we only send it once you've confirmed this email address. Click below to verify, and the PDF link arrives right after.`,
         ``,
         confirmUrl,
         ``,
-        `Didn't ask for this? Ignore this email and you won't be added.`,
+        `Didn't ask for this? Ignore this email and you won't be added — nothing else happens.`,
       ],
     }
   }
@@ -141,12 +142,13 @@ function confirmationCopyFor(source) {
   return {
     subject: 'Confirm your GovCon Lab weekly digest',
     bodyLines: (confirmUrl) => [
-      `One click and you're on the list for Monday's digest of real federal product solicitations.`,
-      `Confirm and your 5 free tools arrive immediately.`,
+      `Thanks for signing up for Monday's digest of real federal product solicitations.`,
+      ``,
+      `One thing first: we only add you to the list — and send your 5 free tools — once you've confirmed this email address. Click below to verify.`,
       ``,
       confirmUrl,
       ``,
-      `Didn't ask for this? Ignore this email and you won't be added.`,
+      `Didn't ask for this? Ignore this email and you won't be added — nothing else happens.`,
     ],
   }
 }
