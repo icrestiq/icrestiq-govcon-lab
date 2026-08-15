@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/AuthContext'
-import { Users, Package, MessageSquare, Plus, Trash2, Edit, Tag, Upload, X, Image as ImageIcon, Copy, Check, Mail, Download, Newspaper, Eye, Activity, FileText, MessageCircle, Heart } from 'lucide-react'
+import { Users, Package, MessageSquare, Plus, Trash2, Edit, Tag, Upload, X, Image as ImageIcon, Copy, Check, Download, Newspaper, Eye, Activity, FileText, MessageCircle, Heart } from 'lucide-react'
 import { htmlToBodyText, plainTextToBodyText } from '../lib/blogPasteImport'
 import Avatar from '../components/Avatar'
 import ActivityHeatmap from '../components/ActivityHeatmap'
@@ -10,10 +10,9 @@ import styles from './AdminPanel.module.css'
 const TABS = [
   { id: 'products',    label: 'Products',       icon: Package },
   { id: 'discounts',   label: 'Discount Codes',  icon: Tag },
-  { id: 'users',       label: 'Members',         icon: Users },
+  { id: 'people',      label: 'People',          icon: Users },
   { id: 'messages',    label: 'Messages',        icon: MessageSquare },
   { id: 'images',      label: 'Image Uploader',  icon: ImageIcon },
-  { id: 'subscribers', label: 'Subscribers',     icon: Mail },
   { id: 'blog',        label: 'Blog Posts',      icon: Newspaper },
 ]
 
@@ -21,15 +20,12 @@ export default function AdminPanel() {
   const { profile } = useAuth()
   const [tab, setTab] = useState('products')
   const [products, setProducts] = useState([])
-  const [users, setUsers] = useState([])
   const [showProductForm, setShowProductForm] = useState(false)
   const [editProduct, setEditProduct] = useState(null)
   const [pendingReportCount, setPendingReportCount] = useState(0)
-  const [viewMember, setViewMember] = useState(null)
 
   useEffect(() => {
     if (tab === 'products') loadProducts()
-    if (tab === 'users') loadUsers()
   }, [tab])
 
   useEffect(() => { loadPendingReportCount() }, [])
@@ -62,11 +58,6 @@ async function testMonthlyRewards() {
   async function loadProducts() {
     const { data } = await supabase.from('products').select('*').order('created_at', { ascending: false })
     if (data) setProducts(data)
-  }
-
-  async function loadUsers() {
-    const { data } = await supabase.from('profiles').select('*').order('created_at', { ascending: false })
-    if (data) setUsers(data)
   }
 
   async function deleteProduct(id) {
@@ -184,68 +175,14 @@ async function testMonthlyRewards() {
       {/* ── Discount Codes ── */}
       {tab === 'discounts' && <DiscountsTab />}
 
-      {/* ── Users ── */}
-      {tab === 'users' && (
-        <div>
-          <div className={styles.tabActions}>
-            <h2 className={styles.tabTitle}>Members ({users.length})</h2>
-          </div>
-          <div className={styles.table}>
-            <div className={`${styles.tableRow} ${styles.tableHead}`}>
-              <span>Name</span>
-              <span>Email</span>
-              <span>Role</span>
-              <span>Joined</span>
-              <span>Actions</span>
-            </div>
-            {users.map(u => (
-              <div key={u.id} className={styles.tableRow}>
-                <span className={styles.cellTitle}>
-                  <Avatar
-                    avatarUrl={u.avatar_url}
-                    firstName={u.first_name}
-                    lastName={u.last_name}
-                    username={u.username}
-                    size={28}
-                    fontSize="0.6875rem"
-                  />
-                  {u.first_name ? `${u.first_name} ${u.last_name || ''}`.trim() : u.username}
-                </span>
-                <span className="mono" style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>{u.email}</span>
-                <span><span className={`badge ${u.role === 'admin' ? 'badge-red' : 'badge-blue'}`}>{u.role || 'member'}</span></span>
-                <span className="mono" style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                  {u.created_at ? new Date(u.created_at).toLocaleDateString() : '—'}
-                </span>
-                <span>
-                  <button className="btn btn-ghost" style={{ padding: '4px 10px' }} onClick={() => setViewMember(u)}>
-                    <Eye size={14} /> View
-                  </button>
-                </span>
-              </div>
-            ))}
-          </div>
-
-          {viewMember && (
-            <MemberDetailModal
-              member={viewMember}
-              onClose={() => setViewMember(null)}
-              onDeleted={() => {
-                setViewMember(null)
-                loadUsers()
-              }}
-            />
-          )}
-        </div>
-      )}
+      {/* ── People (Members + Subscribers, merged) ── */}
+      {tab === 'people' && <PeopleTab />}
 
       {/* ── Messages ── */}
       {tab === 'messages' && <ReportsTab />}
 
       {/* ── Image Uploader ── */}
       {tab === 'images' && <ImageUploaderTab />}
-
-      {/* ── Subscribers ── */}
-      {tab === 'subscribers' && <SubscribersTab />}
 
       {/* ── Blog Posts ── */}
       {tab === 'blog' && <BlogTab />}
@@ -715,26 +652,34 @@ function ImageUploaderTab() {
   )
 }
 
-// ── Free digest subscriber list, with CSV export ──────────
-const SUBSCRIBER_PAGE_SIZE = 100
+// ── Unified People list — merges profiles (real members) and
+// digest_subscribers (newsletter-only leads) by email via the
+// admin_unified_people()/admin_people_stats() Postgres functions, so a
+// person who's both shows as one row instead of two. Replaces the
+// former separate Members and Subscribers tabs; every capability
+// either had (member activity/delete, subscriber stats/search/export/
+// delete) is preserved here, just against the merged dataset. ──
+const PEOPLE_PAGE_SIZE = 100
 
-function SubscribersTab() {
-  const [subscribers, setSubscribers] = useState([])
+function PeopleTab() {
+  const [people, setPeople] = useState([])
   const [totalCount, setTotalCount] = useState(0)
   const [pageIndex, setPageIndex] = useState(0)
   const [loading, setLoading] = useState(true)
 
-  const [stats, setStats] = useState(null) // { confirmed, pending, newLast7Days, total }
+  const [stats, setStats] = useState(null)
   const [sourceBreakdown, setSourceBreakdown] = useState([])
   const [statsLoading, setStatsLoading] = useState(true)
 
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
+  const [typeFilter, setTypeFilter] = useState('all')
   const [sourceFilter, setSourceFilter] = useState('all')
   const [statsError, setStatsError] = useState('')
   const [tableError, setTableError] = useState('')
   const [exportError, setExportError] = useState('')
   const [exporting, setExporting] = useState(false)
+  const [viewMemberId, setViewMemberId] = useState(null)
 
   useEffect(() => { loadStatsAndBreakdown() }, [])
 
@@ -745,53 +690,27 @@ function SubscribersTab() {
     return () => clearTimeout(t)
   }, [search])
 
-  // Reset to page 0 whenever the (debounced) search term or source filter
-  // actually changes — otherwise you could be sitting on page 3 when a new
-  // filter only has one page of results. The prev===0 check makes this a
-  // no-op (no extra render/fetch) in the common case where you're already
-  // on page 0 when you change a filter.
+  // Reset to page 0 whenever a filter actually changes — otherwise you
+  // could be sitting on page 3 when a new filter only has one page left.
   useEffect(() => {
     setPageIndex(prev => (prev === 0 ? prev : 0))
-  }, [debouncedSearch, sourceFilter])
+  }, [debouncedSearch, typeFilter, sourceFilter])
 
-  // The actual data load — server-side search/filter now, same as export
-  // already did. Re-runs on page change AND whenever the filters change.
   useEffect(() => {
-    loadPage(pageIndex, debouncedSearch, sourceFilter)
-  }, [pageIndex, debouncedSearch, sourceFilter])
+    loadPage(pageIndex, debouncedSearch, typeFilter, sourceFilter)
+  }, [pageIndex, debouncedSearch, typeFilter, sourceFilter])
 
-  // ── Aggregate stats: count-only queries (head: true), so these stay
-  // cheap and instant no matter how large digest_subscribers grows —
-  // never a payload of actual subscriber rows. ──
   async function loadStatsAndBreakdown() {
     setStatsLoading(true)
     setStatsError('')
     try {
-      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
-
-      const [confirmedRes, totalRes, newRes, breakdownRes] = await Promise.all([
-        supabase.from('digest_subscribers').select('*', { count: 'exact', head: true }).eq('confirmed', true),
-        supabase.from('digest_subscribers').select('*', { count: 'exact', head: true }),
-        supabase.from('digest_subscribers').select('*', { count: 'exact', head: true }).gte('created_at', sevenDaysAgo),
+      const [statsRes, breakdownRes] = await Promise.all([
+        supabase.rpc('admin_people_stats'),
         supabase.rpc('digest_subscriber_source_breakdown'),
       ])
-
-      if (confirmedRes.error) throw confirmedRes.error
-      if (totalRes.error) throw totalRes.error
-      if (newRes.error) throw newRes.error
+      if (statsRes.error) throw statsRes.error
       if (breakdownRes.error) throw breakdownRes.error
-
-      const confirmed = confirmedRes.count || 0
-      const total = totalRes.count || 0
-      // Pending computed as total-confirmed, not a second .eq('confirmed', false)
-      // query — confirmed is nullable in the real schema, and a NULL row
-      // wouldn't match .eq(..., false) under SQL's three-valued logic.
-      setStats({
-        confirmed,
-        pending: Math.max(0, total - confirmed),
-        newLast7Days: newRes.count || 0,
-        total,
-      })
+      setStats(statsRes.data)
       setSourceBreakdown(breakdownRes.data || [])
     } catch (err) {
       setStatsError(err.message)
@@ -800,18 +719,38 @@ function SubscribersTab() {
     }
   }
 
-  // ── The paginated table itself: exactly one page (100 rows) per
-  // request via .range(), with { count: 'exact' } so we know the total
-  // for pagination controls without a separate query. Never fetches the
-  // full subscriber list. Search and source filter are now applied
-  // server-side, same as the export query below — a match beyond page 1
-  // is actually found instead of silently looking like a no-result. ──
+  // One page (100 rows) at a time via admin_unified_people(), which does
+  // the profiles/digest_subscribers merge and pagination server-side —
+  // the browser never has to hold the full subscriber list in memory
+  // just to match it against members, which is what a client-side merge
+  // would require.
+  async function loadPage(index, searchTerm, type, source) {
+    setLoading(true)
+    setTableError('')
+    try {
+      const { data, error } = await supabase.rpc('admin_unified_people', {
+        p_search: searchTerm || null,
+        p_type: type,
+        p_source: source === 'all' ? null : source,
+        p_limit: PEOPLE_PAGE_SIZE,
+        p_offset: index * PEOPLE_PAGE_SIZE,
+      })
+      if (error) throw error
+      setPeople(data || [])
+      setTotalCount(data && data.length > 0 ? Number(data[0].total_count) : 0)
+    } catch (err) {
+      setTableError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   // digest_subscribers has no client-writable RLS policy for anyone,
   // admin included — deletion has to go through the admin-gated
   // api/digest/delete-subscriber endpoint, same auth pattern as
-  // DiscountsTab's authHeader() below.
-  async function deleteSubscriber(subscriber) {
-    if (!confirm(`Permanently delete ${subscriber.email}? This cannot be undone.`)) return
+  // DiscountsTab's authHeader().
+  async function removeFromDigest(person) {
+    if (!confirm(`Remove ${person.email} from the digest list? This cannot be undone.`)) return
     try {
       const { data: { session } } = await supabase.auth.getSession()
       const res = await fetch('/api/digest/delete-subscriber', {
@@ -820,59 +759,34 @@ function SubscribersTab() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${session?.access_token}`,
         },
-        body: JSON.stringify({ id: subscriber.id }),
+        body: JSON.stringify({ id: person.subscriber_id }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Delete failed')
-      setSubscribers(prev => prev.filter(s => s.id !== subscriber.id))
-      setTotalCount(prev => Math.max(0, prev - 1))
+      // A "both" row loses its subscriber half and becomes member-only
+      // rather than disappearing; a subscriber-only row is removed outright.
+      if (person.member_id) {
+        setPeople(prev => prev.map(p => p.email === person.email
+          ? { ...p, subscriber_id: null, source: null, confirmed: null, subscriber_created_at: null }
+          : p))
+      } else {
+        setPeople(prev => prev.filter(p => p.email !== person.email))
+        setTotalCount(prev => Math.max(0, prev - 1))
+      }
     } catch (err) {
-      alert('Could not delete subscriber: ' + err.message)
+      alert('Could not remove from digest: ' + err.message)
     }
   }
 
-  async function loadPage(index, searchTerm, source) {
-    setLoading(true)
-    setTableError('')
-    try {
-      const from = index * SUBSCRIBER_PAGE_SIZE
-      const to = from + SUBSCRIBER_PAGE_SIZE - 1
-      let query = supabase
-        .from('digest_subscribers')
-        .select('id, email, source, confirmed, created_at', { count: 'exact' })
-        .order('created_at', { ascending: false })
+  const isFiltered = Boolean(debouncedSearch) || typeFilter !== 'all' || sourceFilter !== 'all'
+  const pageCount = Math.max(1, Math.ceil(totalCount / PEOPLE_PAGE_SIZE))
+  const rangeStart = totalCount === 0 ? 0 : pageIndex * PEOPLE_PAGE_SIZE + 1
+  const rangeEnd = Math.min(totalCount, (pageIndex + 1) * PEOPLE_PAGE_SIZE)
 
-      if (source && source !== 'all') query = query.eq('source', source)
-      if (searchTerm) query = query.ilike('email', `%${searchTerm}%`)
-
-      const { data, count, error } = await query.range(from, to)
-      if (error) throw error
-      setSubscribers(data || [])
-      setTotalCount(count || 0)
-    } catch (err) {
-      setTableError(err.message)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const isFiltered = Boolean(debouncedSearch) || sourceFilter !== 'all'
-  const pageCount = Math.max(1, Math.ceil(totalCount / SUBSCRIBER_PAGE_SIZE))
-  const rangeStart = totalCount === 0 ? 0 : pageIndex * SUBSCRIBER_PAGE_SIZE + 1
-  const rangeEnd = Math.min(totalCount, (pageIndex + 1) * SUBSCRIBER_PAGE_SIZE)
-
-  // Export is a deliberate, explicit, one-time action — unlike the page
-  // view above, it does need the full list. Fetched in 1,000-row chunks
-  // via repeated .range() calls rather than one unbounded request.
-  // Guards every CSV cell two ways: (1) a leading single quote on any
-  // value starting with =, +, -, or @ so Excel/Sheets treats it as
-  // literal text instead of executing it as a formula — the standard
-  // defense against CSV/formula injection, since `source` is
-  // user-suppliable to the raw API (subscribe.js doesn't restrict it to
-  // the UI's fixed values) and `email` only has to look like an email to
-  // a regex, not be a safe string; (2) wraps every field in quotes with
-  // internal quotes doubled, so a comma, newline, or stray quote in a
-  // malformed value can't break the file's column/row structure.
+  // Same CSV-injection guarding as the old Subscribers export — a
+  // leading quote on any cell starting with =, +, -, or @ so Excel/
+  // Sheets treats it as literal text, plus quoted/escaped cells so a
+  // comma or stray quote in a value can't break the file structure.
   function csvSafeCell(value) {
     let str = value === null || value === undefined ? '' : String(value)
     if (/^[=+\-@]/.test(str)) str = "'" + str
@@ -884,35 +798,34 @@ function SubscribersTab() {
     setExportError('')
     try {
       const chunkSize = 1000
-      let from = 0
+      let offset = 0
       let allRows = []
       while (true) {
-        // Same filters as the on-screen search/source dropdown, applied
-        // server-side against the full table — not limited to whatever
-        // page happens to be loaded in the browser right now.
-        let query = supabase
-          .from('digest_subscribers')
-          .select('email, source, confirmed, created_at')
-          .order('created_at', { ascending: false })
-          .range(from, from + chunkSize - 1)
-
-        if (sourceFilter !== 'all') query = query.eq('source', sourceFilter)
-        if (search.trim()) query = query.ilike('email', `%${search.trim()}%`)
-
-        const { data, error } = await query
+        const { data, error } = await supabase.rpc('admin_unified_people', {
+          p_search: search.trim() || null,
+          p_type: typeFilter,
+          p_source: sourceFilter === 'all' ? null : sourceFilter,
+          p_limit: chunkSize,
+          p_offset: offset,
+        })
         if (error) throw error
         if (!data || data.length === 0) break
         allRows = allRows.concat(data)
         if (data.length < chunkSize) break
-        from += chunkSize
+        offset += chunkSize
       }
 
-      const header = ['email', 'source', 'status', 'created_at']
-      const rows = allRows.map(s => [
-        s.email,
-        s.source || '',
-        s.confirmed ? 'Confirmed' : 'Pending',
-        s.created_at ? new Date(s.created_at).toISOString() : '',
+      const header = ['email', 'type', 'username', 'role', 'membership_tier', 'member_joined', 'digest_source', 'digest_status', 'digest_signed_up']
+      const rows = allRows.map(p => [
+        p.email,
+        p.member_id && p.subscriber_id ? 'Member + Subscriber' : p.member_id ? 'Member' : 'Subscriber',
+        p.username || '',
+        p.role || '',
+        p.membership_tier || '',
+        p.member_created_at ? new Date(p.member_created_at).toISOString() : '',
+        p.source || '',
+        p.subscriber_id ? (p.confirmed ? 'Confirmed' : 'Pending') : '',
+        p.subscriber_created_at ? new Date(p.subscriber_created_at).toISOString() : '',
       ])
       const csv = [header, ...rows]
         .map(row => row.map(csvSafeCell).join(','))
@@ -922,7 +835,7 @@ function SubscribersTab() {
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `digest-subscribers-${new Date().toISOString().slice(0, 10)}.csv`
+      a.download = `people-${new Date().toISOString().slice(0, 10)}.csv`
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)
@@ -937,7 +850,7 @@ function SubscribersTab() {
   return (
     <div>
       <div className={styles.tabActions}>
-        <h2 className={styles.tabTitle}>Subscribers ({totalCount})</h2>
+        <h2 className={styles.tabTitle}>People ({totalCount})</h2>
         <button className="btn btn-primary" onClick={exportCsv} disabled={exporting || totalCount === 0}>
           {exporting ? <div className="spinner" /> : <><Download size={16} /> Export CSV</>}
         </button>
@@ -949,16 +862,9 @@ function SubscribersTab() {
         </div>
       )}
 
-      {/* ── Summary stats — no dedicated "stat card" component exists
-          anywhere in this codebase (checked AdminPanel.module.css and
-          Dashboard.module.css), so these reuse the existing global
-          `card` class and `badge` colors rather than a new style. ── */}
       {statsError ? (
         <div className="alert alert-info" style={{ marginBottom: 'var(--sp-6)', borderColor: 'var(--red)', color: 'var(--red)' }}>
-          <strong>Couldn't load subscriber stats:</strong> {statsError}
-          <div style={{ fontSize: '0.8125rem', marginTop: 'var(--sp-1)', opacity: 0.85 }}>
-            If this is a permissions error, check that the admin SELECT policy on digest_subscribers is actually applied.
-          </div>
+          <strong>Couldn't load stats:</strong> {statsError}
           <div style={{ marginTop: 'var(--sp-2)' }}>
             <button className="btn btn-ghost" style={{ padding: '4px 10px', fontSize: '0.8125rem' }} onClick={loadStatsAndBreakdown}>
               Retry
@@ -966,39 +872,41 @@ function SubscribersTab() {
           </div>
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 'var(--sp-4)', marginBottom: 'var(--sp-6)' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 'var(--sp-4)', marginBottom: 'var(--sp-6)' }}>
           <div className="card">
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 'var(--sp-2)' }}>Confirmed</div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 'var(--sp-2)' }}>Members</div>
             <div style={{ fontSize: '1.75rem', fontWeight: 700, color: 'var(--navy)' }}>
-              {statsLoading || !stats ? '—' : stats.confirmed}
+              {statsLoading || !stats ? '—' : stats.total_members}
+            </div>
+            <span className="badge badge-blue" style={{ marginTop: 'var(--sp-2)' }}>Have accounts</span>
+          </div>
+          <div className="card">
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 'var(--sp-2)' }}>Members + Subscribers</div>
+            <div style={{ fontSize: '1.75rem', fontWeight: 700, color: 'var(--navy)' }}>
+              {statsLoading || !stats ? '—' : stats.members_and_subscribers}
+            </div>
+            <span className="badge badge-navy" style={{ marginTop: 'var(--sp-2)' }}>Both</span>
+          </div>
+          <div className="card">
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 'var(--sp-2)' }}>Confirmed subscribers</div>
+            <div style={{ fontSize: '1.75rem', fontWeight: 700, color: 'var(--navy)' }}>
+              {statsLoading || !stats ? '—' : stats.total_subscribers_confirmed}
             </div>
             <span className="badge badge-green" style={{ marginTop: 'var(--sp-2)' }}>Ready to send</span>
           </div>
           <div className="card">
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 'var(--sp-2)' }}>Pending confirmation</div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 'var(--sp-2)' }}>Pending subscribers</div>
             <div style={{ fontSize: '1.75rem', fontWeight: 700, color: 'var(--navy)' }}>
-              {statsLoading || !stats ? '—' : stats.pending}
+              {statsLoading || !stats ? '—' : stats.total_subscribers_pending}
             </div>
-            <span className="badge badge-amber" style={{ marginTop: 'var(--sp-2)' }}>Never clicked the link</span>
-          </div>
-          <div className="card">
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 'var(--sp-2)' }}>New in last 7 days</div>
-            <div style={{ fontSize: '1.75rem', fontWeight: 700, color: 'var(--navy)' }}>
-              {statsLoading || !stats ? '—' : stats.newLast7Days}
-            </div>
-            <span className="badge badge-blue" style={{ marginTop: 'var(--sp-2)' }}>Signups</span>
+            <span className="badge badge-amber" style={{ marginTop: 'var(--sp-2)' }}>Never confirmed</span>
           </div>
         </div>
       )}
-      {/* No "Unsubscribed" stat: digest_subscribers has no column that
-          tracks it (confirmed columns are: id, email, created_at, source,
-          confirmed, confirm_token, confirmed_at — verified against the
-          live schema). Per "only if the table tracks it," it's omitted
-          rather than shown as a fake always-zero number. */}
 
-      {/* ── Source breakdown — grouped by whatever `source` values
-          actually exist (via the RPC), not a hardcoded list. ── */}
-      <h3 style={{ fontSize: '0.9375rem', color: 'var(--navy)', marginBottom: 'var(--sp-3)' }}>By source</h3>
+      {/* ── Source breakdown — unchanged from the old Subscribers tab,
+          still reads digest_subscriber_source_breakdown() directly. ── */}
+      <h3 style={{ fontSize: '0.9375rem', color: 'var(--navy)', marginBottom: 'var(--sp-3)' }}>Digest signups by source</h3>
       <div className={styles.table} style={{ marginBottom: 'var(--sp-6)' }}>
         <div className={`${styles.tableRow} ${styles.tableHead}`} style={{ gridTemplateColumns: '1fr 1fr 1fr 1fr' }}>
           <span>Source</span>
@@ -1007,11 +915,6 @@ function SubscribersTab() {
           <span>Total</span>
         </div>
         {statsLoading && <div className={styles.tableEmpty}>Loading...</div>}
-        {!statsLoading && statsError && (
-          <div className={styles.tableEmpty} style={{ color: 'var(--red)' }}>
-            Couldn't load: {statsError}
-          </div>
-        )}
         {!statsLoading && !statsError && sourceBreakdown.length === 0 && (
           <div className={styles.tableEmpty}>No subscribers yet.</div>
         )}
@@ -1025,7 +928,7 @@ function SubscribersTab() {
         ))}
       </div>
 
-      {/* ── Filters — client-side, apply to the currently loaded page only ── */}
+      {/* ── Filters ── */}
       <div style={{ display: 'flex', gap: 'var(--sp-3)', marginBottom: 'var(--sp-4)', flexWrap: 'wrap' }}>
         <input
           className="input"
@@ -1034,68 +937,89 @@ function SubscribersTab() {
           onChange={e => setSearch(e.target.value)}
           style={{ maxWidth: 280 }}
         />
+        <select className="input" value={typeFilter} onChange={e => setTypeFilter(e.target.value)} style={{ maxWidth: 200 }}>
+          <option value="all">All people</option>
+          <option value="member">Members only</option>
+          <option value="subscriber">Subscribers only</option>
+          <option value="both">Members + Subscribers</option>
+        </select>
         <select className="input" value={sourceFilter} onChange={e => setSourceFilter(e.target.value)} style={{ maxWidth: 200 }}>
-          <option value="all">All sources</option>
+          <option value="all">All digest sources</option>
           {sourceBreakdown.map(row => (
             <option key={row.source} value={row.source}>{row.source}</option>
           ))}
         </select>
       </div>
 
-      {/* ── The subscriber list itself — one page (100 rows) at a time ── */}
+      {/* ── The unified list — one page (100 rows) at a time ── */}
       <div className={styles.table}>
         <div className={`${styles.tableRow} ${styles.tableHead}`}>
-          <span>Email</span>
-          <span>Source</span>
+          <span>Person</span>
+          <span>Type</span>
           <span>Status</span>
-          <span>Signed Up</span>
+          <span>Date</span>
           <span>Actions</span>
         </div>
         {loading && <div className={styles.tableEmpty}>Loading...</div>}
         {!loading && tableError && (
           <div className={styles.tableEmpty} style={{ color: 'var(--red)' }}>
-            <div><strong>Couldn't load subscribers:</strong> {tableError}</div>
-            <div style={{ fontSize: '0.8125rem', marginTop: 'var(--sp-1)', opacity: 0.85 }}>
-              If this is a permissions error, check that the admin SELECT policy on digest_subscribers is actually applied.
-            </div>
-            <button className="btn btn-ghost" style={{ padding: '4px 10px', fontSize: '0.8125rem', marginTop: 'var(--sp-2)' }} onClick={() => loadPage(pageIndex, debouncedSearch, sourceFilter)}>
+            <div><strong>Couldn't load:</strong> {tableError}</div>
+            <button className="btn btn-ghost" style={{ padding: '4px 10px', fontSize: '0.8125rem', marginTop: 'var(--sp-2)' }} onClick={() => loadPage(pageIndex, debouncedSearch, typeFilter, sourceFilter)}>
               Retry
             </button>
           </div>
         )}
-        {!loading && !tableError && subscribers.length === 0 && !isFiltered && (
-          <div className={styles.tableEmpty}>
-            No subscribers yet. The signup forms on the homepage and /go both feed this list.
-          </div>
+        {!loading && !tableError && people.length === 0 && !isFiltered && (
+          <div className={styles.tableEmpty}>No members or subscribers yet.</div>
         )}
-        {!loading && !tableError && subscribers.length === 0 && isFiltered && (
-          <div className={styles.tableEmpty}>No subscribers match your search or filter.</div>
+        {!loading && !tableError && people.length === 0 && isFiltered && (
+          <div className={styles.tableEmpty}>No one matches your search or filters.</div>
         )}
-        {!loading && !tableError && subscribers.map(s => (
-          <div key={s.id} className={styles.tableRow}>
-            <span className="mono" style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>{s.email}</span>
-            <span><span className="badge badge-blue">{s.source || 'unknown'}</span></span>
-            <span>
-              <span className={`badge ${s.confirmed ? 'badge-green' : 'badge-amber'}`}>
-                {s.confirmed ? 'Confirmed' : 'Pending'}
+        {!loading && !tableError && people.map(p => {
+          const displayName = p.first_name ? `${p.first_name} ${p.last_name || ''}`.trim() : p.username
+          const date = p.member_created_at || p.subscriber_created_at
+          return (
+            <div key={p.email} className={styles.tableRow}>
+              <span className={styles.cellTitle} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 0 }}>
+                <span style={{ fontWeight: 600 }}>{displayName || p.email}</span>
+                <span className="mono" style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{p.email}</span>
               </span>
-            </span>
-            <span className="mono" style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-              {s.created_at ? new Date(s.created_at).toLocaleDateString() : '—'}
-            </span>
-            <span>
-              <button className="btn btn-danger" style={{ padding: '4px 10px' }} onClick={() => deleteSubscriber(s)}>
-                <Trash2 size={14} />
-              </button>
-            </span>
-          </div>
-        ))}
+              <span style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start' }}>
+                {p.member_id && <span className={`badge ${p.role === 'admin' ? 'badge-red' : 'badge-blue'}`}>{p.role === 'admin' ? 'Admin' : 'Member'}</span>}
+                {p.subscriber_id && <span className="badge badge-navy">Subscriber</span>}
+              </span>
+              <span style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start' }}>
+                {p.member_id && <span className="badge badge-blue">{p.membership_tier || 'free'}</span>}
+                {p.subscriber_id && (
+                  <span className={`badge ${p.confirmed ? 'badge-green' : 'badge-amber'}`}>
+                    {p.confirmed ? 'Confirmed' : 'Pending'}
+                  </span>
+                )}
+              </span>
+              <span className="mono" style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                {date ? new Date(date).toLocaleDateString() : '—'}
+              </span>
+              <span style={{ display: 'flex', gap: 'var(--sp-2)' }}>
+                {p.member_id && (
+                  <button className="btn btn-ghost" style={{ padding: '4px 10px' }} onClick={() => setViewMemberId(p.member_id)}>
+                    <Eye size={14} /> View
+                  </button>
+                )}
+                {p.subscriber_id && (
+                  <button className="btn btn-danger" style={{ padding: '4px 10px' }} onClick={() => removeFromDigest(p)} title="Remove from digest list">
+                    <Trash2 size={14} />
+                  </button>
+                )}
+              </span>
+            </div>
+          )
+        })}
       </div>
 
       {/* ── Pagination ── */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 'var(--sp-4)' }}>
         <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-          {totalCount === 0 ? 'No subscribers' : `Showing ${rangeStart}–${rangeEnd} of ${totalCount}`}
+          {totalCount === 0 ? 'No people' : `Showing ${rangeStart}–${rangeEnd} of ${totalCount}`}
         </span>
         <div style={{ display: 'flex', gap: 'var(--sp-2)' }}>
           <button
@@ -1117,6 +1041,18 @@ function SubscribersTab() {
           </button>
         </div>
       </div>
+
+      {viewMemberId && (
+        <MemberDetailModal
+          memberId={viewMemberId}
+          onClose={() => setViewMemberId(null)}
+          onDeleted={() => {
+            setViewMemberId(null)
+            loadPage(pageIndex, debouncedSearch, typeFilter, sourceFilter)
+            loadStatsAndBreakdown()
+          }}
+        />
+      )}
     </div>
   )
 }
@@ -1713,30 +1649,40 @@ function BlogPostForm({ post, onSave, onCancel }) {
 // modal in this codebase); activity query/stats logic copied from
 // Profile.jsx's loadActivity, parameterized by an arbitrary member id
 // instead of the logged-in user. ──
-function MemberDetailModal({ member, onClose, onDeleted }) {
+// Accepts just an id and loads its own data — the unified people list
+// only carries a handful of profile fields per row (name/role/tier),
+// not everything this modal shows (avatar, bio, subscription status),
+// so it fetches the full profile itself rather than requiring the
+// caller to pass a complete object.
+function MemberDetailModal({ memberId, onClose, onDeleted }) {
+  const [member, setMember] = useState(null)
   const [activityData, setActivityData] = useState({})
   const [stats, setStats] = useState({ posts: 0, comments: 0, likesReceived: 0 })
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState('')
   const [deleting, setDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState('')
 
-  useEffect(() => { loadActivity() }, [member.id])
+  useEffect(() => { loadMemberAndActivity() }, [memberId])
 
-  async function loadActivity() {
+  async function loadMemberAndActivity() {
     setLoading(true)
-    const sixMonthsAgo = new Date()
-    sixMonthsAgo.setDate(sixMonthsAgo.getDate() - 182)
+    setLoadError('')
+    try {
+      const sixMonthsAgo = new Date()
+      sixMonthsAgo.setDate(sixMonthsAgo.getDate() - 182)
 
-    const { data } = await supabase
-      .from('activity_log')
-      .select('activity_type, created_at')
-      .eq('user_id', member.id)
-      .gte('created_at', sixMonthsAgo.toISOString())
+      const [profileRes, activityRes] = await Promise.all([
+        supabase.from('profiles').select('*').eq('id', memberId).single(),
+        supabase.from('activity_log').select('activity_type, created_at')
+          .eq('user_id', memberId).gte('created_at', sixMonthsAgo.toISOString()),
+      ])
+      if (profileRes.error) throw profileRes.error
+      setMember(profileRes.data)
 
-    if (data) {
       const grouped = {}
       let posts = 0, comments = 0, likesReceived = 0
-      data.forEach(row => {
+      ;(activityRes.data || []).forEach(row => {
         const day = row.created_at.slice(0, 10)
         grouped[day] = (grouped[day] || 0) + 1
         if (row.activity_type === 'post') posts++
@@ -1745,8 +1691,11 @@ function MemberDetailModal({ member, onClose, onDeleted }) {
       })
       setActivityData(grouped)
       setStats({ posts, comments, likesReceived })
+    } catch (err) {
+      setLoadError(err.message)
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   async function handleDelete() {
@@ -1772,11 +1721,11 @@ function MemberDetailModal({ member, onClose, onDeleted }) {
     }
   }
 
-  const displayName = member.first_name
+  const displayName = member?.first_name
     ? `${member.first_name} ${member.last_name || ''}`.trim()
-    : member.username || 'Member'
+    : member?.username || 'Member'
 
-  const joinedDate = member.created_at
+  const joinedDate = member?.created_at
     ? new Date(member.created_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
     : null
 
@@ -1808,6 +1757,12 @@ function MemberDetailModal({ member, onClose, onDeleted }) {
         </div>
 
         <div style={{ padding: '24px 28px', overflowY: 'auto' }}>
+        {loading && !member && <div className="spinner" />}
+        {!loading && loadError && (
+          <p style={{ color: 'var(--red)', fontSize: '0.875rem' }}>Couldn't load this member: {loadError}</p>
+        )}
+        {member && (
+          <>
           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-4)', marginBottom: 'var(--sp-5)' }}>
             <Avatar
               avatarUrl={member.avatar_url}
@@ -1892,6 +1847,8 @@ function MemberDetailModal({ member, onClose, onDeleted }) {
               </button>
             )}
           </div>
+          </>
+        )}
         </div>
       </div>
     </div>

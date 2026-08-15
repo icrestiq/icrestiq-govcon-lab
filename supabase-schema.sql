@@ -407,3 +407,115 @@ CREATE POLICY "Admins can delete reports"
       AND profiles.role = 'admin'
     )
   );
+
+-- ════════════════════════════════════════════════════════════
+-- UNIFIED PEOPLE VIEW — merges profiles (members) and
+-- digest_subscribers (newsletter-only leads) by lower(email) for the
+-- admin panel's combined People tab (replaces the separate Members
+-- and Subscribers tabs)
+-- Run in Supabase SQL Editor
+-- ════════════════════════════════════════════════════════════
+
+-- Paginated, searchable, filterable merge — computed server-side so the
+-- browser never has to hold the full subscriber list in memory just to
+-- match it against members client-side (the whole reason
+-- digest_subscribers reads were paginated in the first place).
+CREATE OR REPLACE FUNCTION admin_unified_people(
+  p_search TEXT DEFAULT NULL,
+  p_type TEXT DEFAULT 'all',      -- 'all' | 'member' | 'subscriber' | 'both'
+  p_source TEXT DEFAULT NULL,     -- digest source filter, ignored for member-only rows
+  p_limit INT DEFAULT 100,
+  p_offset INT DEFAULT 0
+)
+RETURNS TABLE (
+  email TEXT,
+  member_id UUID,
+  username TEXT,
+  first_name TEXT,
+  last_name TEXT,
+  role TEXT,
+  membership_tier TEXT,
+  member_created_at TIMESTAMPTZ,
+  subscriber_id UUID,
+  source TEXT,
+  confirmed BOOLEAN,
+  subscriber_created_at TIMESTAMPTZ,
+  total_count BIGINT
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM profiles WHERE profiles.id = auth.uid() AND profiles.role = 'admin'
+  ) THEN
+    RAISE EXCEPTION 'Admin access required';
+  END IF;
+
+  RETURN QUERY
+  WITH merged AS (
+    SELECT
+      p.id AS member_id, p.email AS p_email, p.username, p.first_name, p.last_name,
+      p.role, p.membership_tier, p.created_at AS member_created_at,
+      ds.id AS subscriber_id, ds.email AS ds_email, ds.source, ds.confirmed,
+      ds.created_at AS subscriber_created_at
+    FROM profiles p
+    FULL OUTER JOIN digest_subscribers ds ON lower(ds.email) = lower(p.email)
+  )
+  SELECT
+    COALESCE(m.p_email, m.ds_email) AS email,
+    m.member_id, m.username, m.first_name, m.last_name, m.role, m.membership_tier, m.member_created_at,
+    m.subscriber_id, m.source, m.confirmed, m.subscriber_created_at,
+    COUNT(*) OVER() AS total_count
+  FROM merged m
+  WHERE
+    (p_type = 'all'
+      OR (p_type = 'member' AND m.member_id IS NOT NULL AND m.subscriber_id IS NULL)
+      OR (p_type = 'subscriber' AND m.subscriber_id IS NOT NULL AND m.member_id IS NULL)
+      OR (p_type = 'both' AND m.member_id IS NOT NULL AND m.subscriber_id IS NOT NULL))
+    AND (p_source IS NULL OR p_source = '' OR m.source = p_source)
+    AND (p_search IS NULL OR p_search = '' OR COALESCE(m.p_email, m.ds_email) ILIKE '%' || p_search || '%')
+  ORDER BY COALESCE(m.member_created_at, m.subscriber_created_at) DESC
+  LIMIT p_limit OFFSET p_offset;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION admin_unified_people TO authenticated;
+
+-- Aggregate counts for the summary cards — same "compute in Postgres,
+-- never ship every row" reasoning as digest_subscriber_source_breakdown.
+CREATE OR REPLACE FUNCTION admin_people_stats()
+RETURNS json
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  result json;
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM profiles WHERE profiles.id = auth.uid() AND profiles.role = 'admin'
+  ) THEN
+    RAISE EXCEPTION 'Admin access required';
+  END IF;
+
+  WITH merged AS (
+    SELECT p.id AS member_id, ds.id AS subscriber_id, ds.confirmed
+    FROM profiles p
+    FULL OUTER JOIN digest_subscribers ds ON lower(ds.email) = lower(p.email)
+  )
+  SELECT json_build_object(
+    'total_members', (SELECT count(*) FROM profiles),
+    'total_subscribers_confirmed', (SELECT count(*) FROM digest_subscribers WHERE confirmed),
+    'total_subscribers_pending', (SELECT count(*) FROM digest_subscribers WHERE NOT confirmed),
+    'members_and_subscribers', (SELECT count(*) FROM merged WHERE member_id IS NOT NULL AND subscriber_id IS NOT NULL),
+    'members_only', (SELECT count(*) FROM merged WHERE member_id IS NOT NULL AND subscriber_id IS NULL),
+    'subscribers_only', (SELECT count(*) FROM merged WHERE member_id IS NULL AND subscriber_id IS NOT NULL)
+  ) INTO result;
+
+  RETURN result;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION admin_people_stats() TO authenticated;
