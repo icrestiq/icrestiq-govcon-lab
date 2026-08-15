@@ -14,6 +14,12 @@ function formatDate(iso) {
 // need — so this stays a plain function instead of pulling in a
 // markdown dependency. **bold** is checked before *italic* so a bold run
 // doesn't get split by the single-star pattern first.
+//
+// Recurses into bold/italic/underline content so a link inside an
+// italic sentence (a common shape in pasted CTA-style copy) still
+// renders as a real <a> instead of literal "[text](url)" — without
+// this, the outer *…* match swallows everything up to its closing
+// asterisk as one plain-text run.
 function renderInline(text) {
   const parts = []
   const regex = /\*\*(.+?)\*\*|__(.+?)__|\*(.+?)\*|\[(.+?)\]\((.+?)\)/g
@@ -23,10 +29,12 @@ function renderInline(text) {
   while ((match = regex.exec(text)) !== null) {
     if (match.index > lastIndex) parts.push(text.slice(lastIndex, match.index))
     const [, bold, underline, italic, linkText, linkUrl] = match
-    if (bold !== undefined) parts.push(<strong key={i++}>{bold}</strong>)
-    else if (underline !== undefined) parts.push(<u key={i++}>{underline}</u>)
-    else if (italic !== undefined) parts.push(<em key={i++}>{italic}</em>)
-    else parts.push(<a key={i++} href={linkUrl} target="_blank" rel="noopener noreferrer">{linkText}</a>)
+    if (bold !== undefined) parts.push(<strong key={i++}>{renderInline(bold)}</strong>)
+    else if (underline !== undefined) parts.push(<u key={i++}>{renderInline(underline)}</u>)
+    else if (italic !== undefined) parts.push(<em key={i++}>{renderInline(italic)}</em>)
+    else parts.push(
+      <a key={i++} href={linkUrl} className={styles.link} target="_blank" rel="noopener noreferrer">{linkText}</a>
+    )
     lastIndex = regex.lastIndex
   }
   if (lastIndex < text.length) parts.push(text.slice(lastIndex))

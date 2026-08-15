@@ -56,6 +56,16 @@
   gap: var(--sp-2);
 }
 
+.link {
+  color: var(--blue);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.link:hover {
+  color: var(--gold);
+}
+
 .tableWrap {
   overflow-x: auto;
   border: 1px solid var(--border);
