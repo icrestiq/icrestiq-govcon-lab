@@ -353,9 +353,10 @@ export default function Membership() {
         <div className={styles.guaranteeInner}>
           <span className={styles.guaranteeIcon}>🛡</span>
           <div>
-            <div className={styles.guaranteeTitle}>No risk. Cancel anytime.</div>
+            <div className={styles.guaranteeTitle}>No risk. 14-day money-back guarantee.</div>
             <div className={styles.guaranteeSub}>
-              Monthly memberships cancel with one click from your billing portal. No contracts, no questions asked.
+              Not the right fit? Get a full refund within your first 14 days — no contracts, no questions asked.
+              After that, monthly memberships still cancel anytime with one click from your billing portal.
               Founding Member purchases are final due to the lifetime nature of the offer.
             </div>
           </div>
