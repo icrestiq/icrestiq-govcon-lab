@@ -8,29 +8,43 @@ function formatDate(iso) {
   return new Date(iso).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
 }
 
-// Inline formatting within a paragraph/heading: **bold** and [text](url)
-// links. Deliberately not a full markdown parser — just the two inline
-// forms admins actually need — so this stays a plain function instead of
-// pulling in a markdown dependency.
+// Inline formatting within a paragraph/heading/list item/table cell:
+// **bold**, *italic*, __underline__, and [text](url) links. Deliberately
+// not a full markdown parser — just the inline forms admins actually
+// need — so this stays a plain function instead of pulling in a
+// markdown dependency. **bold** is checked before *italic* so a bold run
+// doesn't get split by the single-star pattern first.
 function renderInline(text) {
   const parts = []
-  const regex = /\*\*(.+?)\*\*|\[(.+?)\]\((.+?)\)/g
+  const regex = /\*\*(.+?)\*\*|__(.+?)__|\*(.+?)\*|\[(.+?)\]\((.+?)\)/g
   let lastIndex = 0
   let match
   let i = 0
   while ((match = regex.exec(text)) !== null) {
     if (match.index > lastIndex) parts.push(text.slice(lastIndex, match.index))
-    if (match[1] !== undefined) {
-      parts.push(<strong key={i++}>{match[1]}</strong>)
-    } else {
-      parts.push(
-        <a key={i++} href={match[3]} target="_blank" rel="noopener noreferrer">{match[2]}</a>
-      )
-    }
+    const [, bold, underline, italic, linkText, linkUrl] = match
+    if (bold !== undefined) parts.push(<strong key={i++}>{bold}</strong>)
+    else if (underline !== undefined) parts.push(<u key={i++}>{underline}</u>)
+    else if (italic !== undefined) parts.push(<em key={i++}>{italic}</em>)
+    else parts.push(<a key={i++} href={linkUrl} target="_blank" rel="noopener noreferrer">{linkText}</a>)
     lastIndex = regex.lastIndex
   }
   if (lastIndex < text.length) parts.push(text.slice(lastIndex))
   return parts
+}
+
+// A block is a list when every line starts with "- " (unordered) or
+// "1. "/"2. " etc. (ordered) — standard markdown list syntax.
+function parseList(block) {
+  const lines = block.split('\n').map(l => l.trim()).filter(Boolean)
+  if (lines.length === 0) return null
+  if (lines.every(l => l.startsWith('- '))) {
+    return { ordered: false, items: lines.map(l => l.slice(2)) }
+  }
+  if (lines.every(l => /^\d+\.\s/.test(l))) {
+    return { ordered: true, items: lines.map(l => l.replace(/^\d+\.\s/, '')) }
+  }
+  return null
 }
 
 function splitTableRow(line) {
@@ -53,10 +67,11 @@ function parseTable(block) {
 }
 
 // body is plain text: paragraphs separated by a blank line. A line
-// starting with "## " or "### " renders as a heading, and a
-// "| cell | cell |" block renders as a table. Same lightweight
-// convention ProductDetail.jsx uses for long_description, split on
-// blank lines instead of a single \n so admins can write real paragraphs.
+// starting with "## " or "### " renders as a heading, a block of "- "/
+// "1. " lines renders as a list, and a "| cell | cell |" block renders
+// as a table. Same lightweight convention ProductDetail.jsx uses for
+// long_description, split on blank lines instead of a single \n so
+// admins can write real paragraphs.
 function renderBody(body) {
   return body.split(/\n\s*\n/).map((block, i) => {
     const trimmed = block.trim()
@@ -66,6 +81,15 @@ function renderBody(body) {
     }
     if (trimmed.startsWith('## ')) {
       return <h2 key={i} className={styles.heading}>{renderInline(trimmed.slice(3))}</h2>
+    }
+    const list = parseList(trimmed)
+    if (list) {
+      const ListTag = list.ordered ? 'ol' : 'ul'
+      return (
+        <ListTag key={i} className={styles.list}>
+          {list.items.map((item, ii) => <li key={ii}>{renderInline(item)}</li>)}
+        </ListTag>
+      )
     }
     const table = parseTable(trimmed)
     if (table) {

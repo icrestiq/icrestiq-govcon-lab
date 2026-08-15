@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/AuthContext'
 import { Users, Package, MessageSquare, Plus, Trash2, Edit, Tag, Upload, X, Image as ImageIcon, Copy, Check, Mail, Download, Newspaper } from 'lucide-react'
+import { htmlToBodyText, plainTextToBodyText } from '../lib/blogPasteImport'
 import Avatar from '../components/Avatar'
 import styles from './AdminPanel.module.css'
 
@@ -1442,6 +1443,31 @@ function BlogPostForm({ post, onSave, onCancel }) {
     setForm(f => ({ ...f, body: value, reading_minutes: words ? Math.max(1, Math.ceil(words / 200)) : f.reading_minutes }))
   }
 
+  // Lets admins paste directly from Word/Google Docs/Notion and have
+  // bold, italic, underline, links, headings, lists, and tables come
+  // through as the same lightweight format renderBody understands —
+  // instead of pasting raw HTML gibberish or losing all formatting.
+  function handleBodyPaste(e) {
+    const html = e.clipboardData.getData('text/html')
+    const plain = e.clipboardData.getData('text/plain')
+    if (!html && !plain) return
+    e.preventDefault()
+
+    const converted = html ? htmlToBodyText(html) : plainTextToBodyText(plain)
+    if (!converted) return
+
+    const textarea = e.target
+    const { selectionStart, selectionEnd, value } = textarea
+    const nextValue = value.slice(0, selectionStart) + converted + value.slice(selectionEnd)
+    handleBodyChange(nextValue)
+
+    const cursorPos = selectionStart + converted.length
+    requestAnimationFrame(() => {
+      textarea.focus()
+      textarea.setSelectionRange(cursorPos, cursorPos)
+    })
+  }
+
   async function handleImageUpload(e) {
     const file = e.target.files?.[0]
     if (!file) return
@@ -1531,10 +1557,11 @@ function BlogPostForm({ post, onSave, onCancel }) {
             <label className="label">Body</label>
             <textarea className="input" value={form.body}
               onChange={e => handleBodyChange(e.target.value)}
+              onPaste={handleBodyPaste}
               rows={12}
-              placeholder="Separate paragraphs with a blank line. Start a line with '## ' for a subheading." required />
+              placeholder="Paste directly from Word, Google Docs, etc. — formatting carries over automatically. Or type: separate paragraphs with a blank line, start a line with '## ' for a subheading." required />
             <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 'var(--sp-2)', fontFamily: 'var(--font-mono)' }}>
-              Tip: blank line = new paragraph &middot; "## Heading" / "### Subheading" &middot; **bold** &middot; [link text](url) &middot; markdown tables (| col | col |)
+              Paste formatted text (bold, links, lists, tables) and it converts automatically. Or write it directly: blank line = new paragraph &middot; "## Heading" / "### Subheading" &middot; **bold** &middot; *italic* &middot; __underline__ &middot; [link text](url) &middot; "- item" lists &middot; markdown tables (| col | col |)
             </p>
           </div>
 
