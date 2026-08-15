@@ -1,9 +1,9 @@
 // api/notify-winner-address.js
-// Called by the Supabase monthly_rewards Edge Function when the #1 winner
-// has no shipping address on file (e.g. they're a free-tier member who
-// never went through Stripe checkout). Sends them a plain email asking
-// them to reply with their shipping address so we can send their prize
-// t-shirt manually. Uses the same Gmail SMTP setup as notify-report.js.
+// Called by the Supabase monthly_rewards Edge Function for every #1
+// winner. Sends them a plain email asking them to reply with their
+// shipping address and t-shirt size — the order is always placed
+// manually by an admin after they reply, never automatically. Uses the
+// same Gmail SMTP setup as notify-report.js.
 
 import nodemailer from 'nodemailer'
 
@@ -41,7 +41,7 @@ export default async function handler(req, res) {
         ``,
         `You were the top contributor in GovCon Lab for ${month} — congratulations! As part of your reward, we'd like to send you a free GovCon Lab t-shirt.`,
         ``,
-        `Just reply to this email with your shipping address (name, street address, city, state, ZIP) and we'll get it sent out.`,
+        `Just reply to this email with your shipping address (name, street address, city, state, ZIP) and your t-shirt size (S/M/L/XL/2XL) and we'll get it sent out.`,
         ``,
         `Thanks for being part of the community.`,
         `— iCrestiQ GovCon Lab`,
@@ -52,12 +52,12 @@ export default async function handler(req, res) {
     await transporter.sendMail({
       from: process.env.GMAIL_USER,
       to: adminEmail,
-      subject: `Rewards: ${username || email} needs a shipping address`,
+      subject: `Rewards: ${username || email} won #1 for ${month}`,
       text: [
-        `${username || email} won #1 in GovCon Lab for ${month} but has no address on file (no Stripe customer / no saved shipping address).`,
+        `${username || email} won #1 in GovCon Lab for ${month}.`,
         ``,
-        `An email was sent to them at ${email} asking them to reply with their address.`,
-        `Once you have it, place the Printify order manually for their t-shirt.`,
+        `An email was sent to them at ${email} asking them to reply with their shipping address and t-shirt size.`,
+        `Once you have their reply, place the Printify order manually for their t-shirt.`,
       ].join('\n'),
     })
 
