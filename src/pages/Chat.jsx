@@ -801,7 +801,7 @@ export default function Chat() {
         </div>
 
         <div className={styles.roomListHeader}>
-          <span className="mono" style={{ color: 'var(--text-muted)', fontSize: '0.6875rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Rooms</span>
+          <span className="mono" style={{ color: 'var(--text-muted)', fontSize: '0.6875rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Chat Rooms</span>
         </div>
         {visibleRooms.map(room => (
           <button

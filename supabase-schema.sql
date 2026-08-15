@@ -386,3 +386,24 @@ CREATE POLICY "Admins can manage all posts"
 -- Cover images reuse the existing public product-images bucket (its
 -- storage policies aren't prefix-restricted) under a blog/ prefix
 -- instead of products/ — no new bucket or storage policy needed.
+
+-- ════════════════════════════════════════════════════════════
+-- MESSAGE REPORTS — admin delete permission
+-- Run in Supabase SQL Editor
+-- ════════════════════════════════════════════════════════════
+-- Note: message_reports itself (id, message_id, reporter_id, reason,
+-- status, created_at) predates this schema file and isn't defined
+-- above — it already existed live with SELECT/UPDATE (admin) and
+-- INSERT (reporter) policies. This adds the missing DELETE policy so
+-- the admin panel's Reports tab can actually delete a report row
+-- (not just change its status to dismissed/resolved, which only hides
+-- it from the pending-reports view).
+CREATE POLICY "Admins can delete reports"
+  ON message_reports FOR DELETE
+  USING (
+    EXISTS (
+      SELECT 1 FROM profiles
+      WHERE profiles.id = auth.uid()
+      AND profiles.role = 'admin'
+    )
+  );

@@ -285,6 +285,21 @@ function ReportsTab() {
     }
   }
 
+  // Distinct from Dismiss/Delete Post: those only change the report's
+  // status (which just hides it from this pending-reports view), the
+  // row stays in the table forever either way. This actually deletes
+  // the report record — the underlying chat message is untouched.
+  async function deleteReport(report) {
+    if (!confirm('Permanently delete this report? This does not delete the post itself. This cannot be undone.')) return
+    try {
+      const { error } = await supabase.from('message_reports').delete().eq('id', report.id)
+      if (error) throw error
+      setReports(prev => prev.filter(r => r.id !== report.id))
+    } catch (err) {
+      alert('Could not delete report: ' + err.message)
+    }
+  }
+
   return (
     <div>
       <div className={styles.tabActions}>
@@ -328,6 +343,9 @@ function ReportsTab() {
             </button>
             <button className="btn btn-ghost" onClick={() => dismissReport(report)}>
               Dismiss
+            </button>
+            <button className="btn btn-ghost" onClick={() => deleteReport(report)} title="Delete this report — leaves the post itself alone">
+              <Trash2 size={14} /> Delete Report
             </button>
           </div>
         </div>
