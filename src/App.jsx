@@ -1,26 +1,45 @@
+import { lazy, Suspense } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './lib/AuthContext'
 import Layout from './components/layout/Layout'
-import Landing from './pages/Landing'
-import About from './pages/About'
-import Login from './pages/Login'
-import Register from './pages/Register'
-import ForgotPassword from './pages/ForgotPassword'
-import ResetPassword from './pages/ResetPassword'
-import Dashboard from './pages/Dashboard'
-import Chat from './pages/Chat'
-import Store from './pages/Store'
-import ProductDetail from './pages/ProductDetail'
-import Membership from './pages/Membership'
-import FoundersWall from './pages/FoundersWall'
-import Blog from './pages/Blog'
-import BlogPost from './pages/BlogPost'
-import ProposalBuilder from './pages/ProposalBuilder'
-import Profile from './pages/Profile'
-import AdminPanel from './pages/AdminPanel'
-import CheckoutSuccess from './pages/CheckoutSuccess'
-import CheckoutCancel from './pages/CheckoutCancel'
-import DigestConfirmed from './pages/DigestConfirmed'
+
+// Route-level code splitting — previously every page was a static import,
+// so Vite bundled the entire app (including the ~1900-line AdminPanel and
+// the Proposal Builder's document generation) into one ~800KB chunk that
+// every visitor downloaded on first paint, regardless of which page they
+// actually landed on. Lazy-loading means each page ships as its own small
+// chunk, fetched only when that route is actually visited. Layout stays a
+// static import since it's the shared shell for nearly every route.
+const Landing = lazy(() => import('./pages/Landing'))
+const About = lazy(() => import('./pages/About'))
+const Login = lazy(() => import('./pages/Login'))
+const Register = lazy(() => import('./pages/Register'))
+const ForgotPassword = lazy(() => import('./pages/ForgotPassword'))
+const ResetPassword = lazy(() => import('./pages/ResetPassword'))
+const Dashboard = lazy(() => import('./pages/Dashboard'))
+const Chat = lazy(() => import('./pages/Chat'))
+const Store = lazy(() => import('./pages/Store'))
+const ProductDetail = lazy(() => import('./pages/ProductDetail'))
+const Membership = lazy(() => import('./pages/Membership'))
+const FoundersWall = lazy(() => import('./pages/FoundersWall'))
+const Blog = lazy(() => import('./pages/Blog'))
+const BlogPost = lazy(() => import('./pages/BlogPost'))
+const ProposalBuilder = lazy(() => import('./pages/ProposalBuilder'))
+const Profile = lazy(() => import('./pages/Profile'))
+const AdminPanel = lazy(() => import('./pages/AdminPanel'))
+const CheckoutSuccess = lazy(() => import('./pages/CheckoutSuccess'))
+const CheckoutCancel = lazy(() => import('./pages/CheckoutCancel'))
+const DigestConfirmed = lazy(() => import('./pages/DigestConfirmed'))
+
+// Same visual pattern as the auth-loading screens below, so a lazy chunk
+// fetch never looks different from the loading states already in the app.
+function RouteLoadingScreen() {
+  return (
+    <div className="loading-screen">
+      <div className="spinner" />
+    </div>
+  )
+}
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth()
@@ -52,6 +71,7 @@ export default function App() {
   )
 
   return (
+    <Suspense fallback={<RouteLoadingScreen />}>
     <Routes>
       {/* Public */}
       <Route path="/" element={user ? <Navigate to="/dashboard" /> : <Landing />} />
@@ -104,5 +124,6 @@ export default function App() {
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    </Suspense>
   )
 }
