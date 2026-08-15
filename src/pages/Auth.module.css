@@ -74,3 +74,20 @@
   font-weight: 600;
 }
 .switchLink a:hover { color: var(--gold); }
+
+.passwordWrap { position: relative; }
+
+.passwordToggle {
+  position: absolute;
+  right: var(--sp-3);
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+}
+.passwordToggle:hover { color: var(--navy); }

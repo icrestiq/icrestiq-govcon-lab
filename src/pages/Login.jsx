@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../lib/AuthContext'
-import { LogIn } from 'lucide-react'
+import { LogIn, Eye, EyeOff } from 'lucide-react'
 import Turnstile from '../components/Turnstile'
 import styles from './Auth.module.css'
 
@@ -47,6 +47,7 @@ export default function Login() {
 
   const [captchaToken, setCaptchaToken] = useState('')
   const turnstileRef = useRef(null)
+  const [showPassword, setShowPassword] = useState(false)
 
   useEffect(() => {
     if (resendCooldown === 0) return
@@ -162,14 +163,26 @@ export default function Login() {
           </div>
           <div className="field">
             <label className="label">Password</label>
-            <input
-              type="password"
-              className="input"
-              placeholder="Your password"
-              value={form.password}
-              onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
-              required
-            />
+            <div className={styles.passwordWrap}>
+              <input
+                type={showPassword ? 'text' : 'password'}
+                className="input"
+                placeholder="Your password"
+                value={form.password}
+                onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
+                required
+                style={{ paddingRight: 40 }}
+              />
+              <button
+                type="button"
+                className={styles.passwordToggle}
+                onClick={() => setShowPassword(s => !s)}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                tabIndex={-1}
+              >
+                {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
+              </button>
+            </div>
             <Link to="/forgot-password" style={{ display: 'inline-block', fontSize: '0.8125rem', marginTop: 'var(--sp-2)' }}>
               Forgot your password?
             </Link>
