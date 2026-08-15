@@ -8,6 +8,40 @@ import EmojiPicker from '../components/EmojiPicker'
 import FounderBadge from '../components/FounderBadge'
 import styles from './Chat.module.css'
 
+// Turns any http(s):// URL in a message into a real clickable link.
+// Chat messages are plain text (no markdown authoring), so this is
+// pattern detection rather than a paste-format converter — just enough
+// to make a pasted link actually work instead of sitting as dead text.
+// Trims common trailing punctuation (.,!?'")]}:;) that's more likely to
+// be sentence punctuation than part of the URL.
+function linkifyText(text) {
+  const urlRegex = /https?:\/\/[^\s<]+/g
+  const trailingPunctuation = /[.,!?'")\]}:;]+$/
+  const parts = []
+  let lastIndex = 0
+  let match
+  let i = 0
+  while ((match = urlRegex.exec(text)) !== null) {
+    let url = match[0]
+    let end = match.index + url.length
+    const trimMatch = url.match(trailingPunctuation)
+    if (trimMatch) {
+      url = url.slice(0, -trimMatch[0].length)
+      end -= trimMatch[0].length
+    }
+    if (!url) continue
+    if (match.index > lastIndex) parts.push(text.slice(lastIndex, match.index))
+    parts.push(
+      <a key={i++} href={url} target="_blank" rel="noopener noreferrer" className={styles.messageLink}>
+        {url}
+      </a>
+    )
+    lastIndex = end
+  }
+  if (lastIndex < text.length) parts.push(text.slice(lastIndex))
+  return parts
+}
+
 const DEFAULT_ROOMS = [
   { id: 'general',      name: 'General',          desc: 'Open discussion for everyone — introductions, general questions, and anything that doesn\u2019t fit a specific room. If you\u2019re new, this is the best place to say hello and get oriented.', color: '#4F6BED' },
   { id: 'rfq-help',     name: 'RFQ Help',          desc: 'Post a quote or bid you\u2019re working on and get real feedback from other members before you submit. Great for a second set of eyes on pricing, compliance, or anything that feels off before it goes to a contracting officer.', color: '#38A169' },
@@ -260,6 +294,15 @@ export default function Chat() {
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [])
+
+  // The composer auto-grows via direct style writes in onChange (below), which
+  // React won't undo on its own — reset it back to one line once the message
+  // is cleared (after sending, canceling a reply, switching rooms, etc.).
+  useEffect(() => {
+    if (newMsg === '' && inputRef.current) {
+      inputRef.current.style.height = 'auto'
+    }
+  }, [newMsg])
 
   // Guard: if someone lands on /chat/founding-members without access, bounce them to General.
   // (The Supabase RLS policy already blocks the actual data — this just keeps the UI honest.)
@@ -655,7 +698,7 @@ export default function Chat() {
             </span>
           </div>
           <div className={`${styles.messageText} ${isOwn ? styles.messageTextOwn : ''}`}>
-            {msg.content}
+            {linkifyText(msg.content)}
           </div>
 
           {activeEmoji.length > 0 && (
@@ -860,7 +903,7 @@ export default function Chat() {
 
         <form className={styles.inputArea} onSubmit={sendMessage}>
           <EmojiPicker trigger={<SmilePlus size={18} />} onSelect={insertEmojiIntoComposer} />
-          <input
+          <textarea
             ref={inputRef}
             className={`input ${styles.chatInput}`}
             placeholder={
@@ -871,7 +914,12 @@ export default function Chat() {
                 : replyingTo ? `Reply to ${replyingTo.username}...` : `Message #${currentRoom.name}...`
             }
             value={newMsg}
-            onChange={e => { setNewMsg(e.target.value); if (sendError) setSendError('') }}
+            onChange={e => {
+              setNewMsg(e.target.value)
+              if (sendError) setSendError('')
+              e.target.style.height = 'auto'
+              e.target.style.height = `${e.target.scrollHeight}px`
+            }}
             onKeyDown={e => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault()
@@ -880,7 +928,7 @@ export default function Chat() {
             }}
             disabled={!gate.canComment || (!replyingTo && !gate.canPost)}
             maxLength={2000}
-            autoComplete="off"
+            rows={1}
           />
           <button
             type="submit"
