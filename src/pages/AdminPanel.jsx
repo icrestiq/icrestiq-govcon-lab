@@ -280,15 +280,6 @@ function ReportsTab() {
     }
   }
 
-  async function dismissReport(report) {
-    try {
-      await supabase.from('message_reports').update({ status: 'dismissed' }).eq('id', report.id)
-      setReports(prev => prev.filter(r => r.id !== report.id))
-    } catch (err) {
-      alert('Could not dismiss: ' + err.message)
-    }
-  }
-
   async function deleteReportedPost(report) {
     if (!confirm('Delete this post? This also removes any replies to it. This cannot be undone.')) return
     try {
@@ -360,9 +351,6 @@ function ReportsTab() {
           <div style={{ display: 'flex', gap: 'var(--sp-3)' }}>
             <button className="btn btn-danger" onClick={() => deleteReportedPost(report)}>
               <Trash2 size={14} /> Delete Post
-            </button>
-            <button className="btn btn-ghost" onClick={() => dismissReport(report)}>
-              Dismiss
             </button>
             <button className="btn btn-ghost" onClick={() => deleteReport(report)} title="Delete this report — leaves the post itself alone">
               <Trash2 size={14} /> Delete Report
@@ -799,6 +787,31 @@ function SubscribersTab() {
   // full subscriber list. Search and source filter are now applied
   // server-side, same as the export query below — a match beyond page 1
   // is actually found instead of silently looking like a no-result. ──
+  // digest_subscribers has no client-writable RLS policy for anyone,
+  // admin included — deletion has to go through the admin-gated
+  // api/digest/delete-subscriber endpoint, same auth pattern as
+  // DiscountsTab's authHeader() below.
+  async function deleteSubscriber(subscriber) {
+    if (!confirm(`Permanently delete ${subscriber.email}? This cannot be undone.`)) return
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const res = await fetch('/api/digest/delete-subscriber', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session?.access_token}`,
+        },
+        body: JSON.stringify({ id: subscriber.id }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Delete failed')
+      setSubscribers(prev => prev.filter(s => s.id !== subscriber.id))
+      setTotalCount(prev => Math.max(0, prev - 1))
+    } catch (err) {
+      alert('Could not delete subscriber: ' + err.message)
+    }
+  }
+
   async function loadPage(index, searchTerm, source) {
     setLoading(true)
     setTableError('')
@@ -1017,6 +1030,7 @@ function SubscribersTab() {
           <span>Source</span>
           <span>Status</span>
           <span>Signed Up</span>
+          <span>Actions</span>
         </div>
         {loading && <div className={styles.tableEmpty}>Loading...</div>}
         {!loading && tableError && (
@@ -1049,6 +1063,11 @@ function SubscribersTab() {
             </span>
             <span className="mono" style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
               {s.created_at ? new Date(s.created_at).toLocaleDateString() : '—'}
+            </span>
+            <span>
+              <button className="btn btn-danger" style={{ padding: '4px 10px' }} onClick={() => deleteSubscriber(s)}>
+                <Trash2 size={14} />
+              </button>
             </span>
           </div>
         ))}
