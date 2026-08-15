@@ -931,7 +931,7 @@ export default function Chat() {
               }
             }}
             disabled={!gate.canComment || (!replyingTo && !gate.canPost)}
-            maxLength={2000}
+            maxLength={8000}
             rows={1}
           />
           <button
