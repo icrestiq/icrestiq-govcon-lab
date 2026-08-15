@@ -222,7 +222,14 @@
     position: fixed;
     left: -280px;
     top: 0;
+    /* 100vh includes the area hidden behind a mobile browser's
+       collapsible address bar, so a fixed-position panel sized with it
+       renders taller than what's actually visible — the last item
+       (sign-out, in .userSection) ends up below the visible edge.
+       100dvh tracks the real visible viewport; the 100vh line stays as
+       a fallback for browsers that don't support dvh. */
     height: 100vh;
+    height: 100dvh;
     width: 260px;
     z-index: 200;
     transition: left 0.25s ease;
