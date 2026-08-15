@@ -42,15 +42,18 @@ function renderInline(text) {
 }
 
 // A block is a list when every line starts with "- " (unordered) or
-// "1. "/"2. " etc. (ordered) — standard markdown list syntax.
+// "1. "/"2." etc. (ordered) — standard markdown list syntax. The space
+// after the number is optional ("2.The..." still counts) since a
+// missing space is a common typo and shouldn't demote the whole block
+// back to one flat paragraph.
 function parseList(block) {
   const lines = block.split('\n').map(l => l.trim()).filter(Boolean)
   if (lines.length === 0) return null
   if (lines.every(l => l.startsWith('- '))) {
     return { ordered: false, items: lines.map(l => l.slice(2)) }
   }
-  if (lines.every(l => /^\d+\.\s/.test(l))) {
-    return { ordered: true, items: lines.map(l => l.replace(/^\d+\.\s/, '')) }
+  if (lines.every(l => /^\d+\.\s*/.test(l))) {
+    return { ordered: true, items: lines.map(l => l.replace(/^\d+\.\s*/, '')) }
   }
   return null
 }
