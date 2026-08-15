@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../lib/AuthContext'
 import { LogIn } from 'lucide-react'
+import Turnstile from '../components/Turnstile'
 import styles from './Auth.module.css'
 
 // Open-redirect guard: only ever navigate to a same-origin, root-relative
@@ -44,6 +45,9 @@ export default function Login() {
   const [resendStatus, setResendStatus] = useState('idle') // idle | sending | sent | error
   const [resendError, setResendError] = useState('')
 
+  const [captchaToken, setCaptchaToken] = useState('')
+  const turnstileRef = useRef(null)
+
   useEffect(() => {
     if (resendCooldown === 0) return
     const t = setTimeout(() => setResendCooldown(c => c - 1), 1000)
@@ -54,9 +58,15 @@ export default function Login() {
     e.preventDefault()
     setError('')
     setUnconfirmedEmail(null)
+
+    if (!captchaToken) {
+      setError('Please complete the verification challenge.')
+      return
+    }
+
     setLoading(true)
     try {
-      await signIn(form.email, form.password)
+      await signIn(form.email, form.password, captchaToken)
       navigate(isSafeNextPath(next) ? next : '/dashboard')
     } catch (err) {
       if (isEmailNotConfirmedError(err)) {
@@ -64,6 +74,10 @@ export default function Login() {
       } else {
         setError(err.message || 'Sign in failed. Check your credentials.')
       }
+      // Single-use token — reset the widget so the next attempt gets a
+      // fresh one, whether this failed on credentials or the captcha itself.
+      turnstileRef.current?.reset()
+      setCaptchaToken('')
     } finally {
       setLoading(false)
     }
@@ -160,6 +174,9 @@ export default function Login() {
               Forgot your password?
             </Link>
           </div>
+
+          <Turnstile ref={turnstileRef} onVerify={setCaptchaToken} />
+
           <button
             type="submit"
             className="btn btn-primary w-full"

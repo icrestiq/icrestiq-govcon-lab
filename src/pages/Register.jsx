@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../lib/AuthContext'
 import { UserPlus } from 'lucide-react'
+import Turnstile from '../components/Turnstile'
 import styles from './Auth.module.css'
 
 // Open-redirect guard: only ever navigate to a same-origin, root-relative
@@ -50,6 +51,9 @@ export default function Register() {
   const [resendStatus, setResendStatus] = useState('idle') // idle | sending | sent | error
   const [resendError, setResendError] = useState('')
 
+  const [captchaToken, setCaptchaToken] = useState('')
+  const turnstileRef = useRef(null)
+
   useEffect(() => {
     if (resendCooldown === 0) return
     const t = setTimeout(() => setResendCooldown(c => c - 1), 1000)
@@ -80,10 +84,15 @@ export default function Register() {
       setError('Password must be at least 8 characters.')
       return
     }
+    if (!captchaToken) {
+      setError('Please complete the verification challenge.')
+      return
+    }
 
     setLoading(true)
     try {
       const result = await signUp(form.email, form.password, {
+        captchaToken,
         username: form.username || `${form.firstName.toLowerCase()}${form.lastName ? '_' + form.lastName.toLowerCase() : ''}`,
         firstName: form.firstName.trim(),
         lastName: form.lastName.trim(),
@@ -111,6 +120,11 @@ export default function Register() {
       }
     } catch (err) {
       setError(err.message || 'Registration failed. Please try again.')
+      // Turnstile tokens are single-use — whether Supabase rejected this
+      // one or something else failed, it's already spent, so the widget
+      // needs a fresh challenge before the next submit attempt can work.
+      turnstileRef.current?.reset()
+      setCaptchaToken('')
     } finally {
       setLoading(false)
     }
@@ -320,6 +334,8 @@ export default function Register() {
               required
             />
           </div>
+
+          <Turnstile ref={turnstileRef} onVerify={setCaptchaToken} />
 
           <button
             type="submit"

@@ -1,20 +1,35 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { Mail } from 'lucide-react'
+import Turnstile from '../components/Turnstile'
 import styles from './Auth.module.css'
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState('')
   const [submitted, setSubmitted] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [captchaToken, setCaptchaToken] = useState('')
+  const [captchaError, setCaptchaError] = useState('')
+  const turnstileRef = useRef(null)
 
   async function handleSubmit(e) {
     e.preventDefault()
+    setCaptchaError('')
+
+    // A missing/expired token is checked and surfaced separately from the
+    // resetPasswordForEmail call below — that's fine to show, unlike a
+    // real result from the reset call itself (see the comment there).
+    if (!captchaToken) {
+      setCaptchaError('Please complete the verification challenge.')
+      return
+    }
+
     setLoading(true)
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${window.location.origin}/reset-password`,
+        captchaToken,
       })
       // Deliberately not branching UI on error — the whole point of this
       // page is to never reveal whether an address is registered, even
@@ -67,6 +82,8 @@ export default function ForgotPassword() {
           <p className={styles.sub}>Enter your email and we'll send you a link to reset it.</p>
         </div>
 
+        {captchaError && <div className="alert alert-error" style={{ marginBottom: 'var(--sp-4)' }}>{captchaError}</div>}
+
         <form onSubmit={handleSubmit}>
           <div className="field">
             <label className="label">Email</label>
@@ -79,6 +96,9 @@ export default function ForgotPassword() {
               required
             />
           </div>
+
+          <Turnstile ref={turnstileRef} onVerify={setCaptchaToken} />
+
           <button
             type="submit"
             className="btn btn-primary w-full"

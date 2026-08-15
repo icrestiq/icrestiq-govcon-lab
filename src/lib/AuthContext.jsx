@@ -79,7 +79,7 @@ export function AuthProvider({ children }) {
   }
 
   // ── Updated signUp — now accepts firstName, lastName ──────
-  async function signUp(email, password, { username, firstName, lastName }) {
+  async function signUp(email, password, { username, firstName, lastName, captchaToken }) {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -90,6 +90,7 @@ export function AuthProvider({ children }) {
         // create members with blank names.
         data: { username, first_name: firstName, last_name: lastName },
         emailRedirectTo: `${window.location.origin}/dashboard`,
+        captchaToken,
       }
     })
     if (error) throw error
@@ -146,8 +147,8 @@ export function AuthProvider({ children }) {
     if (error) throw error
   }
 
-  async function signIn(email, password) {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+  async function signIn(email, password, captchaToken) {
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password, options: { captchaToken } })
     if (error) throw error
     return data
   }
