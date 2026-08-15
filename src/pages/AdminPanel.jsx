@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/AuthContext'
-import { Users, Package, MessageSquare, Plus, Trash2, Edit, Tag, Upload, X, Image as ImageIcon, Copy, Check, Mail, Download, Newspaper } from 'lucide-react'
+import { Users, Package, MessageSquare, Plus, Trash2, Edit, Tag, Upload, X, Image as ImageIcon, Copy, Check, Mail, Download, Newspaper, Eye, Activity, FileText, MessageCircle, Heart } from 'lucide-react'
 import { htmlToBodyText, plainTextToBodyText } from '../lib/blogPasteImport'
 import Avatar from '../components/Avatar'
+import ActivityHeatmap from '../components/ActivityHeatmap'
 import styles from './AdminPanel.module.css'
 
 const TABS = [
@@ -24,6 +25,7 @@ export default function AdminPanel() {
   const [showProductForm, setShowProductForm] = useState(false)
   const [editProduct, setEditProduct] = useState(null)
   const [pendingReportCount, setPendingReportCount] = useState(0)
+  const [viewMember, setViewMember] = useState(null)
 
   useEffect(() => {
     if (tab === 'products') loadProducts()
@@ -194,6 +196,7 @@ async function testMonthlyRewards() {
               <span>Email</span>
               <span>Role</span>
               <span>Joined</span>
+              <span>Actions</span>
             </div>
             {users.map(u => (
               <div key={u.id} className={styles.tableRow}>
@@ -213,9 +216,25 @@ async function testMonthlyRewards() {
                 <span className="mono" style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                   {u.created_at ? new Date(u.created_at).toLocaleDateString() : '—'}
                 </span>
+                <span>
+                  <button className="btn btn-ghost" style={{ padding: '4px 10px' }} onClick={() => setViewMember(u)}>
+                    <Eye size={14} /> View
+                  </button>
+                </span>
               </div>
             ))}
           </div>
+
+          {viewMember && (
+            <MemberDetailModal
+              member={viewMember}
+              onClose={() => setViewMember(null)}
+              onDeleted={() => {
+                setViewMember(null)
+                loadUsers()
+              }}
+            />
+          )}
         </div>
       )}
 
@@ -1684,6 +1703,197 @@ function BlogPostForm({ post, onSave, onCancel }) {
           <button type="button" className="btn btn-ghost" onClick={onCancel}>Cancel</button>
         </div>
       </form>
+    </div>
+  )
+}
+
+// ── Member Detail Modal — profile + activity heatmap for one member,
+// plus a permanent-delete action for purging fake/spam signups. Modal
+// overlay pattern copied from Chat.jsx's ChatRulesModal (the only other
+// modal in this codebase); activity query/stats logic copied from
+// Profile.jsx's loadActivity, parameterized by an arbitrary member id
+// instead of the logged-in user. ──
+function MemberDetailModal({ member, onClose, onDeleted }) {
+  const [activityData, setActivityData] = useState({})
+  const [stats, setStats] = useState({ posts: 0, comments: 0, likesReceived: 0 })
+  const [loading, setLoading] = useState(true)
+  const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState('')
+
+  useEffect(() => { loadActivity() }, [member.id])
+
+  async function loadActivity() {
+    setLoading(true)
+    const sixMonthsAgo = new Date()
+    sixMonthsAgo.setDate(sixMonthsAgo.getDate() - 182)
+
+    const { data } = await supabase
+      .from('activity_log')
+      .select('activity_type, created_at')
+      .eq('user_id', member.id)
+      .gte('created_at', sixMonthsAgo.toISOString())
+
+    if (data) {
+      const grouped = {}
+      let posts = 0, comments = 0, likesReceived = 0
+      data.forEach(row => {
+        const day = row.created_at.slice(0, 10)
+        grouped[day] = (grouped[day] || 0) + 1
+        if (row.activity_type === 'post') posts++
+        if (row.activity_type === 'comment') comments++
+        if (row.activity_type === 'like_received') likesReceived++
+      })
+      setActivityData(grouped)
+      setStats({ posts, comments, likesReceived })
+    }
+    setLoading(false)
+  }
+
+  async function handleDelete() {
+    if (!confirm(`Permanently delete ${member.username}'s account? This cannot be undone.`)) return
+    setDeleting(true)
+    setDeleteError('')
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const res = await fetch('/api/admin/delete-user', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session?.access_token}`,
+        },
+        body: JSON.stringify({ userId: member.id }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Delete failed')
+      onDeleted()
+    } catch (err) {
+      setDeleteError(err.message)
+      setDeleting(false)
+    }
+  }
+
+  const displayName = member.first_name
+    ? `${member.first_name} ${member.last_name || ''}`.trim()
+    : member.username || 'Member'
+
+  const joinedDate = member.created_at
+    ? new Date(member.created_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+    : null
+
+  return (
+    <div
+      style={{
+        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100,
+        padding: 20,
+      }}
+      onClick={onClose}
+    >
+      <div
+        style={{
+          background: '#fff', borderRadius: 10, maxWidth: 560, width: '100%',
+          maxHeight: '85vh', display: 'flex', flexDirection: 'column',
+          boxShadow: '0 12px 40px rgba(0,0,0,0.25)',
+        }}
+        onClick={e => e.stopPropagation()}
+      >
+        <div style={{
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          padding: '20px 28px', borderBottom: '1px solid var(--border)', flexShrink: 0,
+        }}>
+          <h2 style={{ margin: 0, fontSize: 18, color: 'var(--navy)' }}>Member Profile</h2>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#888', flexShrink: 0 }}>
+            <X size={20} />
+          </button>
+        </div>
+
+        <div style={{ padding: '24px 28px', overflowY: 'auto' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-4)', marginBottom: 'var(--sp-5)' }}>
+            <Avatar
+              avatarUrl={member.avatar_url}
+              firstName={member.first_name}
+              lastName={member.last_name}
+              username={member.username}
+              size={56}
+              fontSize="1.125rem"
+            />
+            <div>
+              <div style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--navy)' }}>{displayName}</div>
+              <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>@{member.username}</div>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--sp-2)', marginBottom: 'var(--sp-5)' }}>
+            <span className={`badge ${member.role === 'admin' ? 'badge-red' : 'badge-blue'}`}>{member.role || 'member'}</span>
+            <span className="badge badge-navy">{member.membership_tier || 'free'}</span>
+            {member.subscription_status && member.subscription_status !== 'inactive' && (
+              <span className="badge badge-green">{member.subscription_status}</span>
+            )}
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--sp-3)', marginBottom: 'var(--sp-5)', fontSize: '0.8125rem' }}>
+            <div>
+              <div style={{ color: 'var(--text-muted)', marginBottom: 2 }}>Email</div>
+              <div className="mono" style={{ color: 'var(--text-secondary)' }}>{member.email || '—'}</div>
+            </div>
+            <div>
+              <div style={{ color: 'var(--text-muted)', marginBottom: 2 }}>Joined</div>
+              <div style={{ color: 'var(--text-secondary)' }}>{joinedDate || '—'}</div>
+            </div>
+          </div>
+
+          {member.bio && (
+            <div style={{ marginBottom: 'var(--sp-5)' }}>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 4 }}>Bio</div>
+              <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>{member.bio}</p>
+            </div>
+          )}
+
+          <h3 style={{ fontSize: '0.9375rem', color: 'var(--navy)', marginBottom: 'var(--sp-3)', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Activity size={15} /> Activity, last 6 months
+          </h3>
+          <div style={{ display: 'flex', gap: 'var(--sp-3)', marginBottom: 'var(--sp-4)' }}>
+            <div className="card" style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 'var(--sp-2)', padding: 'var(--sp-3)' }}>
+              <FileText size={16} style={{ color: 'var(--navy)' }} />
+              <div>
+                <div style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--navy)' }}>{loading ? '—' : stats.posts}</div>
+                <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)' }}>Posts</div>
+              </div>
+            </div>
+            <div className="card" style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 'var(--sp-2)', padding: 'var(--sp-3)' }}>
+              <MessageCircle size={16} style={{ color: '#4F6BED' }} />
+              <div>
+                <div style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--navy)' }}>{loading ? '—' : stats.comments}</div>
+                <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)' }}>Comments</div>
+              </div>
+            </div>
+            <div className="card" style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 'var(--sp-2)', padding: 'var(--sp-3)' }}>
+              <Heart size={16} style={{ color: '#E0245E' }} />
+              <div>
+                <div style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--navy)' }}>{loading ? '—' : stats.likesReceived}</div>
+                <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)' }}>Likes Received</div>
+              </div>
+            </div>
+          </div>
+
+          {loading ? (
+            <div className="spinner" />
+          ) : (
+            <ActivityHeatmap data={activityData} weeks={26} />
+          )}
+
+          <div style={{ borderTop: '1px solid var(--border)', marginTop: 'var(--sp-6)', paddingTop: 'var(--sp-5)' }}>
+            {deleteError && <p style={{ color: 'var(--red)', fontSize: '0.8125rem', marginBottom: 'var(--sp-3)' }}>{deleteError}</p>}
+            {member.role === 'admin' ? (
+              <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Admin accounts can't be deleted from here.</p>
+            ) : (
+              <button className="btn btn-danger" onClick={handleDelete} disabled={deleting}>
+                {deleting ? <div className="spinner" /> : <><Trash2 size={14} /> Delete Account</>}
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
