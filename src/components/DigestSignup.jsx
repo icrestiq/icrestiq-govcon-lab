@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react'
+import Turnstile from './Turnstile'
 import styles from './DigestSignup.module.css'
 
 export default function DigestSignup() {
@@ -6,11 +7,18 @@ export default function DigestSignup() {
   const [company, setCompany] = useState('') // honeypot — real visitors never fill this
   const [status, setStatus] = useState('idle') // idle | loading | check-email | already-confirmed | error
   const [error, setError] = useState('')
+  const [captchaToken, setCaptchaToken] = useState('')
   const renderedAt = useRef(Date.now())
+  const turnstileRef = useRef(null)
 
   async function handleSubmit(e) {
     e.preventDefault()
     setError('')
+    if (!captchaToken) {
+      setError('Please complete the verification challenge.')
+      setStatus('error')
+      return
+    }
     setStatus('loading')
     try {
       const res = await fetch('/api/digest/subscribe', {
@@ -21,6 +29,7 @@ export default function DigestSignup() {
           source: 'homepage',
           company, // honeypot field — should always be empty for real users
           renderedAt: renderedAt.current,
+          turnstileToken: captchaToken,
         }),
       })
       const data = await res.json()
@@ -29,6 +38,11 @@ export default function DigestSignup() {
     } catch (err) {
       setError(err.message)
       setStatus('error')
+      // Turnstile tokens are single-use — whether the server rejected this
+      // one or something else failed, it's already spent, so the widget
+      // needs a fresh challenge before the next submit attempt can work.
+      turnstileRef.current?.reset()
+      setCaptchaToken('')
     }
   }
 
@@ -84,6 +98,7 @@ export default function DigestSignup() {
               onChange={e => setEmail(e.target.value)}
               disabled={status === 'loading'}
             />
+            <Turnstile ref={turnstileRef} onVerify={setCaptchaToken} />
             <button type="submit" className="btn btn-primary" disabled={status === 'loading'}>
               {status === 'loading' ? <div className="spinner" /> : "Send me Monday's digest"}
             </button>

@@ -15,6 +15,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 <style>
   :root{
     --navy:#1B2A4A; --navy-light:#2C4070; --gold:#C9A84C; --gold-dim:#B8963E;
@@ -174,6 +175,9 @@
           </div>
           <input id="email" type="email" name="email" required autocomplete="email"
                  inputmode="email" placeholder="you@company.com" aria-label="Your email address" />
+          <div class="cf-turnstile" data-sitekey="0x4AAAAAAEQ5qXqIODs9pgvr"
+               data-callback="onTurnstileToken" data-expired-callback="onTurnstileReset"
+               data-error-callback="onTurnstileReset" style="margin:4px 0"></div>
           <button class="btn" type="submit" id="sub">Email me the 5 tools</button>
           <div class="micro">Free forever · No card · Unsubscribe in one click</div>
           <div class="msg" id="msg" role="status"></div>
@@ -309,7 +313,14 @@
       c = document.getElementById('company'),
       b = document.getElementById('sub'),
       m = document.getElementById('msg'),
-      renderedAt = Date.now();
+      renderedAt = Date.now(),
+      turnstileToken = '';
+
+  // Referenced by the widget's data-callback/data-expired-callback/
+  // data-error-callback attributes above — the script tag loads async, so
+  // these have to be real globals rather than closures set up after render.
+  window.onTurnstileToken = function (token) { turnstileToken = token; };
+  window.onTurnstileReset = function () { turnstileToken = ''; };
 
   function show(kind, text) { m.className = 'msg ' + kind; m.textContent = text; }
 
@@ -319,13 +330,16 @@
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
       return show('err', 'That email address does not look right.');
     }
+    if (!turnstileToken) {
+      return show('err', 'Please complete the verification challenge.');
+    }
     b.disabled = true; b.textContent = 'Sending…';
     show('', '');
     try {
       var r = await fetch('/api/digest/subscribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email, source: '5-free-tools', company: c.value, renderedAt: renderedAt })
+        body: JSON.stringify({ email: email, source: '5-free-tools', company: c.value, renderedAt: renderedAt, turnstileToken: turnstileToken })
       });
       var d = await r.json();
       if (!r.ok) throw new Error(d.error || 'Something went wrong. Please try again.');
@@ -339,6 +353,11 @@
     } catch (err) {
       show('err', err.message);
       b.disabled = false; b.textContent = 'Email me the 5 tools';
+      // Turnstile tokens are single-use — whether Supabase rejected this one
+      // or something else failed, it's already spent, so the widget needs a
+      // fresh challenge before the next submit attempt can work.
+      if (window.turnstile) window.turnstile.reset();
+      turnstileToken = '';
     }
   });
 })();

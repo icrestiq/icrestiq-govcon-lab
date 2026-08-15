@@ -20,10 +20,17 @@
 //      the form first rendered. Scripted submissions that fire in well
 //      under a second get rejected; a real person takes at least ~1.5s to
 //      read the field and type an email.
-//   3. Gmail dot-spam pattern — addresses like "an.s.on..c.h.a.u.9@gmail.com"
+//   3. Cloudflare Turnstile (`turnstileToken`) — added 2026-08-15 after
+//      most of that bot volume turned out to trace back to the /go
+//      landing page specifically. The three heuristics above are all
+//      trivial for a real scripted bot to clear (wait 1.5s, skip the
+//      hidden field); Turnstile is the actual challenge. A missing/failed
+//      token is a real error, not a silent fake-success, so the widget
+//      can prompt the visitor to retry. See verifyTurnstile() below.
+//   4. Gmail dot-spam pattern — addresses like "an.s.on..c.h.a.u.9@gmail.com"
 //      that abuse Gmail's dot-insensitivity to look like unique real people.
 //      See looksLikeGmailDotSpam() below for the detection logic.
-//   4. MX record check — before inserting a row or sending mail, verify
+//   5. MX record check — before inserting a row or sending mail, verify
 //      the email's domain actually has mail servers. This catches typo'd
 //      or nonexistent domains (e.g. a signup for "webshoppe.net" that
 //      doesn't resolve) immediately, instead of silently bouncing later
@@ -44,6 +51,36 @@ const supabase = createClient(
   process.env.VITE_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
+
+const TURNSTILE_SECRET_KEY = process.env.TURNSTILE_SECRET_KEY
+
+// Verifies a Turnstile token against Cloudflare's siteverify API. This is
+// the real bot gate — the honeypot/fill-time/dot-spam checks below are
+// heuristics a scripted bot can trivially clear (wait a couple seconds,
+// never touch the hidden field), which is how the 2026-08-14 bot wave got
+// through in the first place; most of that volume came via the /go
+// landing page's form. Turnstile is the same site key already live on
+// Login/Register/ForgotPassword (0x4AAAAAAEQ5qXqIODs9pgvr) — this is just
+// the server-side half of that same widget, reused here.
+async function verifyTurnstile(token, remoteIp) {
+  if (!token) return false
+  const params = new URLSearchParams()
+  params.append('secret', TURNSTILE_SECRET_KEY)
+  params.append('response', token)
+  if (remoteIp) params.append('remoteip', remoteIp)
+
+  try {
+    const res = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+      method: 'POST',
+      body: params,
+    })
+    const data = await res.json()
+    return data.success === true
+  } catch (err) {
+    console.error('Turnstile verification error:', err)
+    return false
+  }
+}
 
 const transporter = nodemailer.createTransport({
   service: 'gmail',
@@ -182,11 +219,29 @@ export default async function handler(req, res) {
       return res.status(200).json({ status: 'check-email' })
     }
 
+    // --- Bot check 3: Turnstile challenge -----------------------------
+    // Unlike the two checks above, a missing/failed token is a real error,
+    // not a silent fake-success — the widget needs the visitor to actually
+    // retry, same as Login/Register/ForgotPassword. Skipped entirely if
+    // TURNSTILE_SECRET_KEY isn't configured yet, same fail-open pattern as
+    // the Gmail SMTP check further down, so this endpoint keeps accepting
+    // real signups while the secret is being added rather than going dark
+    // the moment this code deploys.
+    if (TURNSTILE_SECRET_KEY) {
+      const remoteIp = (req.headers['x-forwarded-for'] || '').split(',')[0].trim()
+      const turnstileOk = await verifyTurnstile(req.body?.turnstileToken, remoteIp)
+      if (!turnstileOk) {
+        return res.status(400).json({ error: 'Please complete the verification challenge and try again.' })
+      }
+    } else {
+      console.warn('TURNSTILE_SECRET_KEY not configured — skipping Turnstile verification for digest subscribe')
+    }
+
     if (!isValidEmail(email)) {
       return res.status(400).json({ error: 'Enter a valid email address.' })
     }
 
-    // --- Bot check 3: Gmail dot-spam pattern -------------------------
+    // --- Bot check 4: Gmail dot-spam pattern -------------------------
     // Applied before the MX check since it's a cheap in-memory check and
     // Gmail always has valid MX records anyway, so the MX check alone
     // would never catch this pattern. Silent fake-success, same reasoning
@@ -196,7 +251,7 @@ export default async function handler(req, res) {
       return res.status(200).json({ status: 'check-email' })
     }
 
-    // --- Bot check 4: MX record validation ---------------------------
+    // --- Bot check 5: MX record validation ---------------------------
     const canReceive = await domainCanReceiveMail(emailDomain)
     if (!canReceive) {
       return res.status(400).json({

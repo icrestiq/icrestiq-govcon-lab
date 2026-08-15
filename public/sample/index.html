@@ -25,6 +25,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 
 <style>
   :root {
@@ -287,6 +288,9 @@
         <label for="gate-email" class="micro" style="margin-bottom:2px;">Email address</label>
         <input id="gate-email" type="email" name="email" required autocomplete="email" inputmode="email"
                placeholder="you@company.com" aria-label="Your email address" />
+        <div class="cf-turnstile" data-sitekey="0x4AAAAAAEQ5qXqIODs9pgvr"
+             data-callback="onTurnstileToken" data-expired-callback="onTurnstileReset"
+             data-error-callback="onTurnstileReset" style="margin:4px 0"></div>
         <button class="btn" type="submit" id="gate-btn">Email me the full 14-page PDF</button>
         <div class="micro">You'll need to confirm your email before the PDF is sent — that's the double opt-in step.</div>
         <div class="msg" id="gate-msg" role="status"></div>
@@ -328,7 +332,14 @@
       c = document.getElementById('gate-company'), // honeypot — real visitors never fill this
       b = document.getElementById('gate-btn'),
       m = document.getElementById('gate-msg'),
-      renderedAt = Date.now();
+      renderedAt = Date.now(),
+      turnstileToken = '';
+
+  // Referenced by the widget's data-callback/data-expired-callback/
+  // data-error-callback attributes above — the script tag loads async, so
+  // these have to be real globals rather than closures set up after render.
+  window.onTurnstileToken = function (token) { turnstileToken = token; };
+  window.onTurnstileReset = function () { turnstileToken = ''; };
 
   function showMsg(kind, text) {
     m.className = 'msg show' + (kind ? ' ' + kind : '');
@@ -340,6 +351,10 @@
     var email = i.value.trim();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
       showMsg('err', 'That email address does not look right.');
+      return;
+    }
+    if (!turnstileToken) {
+      showMsg('err', 'Please complete the verification challenge.');
       return;
     }
     b.disabled = true;
@@ -354,7 +369,8 @@
           email: email,
           source: 'sample-proposal',
           company: c.value,
-          renderedAt: renderedAt
+          renderedAt: renderedAt,
+          turnstileToken: turnstileToken
         })
       });
       var data = {};
@@ -374,6 +390,11 @@
       showMsg('err', err.message || 'Something went wrong. Please try again.');
       b.disabled = false;
       b.textContent = 'Email me the full 14-page PDF';
+      // Turnstile tokens are single-use — whether Supabase rejected this one
+      // or something else failed, it's already spent, so the widget needs a
+      // fresh challenge before the next submit attempt can work.
+      if (window.turnstile) window.turnstile.reset();
+      turnstileToken = '';
     }
   });
 })();
