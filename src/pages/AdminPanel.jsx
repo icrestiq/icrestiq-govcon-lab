@@ -255,7 +255,24 @@ function ReportsTab() {
         .eq('status', 'pending')
         .order('created_at', { ascending: false })
       if (error) throw error
-      setReports(data || [])
+
+      // reporter_id references auth.users, not profiles, so it can't be
+      // embedded via Supabase's FK-based select() shorthand the way
+      // `messages (...)` above is — fetch the reporter usernames as a
+      // separate lookup instead.
+      const reporterIds = [...new Set((data || []).map(r => r.reporter_id).filter(Boolean))]
+      let reporterNames = {}
+      if (reporterIds.length) {
+        const { data: reporters } = await supabase
+          .from('profiles')
+          .select('id, username, first_name, last_name')
+          .in('id', reporterIds)
+        reporterNames = Object.fromEntries(
+          (reporters || []).map(p => [p.id, p.first_name ? `${p.first_name} ${p.last_name || ''}`.trim() : p.username])
+        )
+      }
+
+      setReports((data || []).map(r => ({ ...r, reporterName: reporterNames[r.reporter_id] || 'Unknown user' })))
     } catch (err) {
       setError(err.message)
     } finally {
@@ -325,6 +342,9 @@ function ReportsTab() {
               <span className="mono" style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                 room: {report.messages?.room_id || 'unknown'} · {new Date(report.created_at).toLocaleString()}
               </span>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 'var(--sp-1)' }}>
+                Reported by <strong style={{ color: 'var(--text-secondary)' }}>{report.reporterName}</strong>
+              </div>
             </div>
           </div>
 
