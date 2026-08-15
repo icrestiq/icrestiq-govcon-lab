@@ -8,32 +8,36 @@ import EmojiPicker from '../components/EmojiPicker'
 import FounderBadge from '../components/FounderBadge'
 import styles from './Chat.module.css'
 
-// Turns any http(s):// URL in a message into a real clickable link.
-// Chat messages are plain text (no markdown authoring), so this is
-// pattern detection rather than a paste-format converter — just enough
-// to make a pasted link actually work instead of sitting as dead text.
-// Trims common trailing punctuation (.,!?'")]}:;) that's more likely to
-// be sentence punctuation than part of the URL.
+// Turns a URL in a message into a real clickable link — including a
+// bare domain typed without "https://" (e.g. "govconlab.com"), which
+// people type far more often in casual chat than a full URL. The TLD
+// whitelist keeps this from false-positiving on things like "e.g.",
+// "U.S.", or "3.5 million". Chat messages are plain text (no markdown
+// authoring), so this is pattern detection, not a paste-format
+// converter — just enough to make a link actually work instead of
+// sitting as dead text. Trims trailing punctuation (.,!?'")]}:;) that's
+// more likely to be sentence punctuation than part of the URL/domain.
 function linkifyText(text) {
-  const urlRegex = /https?:\/\/[^\s<]+/g
+  const urlRegex = /\b(?:https?:\/\/|www\.)[^\s<]+|\b[a-zA-Z0-9][a-zA-Z0-9-]*\.(?:com|net|org|gov|edu|io|co|us|mil)(?:\/[^\s<]*)?/gi
   const trailingPunctuation = /[.,!?'")\]}:;]+$/
   const parts = []
   let lastIndex = 0
   let match
   let i = 0
   while ((match = urlRegex.exec(text)) !== null) {
-    let url = match[0]
-    let end = match.index + url.length
-    const trimMatch = url.match(trailingPunctuation)
+    let matched = match[0]
+    let end = match.index + matched.length
+    const trimMatch = matched.match(trailingPunctuation)
     if (trimMatch) {
-      url = url.slice(0, -trimMatch[0].length)
+      matched = matched.slice(0, -trimMatch[0].length)
       end -= trimMatch[0].length
     }
-    if (!url) continue
+    if (!matched) continue
     if (match.index > lastIndex) parts.push(text.slice(lastIndex, match.index))
+    const href = /^https?:\/\//i.test(matched) ? matched : `https://${matched}`
     parts.push(
-      <a key={i++} href={url} target="_blank" rel="noopener noreferrer" className={styles.messageLink}>
-        {url}
+      <a key={i++} href={href} target="_blank" rel="noopener noreferrer" className={styles.messageLink}>
+        {matched}
       </a>
     )
     lastIndex = end
