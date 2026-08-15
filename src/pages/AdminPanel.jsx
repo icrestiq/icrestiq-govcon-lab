@@ -679,7 +679,7 @@ function PeopleTab() {
   const [tableError, setTableError] = useState('')
   const [exportError, setExportError] = useState('')
   const [exporting, setExporting] = useState(false)
-  const [viewMemberId, setViewMemberId] = useState(null)
+  const [viewPerson, setViewPerson] = useState(null)
 
   useEffect(() => { loadStatsAndBreakdown() }, [])
 
@@ -1000,11 +1000,9 @@ function PeopleTab() {
                 {date ? new Date(date).toLocaleDateString() : '—'}
               </span>
               <span style={{ display: 'flex', gap: 'var(--sp-2)' }}>
-                {p.member_id && (
-                  <button className="btn btn-ghost" style={{ padding: '4px 10px' }} onClick={() => setViewMemberId(p.member_id)}>
-                    <Eye size={14} /> View
-                  </button>
-                )}
+                <button className="btn btn-ghost" style={{ padding: '4px 10px' }} onClick={() => setViewPerson(p)}>
+                  <Eye size={14} /> View
+                </button>
                 {p.subscriber_id && (
                   <button className="btn btn-danger" style={{ padding: '4px 10px' }} onClick={() => removeFromDigest(p)} title="Remove from digest list">
                     <Trash2 size={14} />
@@ -1042,14 +1040,18 @@ function PeopleTab() {
         </div>
       </div>
 
-      {viewMemberId && (
-        <MemberDetailModal
-          memberId={viewMemberId}
-          onClose={() => setViewMemberId(null)}
+      {viewPerson && (
+        <PersonDetailModal
+          person={viewPerson}
+          onClose={() => setViewPerson(null)}
           onDeleted={() => {
-            setViewMemberId(null)
+            setViewPerson(null)
             loadPage(pageIndex, debouncedSearch, typeFilter, sourceFilter)
             loadStatsAndBreakdown()
+          }}
+          onRemoveFromDigest={async person => {
+            await removeFromDigest(person)
+            setViewPerson(null)
           }}
         />
       )}
@@ -1643,27 +1645,36 @@ function BlogPostForm({ post, onSave, onCancel }) {
   )
 }
 
-// ── Member Detail Modal — profile + activity heatmap for one member,
-// plus a permanent-delete action for purging fake/spam signups. Modal
-// overlay pattern copied from Chat.jsx's ChatRulesModal (the only other
-// modal in this codebase); activity query/stats logic copied from
-// Profile.jsx's loadActivity, parameterized by an arbitrary member id
-// instead of the logged-in user. ──
-// Accepts just an id and loads its own data — the unified people list
-// only carries a handful of profile fields per row (name/role/tier),
-// not everything this modal shows (avatar, bio, subscription status),
-// so it fetches the full profile itself rather than requiring the
-// caller to pass a complete object.
-function MemberDetailModal({ memberId, onClose, onDeleted }) {
+// ── Person Detail Modal — profile + activity heatmap for one row from
+// the unified People list, whether they're a full member, a digest-only
+// subscriber, or both. Modal overlay pattern copied from Chat.jsx's
+// ChatRulesModal (the only other modal in this codebase).
+// For members: the unified list only carries a handful of profile
+// fields per row (name/role/tier), not everything this modal shows
+// (avatar, bio, subscription status), so it fetches the full profile
+// and activity_log itself, keyed on person.member_id — same
+// query/stats logic as Profile.jsx's loadActivity, parameterized by an
+// arbitrary member id instead of the logged-in user.
+// For subscriber-only rows (no member_id): there's no profiles row and
+// no activity_log rows possible, so it renders straight from the row
+// data already passed in — no fetch needed.
+function PersonDetailModal({ person, onClose, onDeleted, onRemoveFromDigest }) {
+  const isMember = Boolean(person.member_id)
+
   const [member, setMember] = useState(null)
   const [activityData, setActivityData] = useState({})
   const [stats, setStats] = useState({ posts: 0, comments: 0, likesReceived: 0 })
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(isMember)
   const [loadError, setLoadError] = useState('')
   const [deleting, setDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState('')
+  const [removing, setRemoving] = useState(false)
 
-  useEffect(() => { loadMemberAndActivity() }, [memberId])
+  // Subscriber-only rows (no member_id) have no profiles row and no
+  // activity_log rows — activity_log is only ever written for account
+  // actions (posts/comments/likes), which someone without an account
+  // can never generate — so there's nothing to fetch for them.
+  useEffect(() => { if (isMember) loadMemberAndActivity() }, [person.member_id])
 
   async function loadMemberAndActivity() {
     setLoading(true)
@@ -1673,9 +1684,9 @@ function MemberDetailModal({ memberId, onClose, onDeleted }) {
       sixMonthsAgo.setDate(sixMonthsAgo.getDate() - 182)
 
       const [profileRes, activityRes] = await Promise.all([
-        supabase.from('profiles').select('*').eq('id', memberId).single(),
+        supabase.from('profiles').select('*').eq('id', person.member_id).single(),
         supabase.from('activity_log').select('activity_type, created_at')
-          .eq('user_id', memberId).gte('created_at', sixMonthsAgo.toISOString()),
+          .eq('user_id', person.member_id).gte('created_at', sixMonthsAgo.toISOString()),
       ])
       if (profileRes.error) throw profileRes.error
       setMember(profileRes.data)
@@ -1721,6 +1732,18 @@ function MemberDetailModal({ memberId, onClose, onDeleted }) {
     }
   }
 
+  // onRemoveFromDigest is PeopleTab's existing removeFromDigest — it
+  // already handles its own confirm dialog, error alert, and updating
+  // the underlying list, so this just triggers it and closes the modal.
+  async function handleRemoveFromDigest() {
+    setRemoving(true)
+    try {
+      await onRemoveFromDigest(person)
+    } finally {
+      setRemoving(false)
+    }
+  }
+
   const displayName = member?.first_name
     ? `${member.first_name} ${member.last_name || ''}`.trim()
     : member?.username || 'Member'
@@ -1750,18 +1773,67 @@ function MemberDetailModal({ memberId, onClose, onDeleted }) {
           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
           padding: '20px 28px', borderBottom: '1px solid var(--border)', flexShrink: 0,
         }}>
-          <h2 style={{ margin: 0, fontSize: 18, color: 'var(--navy)' }}>Member Profile</h2>
+          <h2 style={{ margin: 0, fontSize: 18, color: 'var(--navy)' }}>{isMember ? 'Member Profile' : 'Subscriber Profile'}</h2>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#888', flexShrink: 0 }}>
             <X size={20} />
           </button>
         </div>
 
         <div style={{ padding: '24px 28px', overflowY: 'auto' }}>
-        {loading && !member && <div className="spinner" />}
-        {!loading && loadError && (
+        {!isMember && (
+          <>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-4)', marginBottom: 'var(--sp-5)' }}>
+            <Avatar username={person.email} size={56} fontSize="1.125rem" />
+            <div>
+              <div style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--navy)' }}>{person.email}</div>
+              <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Digest subscriber only — no account</div>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--sp-2)', marginBottom: 'var(--sp-5)' }}>
+            <span className="badge badge-navy">Subscriber</span>
+            <span className={`badge ${person.confirmed ? 'badge-green' : 'badge-amber'}`}>
+              {person.confirmed ? 'Confirmed' : 'Pending confirmation'}
+            </span>
+            {person.source && <span className="badge badge-blue">{person.source}</span>}
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--sp-3)', marginBottom: 'var(--sp-5)', fontSize: '0.8125rem' }}>
+            <div>
+              <div style={{ color: 'var(--text-muted)', marginBottom: 2 }}>Email</div>
+              <div className="mono" style={{ color: 'var(--text-secondary)' }}>{person.email}</div>
+            </div>
+            <div>
+              <div style={{ color: 'var(--text-muted)', marginBottom: 2 }}>Subscribed</div>
+              <div style={{ color: 'var(--text-secondary)' }}>
+                {person.subscriber_created_at
+                  ? new Date(person.subscriber_created_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+                  : '—'}
+              </div>
+            </div>
+          </div>
+
+          <h3 style={{ fontSize: '0.9375rem', color: 'var(--navy)', marginBottom: 'var(--sp-3)', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Activity size={15} /> Activity, last 6 months
+          </h3>
+          <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: 'var(--sp-2)' }}>
+            No activity to show — this person has never created a site account, so there's nothing
+            for a heatmap to track (only account actions like posts, comments, and likes are logged).
+          </p>
+          <ActivityHeatmap data={{}} weeks={26} />
+
+          <div style={{ borderTop: '1px solid var(--border)', marginTop: 'var(--sp-6)', paddingTop: 'var(--sp-5)' }}>
+            <button className="btn btn-danger" onClick={handleRemoveFromDigest} disabled={removing}>
+              {removing ? <div className="spinner" /> : <><Trash2 size={14} /> Remove from Digest</>}
+            </button>
+          </div>
+          </>
+        )}
+        {isMember && loading && !member && <div className="spinner" />}
+        {isMember && !loading && loadError && (
           <p style={{ color: 'var(--red)', fontSize: '0.875rem' }}>Couldn't load this member: {loadError}</p>
         )}
-        {member && (
+        {isMember && member && (
           <>
           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-4)', marginBottom: 'var(--sp-5)' }}>
             <Avatar
