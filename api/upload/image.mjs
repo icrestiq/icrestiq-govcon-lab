@@ -1,6 +1,8 @@
 // api/upload/image.mjs
 import { createClient } from '@supabase/supabase-js'
 
+const ALLOWED_FOLDERS = new Set(['products', 'blog'])
+
 const supabase = createClient(
   process.env.VITE_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -81,8 +83,11 @@ export default async function handler(req, res) {
       fileContentType = rawContentType || 'image/jpeg'
     }
 
+    const requestedFolder = new URL(req.url, 'http://localhost').searchParams.get('folder')
+    const folder = ALLOWED_FOLDERS.has(requestedFolder) ? requestedFolder : 'products'
+
     const ext = getExt(fileContentType)
-    const fileName = `products/${Date.now()}.${ext}`
+    const fileName = `${folder}/${Date.now()}.${ext}`
 
     const { error: uploadError } = await supabase.storage
       .from('product-images')

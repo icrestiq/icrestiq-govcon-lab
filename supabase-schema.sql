@@ -338,3 +338,51 @@ AS $$
 $$;
 
 GRANT EXECUTE ON FUNCTION public.digest_subscriber_public_stats() TO anon, authenticated;
+
+-- ════════════════════════════════════════════════════════════
+-- BLOG POSTS — /blog + /blog/:slug, published from the admin panel
+-- Run in Supabase SQL Editor
+-- ════════════════════════════════════════════════════════════
+
+-- body is plain text: paragraphs separated by a blank line, and a line
+-- starting with "## " renders as a subheading on the post page — same
+-- lightweight convention ProductDetail.jsx already uses for
+-- long_description, just split on blank lines instead of a single \n.
+CREATE TABLE IF NOT EXISTS blog_posts (
+  id              UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  slug            TEXT UNIQUE NOT NULL,
+  title           TEXT NOT NULL,
+  excerpt         TEXT,
+  body            TEXT NOT NULL,
+  category        TEXT DEFAULT 'GovCon Notes',
+  author          TEXT DEFAULT 'Keith Atkinson',
+  cover_image_url TEXT,
+  reading_minutes INTEGER DEFAULT 4,
+  published       BOOLEAN DEFAULT FALSE,
+  published_at    TIMESTAMPTZ DEFAULT NOW(),
+  created_at      TIMESTAMPTZ DEFAULT NOW(),
+  updated_at      TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_blog_posts_published_at ON blog_posts(published_at DESC);
+
+ALTER TABLE blog_posts ENABLE ROW LEVEL SECURITY;
+
+-- Tighter than the products policy (which lets any authenticated user see
+-- inactive products) — drafts should only be visible to admins.
+CREATE POLICY "Anyone can view published posts"
+  ON blog_posts FOR SELECT USING (published = true);
+
+CREATE POLICY "Admins can manage all posts"
+  ON blog_posts FOR ALL
+  USING (
+    EXISTS (
+      SELECT 1 FROM profiles
+      WHERE profiles.id = auth.uid()
+      AND profiles.role = 'admin'
+    )
+  );
+
+-- Cover images reuse the existing public product-images bucket (its
+-- storage policies aren't prefix-restricted) under a blog/ prefix
+-- instead of products/ — no new bucket or storage policy needed.

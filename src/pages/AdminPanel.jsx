@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/AuthContext'
-import { Users, Package, MessageSquare, Plus, Trash2, Edit, Tag, Upload, X, Image as ImageIcon, Copy, Check, Mail, Download } from 'lucide-react'
+import { Users, Package, MessageSquare, Plus, Trash2, Edit, Tag, Upload, X, Image as ImageIcon, Copy, Check, Mail, Download, Newspaper } from 'lucide-react'
 import Avatar from '../components/Avatar'
 import styles from './AdminPanel.module.css'
 
@@ -12,6 +12,7 @@ const TABS = [
   { id: 'messages',    label: 'Messages',        icon: MessageSquare },
   { id: 'images',      label: 'Image Uploader',  icon: ImageIcon },
   { id: 'subscribers', label: 'Subscribers',     icon: Mail },
+  { id: 'blog',        label: 'Blog Posts',      icon: Newspaper },
 ]
 
 export default function AdminPanel() {
@@ -225,6 +226,9 @@ async function testMonthlyRewards() {
 
       {/* ── Subscribers ── */}
       {tab === 'subscribers' && <SubscribersTab />}
+
+      {/* ── Blog Posts ── */}
+      {tab === 'blog' && <BlogTab />}
     </div>
   )
 }
@@ -1310,6 +1314,288 @@ function ProductForm({ product, onSave, onCancel }) {
         <div style={{ display: 'flex', gap: 'var(--sp-3)', marginTop: 'var(--sp-5)' }}>
           <button type="submit" className="btn btn-primary" disabled={saving}>
             {saving ? <div className="spinner" /> : 'Save Product'}
+          </button>
+          <button type="button" className="btn btn-ghost" onClick={onCancel}>Cancel</button>
+        </div>
+      </form>
+    </div>
+  )
+}
+
+// ── Blog Tab — list posts, publish/hide, create/edit via BlogPostForm ──
+function BlogTab() {
+  const [posts, setPosts] = useState([])
+  const [showForm, setShowForm] = useState(false)
+  const [editPost, setEditPost] = useState(null)
+
+  useEffect(() => { loadPosts() }, [])
+
+  async function loadPosts() {
+    const { data } = await supabase.from('blog_posts').select('*').order('created_at', { ascending: false })
+    if (data) setPosts(data)
+  }
+
+  async function deletePost(id) {
+    if (!confirm('Delete this post?')) return
+    await supabase.from('blog_posts').delete().eq('id', id)
+    loadPosts()
+  }
+
+  async function togglePublished(post) {
+    await supabase.from('blog_posts').update({ published: !post.published }).eq('id', post.id)
+    loadPosts()
+  }
+
+  return (
+    <div>
+      <div className={styles.tabActions}>
+        <h2 className={styles.tabTitle}>Blog Posts ({posts.length})</h2>
+        <button className="btn btn-primary" onClick={() => { setEditPost(null); setShowForm(true) }}>
+          <Plus size={16} /> New Post
+        </button>
+      </div>
+
+      {showForm && (
+        <BlogPostForm
+          post={editPost}
+          onSave={() => { setShowForm(false); loadPosts() }}
+          onCancel={() => setShowForm(false)}
+        />
+      )}
+
+      <div className={styles.table}>
+        <div className={`${styles.tableRow} ${styles.tableHead}`}>
+          <span>Title</span>
+          <span>Category</span>
+          <span>Published</span>
+          <span>Actions</span>
+        </div>
+        {posts.length === 0 && (
+          <div className={styles.tableEmpty}>No posts yet. Add your first post above.</div>
+        )}
+        {posts.map(p => (
+          <div key={p.id} className={styles.tableRow}>
+            <span className={styles.cellTitle}>
+              {p.cover_image_url && (
+                <img src={p.cover_image_url} alt="" style={{ width: 32, height: 32, borderRadius: 4, objectFit: 'cover', flexShrink: 0 }} />
+              )}
+              {p.title}
+            </span>
+            <span><span className="badge badge-blue">{p.category}</span></span>
+            <span>
+              <button
+                className={`badge ${p.published ? 'badge-green' : 'badge-amber'}`}
+                onClick={() => togglePublished(p)}
+                style={{ cursor: 'pointer', border: 'none' }}
+              >
+                {p.published ? 'Published' : 'Draft'}
+              </button>
+            </span>
+            <span className={styles.cellActions}>
+              <button className="btn btn-ghost" style={{ padding: '4px 10px' }}
+                onClick={() => { setEditPost(p); setShowForm(true) }}>
+                <Edit size={14} />
+              </button>
+              <button className="btn btn-danger" style={{ padding: '4px 10px' }}
+                onClick={() => deletePost(p.id)}>
+                <Trash2 size={14} />
+              </button>
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function slugify(input) {
+  return input
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+}
+
+function BlogPostForm({ post, onSave, onCancel }) {
+  const [form, setForm] = useState({
+    title: post?.title || '',
+    slug: post?.slug || '',
+    excerpt: post?.excerpt || '',
+    body: post?.body || '',
+    category: post?.category || 'GovCon Notes',
+    author: post?.author || 'Keith Atkinson',
+    cover_image_url: post?.cover_image_url || '',
+    reading_minutes: post?.reading_minutes || 4,
+    published: post?.published || false,
+  })
+  const [slugTouched, setSlugTouched] = useState(Boolean(post))
+  const [saving, setSaving] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState('')
+
+  function handleTitleChange(value) {
+    setForm(f => ({ ...f, title: value, slug: slugTouched ? f.slug : slugify(value) }))
+  }
+
+  function handleBodyChange(value) {
+    const words = value.trim().split(/\s+/).filter(Boolean).length
+    setForm(f => ({ ...f, body: value, reading_minutes: words ? Math.max(1, Math.ceil(words / 200)) : f.reading_minutes }))
+  }
+
+  async function handleImageUpload(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploadError('')
+    setUploading(true)
+    try {
+      if (file.size > 2 * 1024 * 1024) {
+        throw new Error('File too large. Max size is 2MB.')
+      }
+      const res = await fetch('/api/upload/image?folder=blog', {
+        method: 'POST',
+        headers: { 'Content-Type': file.type },
+        body: file,
+      })
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.error || 'Upload failed')
+      }
+      const { url } = await res.json()
+      setForm(f => ({ ...f, cover_image_url: url }))
+    } catch (err) {
+      setUploadError('Upload failed: ' + err.message)
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  async function handleSave(e) {
+    e.preventDefault()
+    setSaving(true)
+    try {
+      const payload = {
+        title: form.title,
+        slug: slugify(form.slug || form.title),
+        excerpt: form.excerpt,
+        body: form.body,
+        category: form.category,
+        author: form.author,
+        cover_image_url: form.cover_image_url || null,
+        reading_minutes: Number(form.reading_minutes) || 1,
+        published: form.published,
+        updated_at: new Date().toISOString(),
+      }
+      if (post?.id) {
+        const { error } = await supabase.from('blog_posts').update(payload).eq('id', post.id)
+        if (error) throw error
+      } else {
+        const { error } = await supabase.from('blog_posts').insert(payload)
+        if (error) throw error
+      }
+      onSave()
+    } catch (err) {
+      console.error('Save error:', err)
+      alert('Save failed: ' + err.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="card" style={{ marginBottom: 'var(--sp-6)' }}>
+      <h3 style={{ marginBottom: 'var(--sp-5)', fontSize: '1rem', color: 'var(--navy)' }}>
+        {post ? 'Edit Post' : 'New Post'}
+      </h3>
+      <form onSubmit={handleSave}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--sp-4)' }}>
+
+          <div className="field" style={{ gridColumn: '1 / -1' }}>
+            <label className="label">Title</label>
+            <input className="input" value={form.title} onChange={e => handleTitleChange(e.target.value)} required />
+          </div>
+
+          <div className="field" style={{ gridColumn: '1 / -1' }}>
+            <label className="label">URL slug</label>
+            <input className="input mono" value={form.slug}
+              onChange={e => { setSlugTouched(true); setForm(f => ({ ...f, slug: e.target.value })) }}
+              placeholder="auto-generated-from-title" required />
+          </div>
+
+          <div className="field" style={{ gridColumn: '1 / -1' }}>
+            <label className="label">Excerpt (shown on the blog index card)</label>
+            <textarea className="input" value={form.excerpt}
+              onChange={e => setForm(f => ({ ...f, excerpt: e.target.value }))} rows={2} />
+          </div>
+
+          <div className="field" style={{ gridColumn: '1 / -1' }}>
+            <label className="label">Body</label>
+            <textarea className="input" value={form.body}
+              onChange={e => handleBodyChange(e.target.value)}
+              rows={12}
+              placeholder="Separate paragraphs with a blank line. Start a line with '## ' for a subheading." required />
+            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 'var(--sp-2)', fontFamily: 'var(--font-mono)' }}>
+              Tip: blank line = new paragraph &middot; "## Heading" / "### Subheading" &middot; **bold** &middot; [link text](url) &middot; markdown tables (| col | col |)
+            </p>
+          </div>
+
+          <div className="field">
+            <label className="label">Category</label>
+            <input className="input" value={form.category}
+              onChange={e => setForm(f => ({ ...f, category: e.target.value }))} />
+          </div>
+
+          <div className="field">
+            <label className="label">Author</label>
+            <input className="input" value={form.author}
+              onChange={e => setForm(f => ({ ...f, author: e.target.value }))} />
+          </div>
+
+          <div className="field">
+            <label className="label">Reading time (min)</label>
+            <input className="input" type="number" min="1" value={form.reading_minutes}
+              onChange={e => setForm(f => ({ ...f, reading_minutes: e.target.value }))} />
+            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 'var(--sp-1)' }}>
+              Auto-estimated from the body — edit if needed.
+            </p>
+          </div>
+
+          <div className="field" style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-3)', paddingTop: 'var(--sp-5)' }}>
+            <input type="checkbox" id="published" checked={form.published}
+              onChange={e => setForm(f => ({ ...f, published: e.target.checked }))} />
+            <label htmlFor="published" className="label" style={{ marginBottom: 0 }}>
+              Published — visible on /blog
+            </label>
+          </div>
+
+          <div className="field" style={{ gridColumn: '1 / -1' }}>
+            <label className="label">Cover Image</label>
+
+            {form.cover_image_url && (
+              <div style={{ marginBottom: 'var(--sp-3)', position: 'relative', display: 'inline-block' }}>
+                <img src={form.cover_image_url} alt="Cover"
+                  style={{ width: 160, height: 90, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border)' }} />
+                <button type="button"
+                  style={{ position: 'absolute', top: -8, right: -8, background: 'var(--red)', border: 'none', borderRadius: '50%', width: 20, height: 20, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}
+                  onClick={() => setForm(f => ({ ...f, cover_image_url: '' }))}>
+                  <X size={12} />
+                </button>
+              </div>
+            )}
+
+            <label className={styles.uploadBtn}>
+              <Upload size={16} />
+              {uploading ? 'Uploading...' : 'Upload Cover Image'}
+              <input type="file" accept="image/*" onChange={handleImageUpload} style={{ display: 'none' }} disabled={uploading} />
+            </label>
+
+            {uploadError && <p style={{ color: 'var(--red)', fontSize: '0.8125rem', marginTop: 'var(--sp-2)' }}>{uploadError}</p>}
+          </div>
+
+        </div>
+
+        <div style={{ display: 'flex', gap: 'var(--sp-3)', marginTop: 'var(--sp-5)' }}>
+          <button type="submit" className="btn btn-primary" disabled={saving}>
+            {saving ? <div className="spinner" /> : 'Save Post'}
           </button>
           <button type="button" className="btn btn-ghost" onClick={onCancel}>Cancel</button>
         </div>

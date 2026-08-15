@@ -364,6 +364,9 @@ export default function Landing() {
             <Link to="/about" className={styles.contactLink}>
               About GovCon Lab →
             </Link>
+            <Link to="/blog" className={styles.contactLink} style={{ display: 'block', marginTop: 4 }}>
+              Blog →
+            </Link>
           </div>
         </div>
       </section>

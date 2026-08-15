@@ -3,7 +3,7 @@ import { Outlet, NavLink, Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../lib/AuthContext'
 import {
   LayoutDashboard, MessageSquare, ShoppingBag,
-  LogOut, Menu, X, Shield, ChevronRight, CreditCard, User, Crown, FileText
+  LogOut, Menu, X, Shield, ChevronRight, CreditCard, User, Crown, FileText, Newspaper
 } from 'lucide-react'
 import Footer from './Footer'
 import Avatar from '../Avatar'
@@ -13,6 +13,7 @@ const NAV = [
   { to: '/dashboard',  icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/chat',       icon: MessageSquare,   label: 'Community' },
   { to: '/store',      icon: ShoppingBag,     label: 'Store' },
+  { to: '/blog',       icon: Newspaper,       label: 'Blog' },
   { to: '/membership', icon: CreditCard,      label: 'Membership' },
   { to: '/founders',   icon: Crown,           label: 'Founders' },
 { to: '/tools/proposal-builder', icon: FileText, label: 'Proposal Builder' },

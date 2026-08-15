@@ -1,0 +1,145 @@
+.page {
+  padding: var(--sp-8);
+  max-width: 1200px;
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  margin-bottom: var(--sp-8);
+  flex-wrap: wrap;
+}
+
+.title {
+  font-size: 2rem;
+  color: var(--text-primary);
+  margin-bottom: var(--sp-2);
+}
+
+.sub {
+  color: var(--text-secondary);
+  font-size: 0.9375rem;
+}
+
+/* ── Filters ── */
+.filters {
+  display: flex;
+  gap: var(--sp-4);
+  margin-bottom: var(--sp-6);
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.searchWrap {
+  position: relative;
+  flex: 1;
+  min-width: 200px;
+}
+
+.searchIcon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.searchInput {
+  padding-left: 38px;
+}
+
+.categories {
+  display: flex;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+
+.catBtn {
+  padding: 6px 14px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  font-family: var(--font-display);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.12s;
+  white-space: nowrap;
+}
+
+.catBtn:hover {
+  border-color: var(--border-lit);
+  color: var(--text-primary);
+}
+
+.catActive {
+  background: var(--gold-muted) !important;
+  border-color: var(--gold) !important;
+  color: var(--gold-dim) !important;
+}
+
+/* ── Grid ── */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: var(--sp-5);
+}
+
+.empty {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: var(--sp-12);
+  color: var(--text-secondary);
+}
+
+/* ── Post card ── */
+.postCard {
+  display: flex;
+  flex-direction: column;
+  padding: var(--sp-6);
+  text-decoration: none;
+  color: inherit;
+}
+
+.postTitle {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.35;
+  margin-bottom: var(--sp-3);
+}
+
+.postExcerpt {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  flex: 1;
+  margin-bottom: var(--sp-4);
+}
+
+.postFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding-top: var(--sp-4);
+  border-top: 1px solid var(--border);
+  margin-top: auto;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.readingTime {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+@media (max-width: 768px) {
+  .page { padding: var(--sp-5); }
+  .title { font-size: 1.5rem; }
+}

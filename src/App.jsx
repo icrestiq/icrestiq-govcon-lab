@@ -13,6 +13,8 @@ import Store from './pages/Store'
 import ProductDetail from './pages/ProductDetail'
 import Membership from './pages/Membership'
 import FoundersWall from './pages/FoundersWall'
+import Blog from './pages/Blog'
+import BlogPost from './pages/BlogPost'
 import ProposalBuilder from './pages/ProposalBuilder'
 import Profile from './pages/Profile'
 import AdminPanel from './pages/AdminPanel'
@@ -82,6 +84,8 @@ export default function App() {
         <Route path="store/:productId" element={<ProductDetail />} />
         <Route path="membership" element={<Membership />} />
         <Route path="founders" element={<FoundersWall />} />
+        <Route path="blog" element={<Blog />} />
+        <Route path="blog/:slug" element={<BlogPost />} />
       </Route>
 
       {/* Protected - inside layout */}
