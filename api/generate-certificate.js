@@ -36,7 +36,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { name, email, month } = req.body || {}
+    const { name, email, month, couponCode } = req.body || {}
     if (!name || !email) return res.status(400).json({ error: 'Missing name or email' })
 
     const dateLabel = month || new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' })
@@ -67,6 +67,18 @@ export default async function handler(req, res) {
 
     const finishedPdfBytes = await pdfDoc.save()
 
+    // Coupon creation can fail independently of this email (see
+    // monthly_rewards Edge Function) — couponCode may be null. Don't print
+    // a broken "Code: null" line if so; just skip the block entirely.
+    const couponBlock = couponCode
+      ? [
+          ``,
+          `🎁 YOUR REWARD: 20% off anything in the GovCon Lab store`,
+          `CODE: ${couponCode}`,
+          `(one-time use — enter it at checkout)`,
+        ]
+      : []
+
     await transporter.sendMail({
       from: process.env.GMAIL_USER,
       to: email,
@@ -75,6 +87,7 @@ export default async function handler(req, res) {
         `Hi ${name},`,
         ``,
         `Congratulations again on being the Top Contributor in GovCon Lab for ${dateLabel}! Your certificate of appreciation is attached.`,
+        ...couponBlock,
         ``,
         `Thank you for being part of the community.`,
         `— iCrestiQ GovCon Lab`,
