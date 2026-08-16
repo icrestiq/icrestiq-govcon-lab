@@ -120,6 +120,12 @@ export default function Landing() {
         </div>
         <div className={styles.navActions}>
           <Link to="/login" className="btn btn-ghost hide-mobile">Sign In</Link>
+          {/* Full ghost button is too wide next to the logo block on
+              mobile, but hiding it entirely (previous behavior) left
+              mobile visitors with no way back to Sign In at all except
+              Join the Lab. Compact text link instead of the full button
+              treatment, shown only below the desktop breakpoint. */}
+          <Link to="/login" className={`hide-desktop ${styles.mobileSignIn}`}>Sign In</Link>
           <Link to="/register" className="btn btn-primary">Join the Lab</Link>
         </div>
       </nav>
