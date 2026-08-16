@@ -23,10 +23,14 @@ const Turnstile = forwardRef(function Turnstile({ onVerify }, ref) {
       widgetIdRef.current = window.turnstile.render(containerRef.current, {
         sitekey: SITE_KEY,
         // Cloudflare's default 'normal' size is a fixed ~300px wide and
-        // doesn't shrink to fit its container — on a narrow phone screen
-        // it overflowed past the edge of the auth card. 'flexible' makes
-        // the widget track the container's actual width instead.
-        size: 'flexible',
+        // doesn't shrink to fit its container. 'flexible' tracks the
+        // container's width instead, but still has a 300px floor of its
+        // own — on a narrow phone the auth card's own padding (.page +
+        // .card, ~112px combined) leaves less than 300px of usable width,
+        // so 'flexible' still overflowed. 'compact' has a much smaller
+        // (~150px) footprint with no risk of hitting that floor, so it's
+        // used below the point where 'flexible' can't fit reliably.
+        size: window.innerWidth < 400 ? 'compact' : 'flexible',
         callback: token => onVerify(token),
         'expired-callback': () => onVerify(''),
         'error-callback': () => onVerify(''),
