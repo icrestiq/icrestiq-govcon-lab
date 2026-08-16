@@ -200,6 +200,8 @@ export default async function handler(req, res) {
   try {
     const email = (req.body?.email || '').trim().toLowerCase()
     const source = req.body?.source || 'homepage'
+    const firstName = (req.body?.firstName || '').trim()
+    const lastName = (req.body?.lastName || '').trim()
 
     // --- Bot check 1: honeypot -------------------------------------
     // Real visitors never populate this field (it's visually hidden and
@@ -235,6 +237,10 @@ export default async function handler(req, res) {
       }
     } else {
       console.warn('TURNSTILE_SECRET_KEY not configured — skipping Turnstile verification for digest subscribe')
+    }
+
+    if (!firstName) {
+      return res.status(400).json({ error: 'First name is required.' })
     }
 
     if (!isValidEmail(email)) {
@@ -276,13 +282,13 @@ export default async function handler(req, res) {
     if (existing) {
       const { error } = await supabase
         .from('digest_subscribers')
-        .update({ confirm_token: token, source })
+        .update({ confirm_token: token, source, first_name: firstName, last_name: lastName || null })
         .eq('id', existing.id)
       if (error) throw error
     } else {
       const { error } = await supabase
         .from('digest_subscribers')
-        .insert({ email, source, confirmed: false, confirm_token: token })
+        .insert({ email, source, confirmed: false, confirm_token: token, first_name: firstName, last_name: lastName || null })
       if (error) throw error
     }
 

@@ -3,6 +3,8 @@ import Turnstile from './Turnstile'
 import styles from './DigestSignup.module.css'
 
 export default function DigestSignup() {
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('')
   const [email, setEmail] = useState('')
   const [company, setCompany] = useState('') // honeypot — real visitors never fill this
   const [status, setStatus] = useState('idle') // idle | loading | check-email | already-confirmed | error
@@ -25,6 +27,8 @@ export default function DigestSignup() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          firstName,
+          lastName,
           email,
           source: 'homepage',
           company, // honeypot field — should always be empty for real users
@@ -89,6 +93,23 @@ export default function DigestSignup() {
               />
             </div>
 
+            <input
+              type="text"
+              required
+              placeholder="First name"
+              className={`input ${styles.input}`}
+              value={firstName}
+              onChange={e => setFirstName(e.target.value)}
+              disabled={status === 'loading'}
+            />
+            <input
+              type="text"
+              placeholder="Last name"
+              className={`input ${styles.input}`}
+              value={lastName}
+              onChange={e => setLastName(e.target.value)}
+              disabled={status === 'loading'}
+            />
             <input
               type="email"
               required

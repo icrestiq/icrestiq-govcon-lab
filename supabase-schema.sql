@@ -456,7 +456,13 @@ BEGIN
   RETURN QUERY
   WITH merged AS (
     SELECT
-      p.id AS member_id, p.email AS p_email, p.username, p.first_name, p.last_name,
+      p.id AS member_id, p.email AS p_email, p.username,
+      -- Subscriber-only rows have no profiles row, so p.first_name/
+      -- last_name were always null for them — fall back to
+      -- digest_subscribers' own first_name/last_name (added 2026-08-16)
+      -- so the unified list shows a name for everyone who has one.
+      COALESCE(p.first_name, ds.first_name) AS first_name,
+      COALESCE(p.last_name, ds.last_name) AS last_name,
       p.role, p.membership_tier, p.created_at AS member_created_at,
       ds.id AS subscriber_id, ds.email AS ds_email, ds.source, ds.confirmed,
       ds.created_at AS subscriber_created_at
@@ -519,3 +525,14 @@ END;
 $$;
 
 GRANT EXECUTE ON FUNCTION admin_people_stats() TO authenticated;
+
+-- ════════════════════════════════════════════════════════════
+-- Collect first/last name on all digest signup forms (homepage,
+-- /go, /sample), matching what Register.jsx already collects for
+-- full account signups. digest_subscribers previously had no name
+-- data at all, which also meant confirmed subscribers reached
+-- ConvertKit with no name (see api/digest/confirm.js).
+-- ════════════════════════════════════════════════════════════
+ALTER TABLE digest_subscribers
+  ADD COLUMN IF NOT EXISTS first_name TEXT,
+  ADD COLUMN IF NOT EXISTS last_name TEXT;

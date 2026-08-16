@@ -285,6 +285,12 @@
           <input id="gate-company" name="company" type="text" tabindex="-1" autocomplete="off" />
         </div>
 
+        <label for="gate-firstName" class="micro" style="margin-bottom:2px;">First name</label>
+        <input id="gate-firstName" type="text" name="firstName" required autocomplete="given-name"
+               placeholder="First name" aria-label="Your first name" />
+        <label for="gate-lastName" class="micro" style="margin-bottom:2px;">Last name</label>
+        <input id="gate-lastName" type="text" name="lastName" autocomplete="family-name"
+               placeholder="Last name" aria-label="Your last name" />
         <label for="gate-email" class="micro" style="margin-bottom:2px;">Email address</label>
         <input id="gate-email" type="email" name="email" required autocomplete="email" inputmode="email"
                placeholder="you@company.com" aria-label="Your email address" />
@@ -329,6 +335,8 @@
 (function () {
   var f = document.getElementById('gate-form'),
       i = document.getElementById('gate-email'),
+      fn = document.getElementById('gate-firstName'),
+      ln = document.getElementById('gate-lastName'),
       c = document.getElementById('gate-company'), // honeypot — real visitors never fill this
       b = document.getElementById('gate-btn'),
       m = document.getElementById('gate-msg'),
@@ -349,6 +357,11 @@
   f.addEventListener('submit', async function (e) {
     e.preventDefault();
     var email = i.value.trim();
+    var firstName = fn.value.trim();
+    if (!firstName) {
+      showMsg('err', 'First name is required.');
+      return;
+    }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
       showMsg('err', 'That email address does not look right.');
       return;
@@ -366,6 +379,8 @@
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          firstName: firstName,
+          lastName: ln.value.trim(),
           email: email,
           source: 'sample-proposal',
           company: c.value,

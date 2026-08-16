@@ -173,6 +173,10 @@
             <label for="company">Company (leave this blank)</label>
             <input id="company" name="company" type="text" tabindex="-1" autocomplete="off" />
           </div>
+          <input id="firstName" type="text" name="firstName" required autocomplete="given-name"
+                 placeholder="First name" aria-label="Your first name" />
+          <input id="lastName" type="text" name="lastName" autocomplete="family-name"
+                 placeholder="Last name" aria-label="Your last name" />
           <input id="email" type="email" name="email" required autocomplete="email"
                  inputmode="email" placeholder="you@company.com" aria-label="Your email address" />
           <div class="cf-turnstile" data-sitekey="0x4AAAAAAEQ5qXqIODs9pgvr"
@@ -310,6 +314,8 @@
 (function () {
   var f = document.getElementById('digest'),
       i = document.getElementById('email'),
+      fn = document.getElementById('firstName'),
+      ln = document.getElementById('lastName'),
       c = document.getElementById('company'),
       b = document.getElementById('sub'),
       m = document.getElementById('msg'),
@@ -327,6 +333,10 @@
   f.addEventListener('submit', async function (e) {
     e.preventDefault();
     var email = i.value.trim();
+    var firstName = fn.value.trim();
+    if (!firstName) {
+      return show('err', 'First name is required.');
+    }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
       return show('err', 'That email address does not look right.');
     }
@@ -339,7 +349,7 @@
       var r = await fetch('/api/digest/subscribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email, source: '5-free-tools', company: c.value, renderedAt: renderedAt, turnstileToken: turnstileToken })
+        body: JSON.stringify({ firstName: firstName, lastName: ln.value.trim(), email: email, source: '5-free-tools', company: c.value, renderedAt: renderedAt, turnstileToken: turnstileToken })
       });
       var d = await r.json();
       if (!r.ok) throw new Error(d.error || 'Something went wrong. Please try again.');

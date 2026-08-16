@@ -69,9 +69,9 @@ const TOOLS = [
   },
 ]
 
-function welcomeText() {
+function welcomeText(firstName) {
   const lines = [
-    `Thanks for confirming. Here are your 5 free GovCon tools:`,
+    `${firstName ? `Hi ${firstName},` : 'Hi,'} thanks for confirming. Here are your 5 free GovCon tools:`,
     ``,
   ]
   for (const t of TOOLS) {
@@ -83,7 +83,7 @@ function welcomeText() {
   return lines.join('\n')
 }
 
-function welcomeHtml() {
+function welcomeHtml(firstName) {
   const rows = TOOLS.map(
     (t) => `
       <tr>
@@ -96,7 +96,7 @@ function welcomeHtml() {
 
   return `
   <div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;margin:0 auto;color:#1B2A4A;">
-    <p style="font-size:16px;line-height:1.55;">Thanks for confirming. Here are your 5 free GovCon tools:</p>
+    <p style="font-size:16px;line-height:1.55;">${firstName ? `Hi ${firstName},` : 'Hi,'} thanks for confirming. Here are your 5 free GovCon tools:</p>
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:12px 0;">
       ${rows}
     </table>
@@ -107,9 +107,9 @@ function welcomeHtml() {
   </div>`
 }
 
-function sampleWelcomeText() {
+function sampleWelcomeText(firstName) {
   return [
-    `Here's the full 14-page sample proposal — the actual, unedited output of the GovCon Lab Proposal Builder:`,
+    `${firstName ? `Hi ${firstName},` : 'Hi,'} here's the full 14-page sample proposal — the actual, unedited output of the GovCon Lab Proposal Builder:`,
     ``,
     SAMPLE_PDF_URL,
     ``,
@@ -119,10 +119,10 @@ function sampleWelcomeText() {
   ].join('\n')
 }
 
-function sampleWelcomeHtml() {
+function sampleWelcomeHtml(firstName) {
   return `
   <div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;margin:0 auto;color:#1B2A4A;">
-    <p style="font-size:16px;line-height:1.55;">Here's the full 14-page sample proposal — the actual, unedited output of the GovCon Lab Proposal Builder.</p>
+    <p style="font-size:16px;line-height:1.55;">${firstName ? `Hi ${firstName},` : 'Hi,'} here's the full 14-page sample proposal — the actual, unedited output of the GovCon Lab Proposal Builder.</p>
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:12px 0;">
       <tr>
         <td style="padding:14px 0;border-bottom:1px solid #DDE1EA;">
@@ -151,13 +151,14 @@ async function sendWelcomeIfNeeded(row) {
   }
 
   const isSample = row?.source === 'sample-proposal'
+  const firstName = row?.first_name || ''
 
   await transporter.sendMail({
     from: process.env.GMAIL_USER,
     to: row.email,
     subject: isSample ? 'Your full 14-page sample proposal' : 'Your 5 free GovCon tools',
-    text: isSample ? sampleWelcomeText() : welcomeText(),
-    html: isSample ? sampleWelcomeHtml() : welcomeHtml(),
+    text: isSample ? sampleWelcomeText(firstName) : welcomeText(firstName),
+    html: isSample ? sampleWelcomeHtml(firstName) : welcomeHtml(firstName),
   })
 
   try {
@@ -215,6 +216,8 @@ export default async function handler(req, res) {
     try {
       await subscribeToConvertKit({
         email: data.email,
+        firstName: data.first_name || undefined,
+        lastName: data.last_name || undefined,
         fields: { source: data.source || 'unknown', digest_confirmed_at: data.confirmed_at },
         tags: ['govcon-lab', 'digest-subscriber', `digest-source-${data.source || 'unknown'}`],
       })

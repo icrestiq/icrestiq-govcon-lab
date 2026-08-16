@@ -1785,7 +1785,9 @@ function PersonDetailModal({ person, onClose, onDeleted, onRemoveFromDigest }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-4)', marginBottom: 'var(--sp-5)' }}>
             <Avatar username={person.email} size={56} fontSize="1.125rem" />
             <div>
-              <div style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--navy)' }}>{person.email}</div>
+              <div style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--navy)' }}>
+                {person.first_name ? `${person.first_name} ${person.last_name || ''}`.trim() : person.email}
+              </div>
               <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Digest subscriber only — no account</div>
             </div>
           </div>
