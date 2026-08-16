@@ -23,6 +23,7 @@
 import { createClient } from '@supabase/supabase-js'
 import nodemailer from 'nodemailer'
 import { SITE_URL } from '../_lib/site-url.js'
+import { subscribeToConvertKit } from '../_lib/convertkit.js'
 
 const supabase = createClient(
   process.env.VITE_SUPABASE_URL,
@@ -202,6 +203,23 @@ export default async function handler(req, res) {
       await sendWelcomeIfNeeded(data)
     } catch (mailErr) {
       console.error('digest welcome email error:', mailErr)
+    }
+
+    // Best-effort ConvertKit subscribe, same never-block-the-redirect
+    // pattern. Confirmed digest subscribers previously had no path into
+    // Kit at all, so the weekly RFQ digest itself had nowhere automated
+    // to send from — this is what lets it go out as a Kit broadcast
+    // instead of a manual email from a personal inbox. Tagged separately
+    // from member-signup subscribers (api/convertkit/subscribe.js) so
+    // they can still be segmented if ever needed.
+    try {
+      await subscribeToConvertKit({
+        email: data.email,
+        fields: { source: data.source || 'unknown', digest_confirmed_at: data.confirmed_at },
+        tags: ['govcon-lab', 'digest-subscriber', `digest-source-${data.source || 'unknown'}`],
+      })
+    } catch (ckErr) {
+      console.error('digest ConvertKit subscribe error:', ckErr)
     }
 
     // Pass source through so the confirmed landing page shows the right
