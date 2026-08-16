@@ -26,7 +26,10 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { username, email, month, couponCode } = req.body || {}
+    // `name` is the winner's real first/last name (falling back to their
+    // username only if profiles has no name on file) — computed once in
+    // the monthly_rewards Edge Function, not their account username.
+    const { name, email, month, couponCode } = req.body || {}
     if (!email) return res.status(400).json({ error: 'No winner email provided' })
 
     const adminEmail = process.env.ADMIN_ALERT_EMAIL || process.env.GMAIL_USER
@@ -50,7 +53,7 @@ export default async function handler(req, res) {
       to: email,
       subject: `🎉 You're #1 this month in GovCon Lab — your discount code + a free t-shirt!`,
       text: [
-        `Hi ${username || 'there'},`,
+        `Hi ${name || 'there'},`,
         ``,
         `You were the top contributor in GovCon Lab for ${month} — congratulations!`,
         ...couponBlock,
@@ -65,9 +68,9 @@ export default async function handler(req, res) {
     await transporter.sendMail({
       from: process.env.GMAIL_USER,
       to: adminEmail,
-      subject: `Rewards: ${username || email} won #1 for ${month}`,
+      subject: `Rewards: ${name || email} won #1 for ${month}`,
       text: [
-        `${username || email} won #1 in GovCon Lab for ${month}.`,
+        `${name || email} won #1 in GovCon Lab for ${month}.`,
         couponCode ? `Discount code sent to them: ${couponCode} (20% off, one-time use).` : `Note: coupon creation failed for this winner — they were not sent a discount code.`,
         ``,
         `An email was sent to them at ${email} asking them to reply with their shipping address and t-shirt size.`,
