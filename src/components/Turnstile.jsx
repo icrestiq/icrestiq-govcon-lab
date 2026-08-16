@@ -31,6 +31,12 @@ const Turnstile = forwardRef(function Turnstile({ onVerify }, ref) {
         // (~150px) footprint with no risk of hitting that floor, so it's
         // used below the point where 'flexible' can't fit reliably.
         size: window.innerWidth < 400 ? 'compact' : 'flexible',
+        // Auth.module.css's .card is always white/light regardless of
+        // device dark mode, but Turnstile's default 'auto' theme follows
+        // the OS — on a dark-mode phone that rendered as a heavy black
+        // square against the light card. Forcing 'light' keeps it visually
+        // consistent with the card it's actually sitting inside.
+        theme: 'light',
         callback: token => onVerify(token),
         'expired-callback': () => onVerify(''),
         'error-callback': () => onVerify(''),
