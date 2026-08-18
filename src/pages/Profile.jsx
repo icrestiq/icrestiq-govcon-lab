@@ -1,12 +1,24 @@
 import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../lib/AuthContext'
 import { supabase } from '../lib/supabase'
-import { User, Activity, FileText, MessageCircle, Heart, Pencil, X, Camera } from 'lucide-react'
+import { User, Activity, FileText, MessageCircle, Heart, Pencil, X, Camera, Target } from 'lucide-react'
 import ActivityHeatmap from '../components/ActivityHeatmap'
 import FounderBadge from '../components/FounderBadge'
 import Avatar from '../components/Avatar'
+import TagInput from '../components/TagInput'
 import { isFoundingMember } from '../lib/tier'
+import { searchNaics, getNaicsTitle } from '../lib/naics'
 import styles from './Profile.module.css'
+
+// Matching preferences allow more codes than the Proposal Builder's NAICS
+// selector (which caps at 5 for a single proposal) — a member's actual
+// business can reasonably span more industries than any one proposal does.
+const MAX_MATCHING_NAICS = 15
+const MAX_PSC_CODES = 15
+const MAX_AGENCY_TAGS = 10
+const CAPABILITIES_MAX_LEN = 1000
+
+const SET_ASIDE_OPTIONS = ['8(a)', 'HUBZone', 'WOSB', 'EDWOSB', 'VOSB', 'SDVOSB', 'SDB']
 
 const MAX_AVATAR_MB = 2
 const MAX_AVATAR_BYTES = MAX_AVATAR_MB * 1024 * 1024
@@ -33,6 +45,61 @@ export default function Profile() {
   const [avatarUploading, setAvatarUploading] = useState(false)
   const [avatarError, setAvatarError] = useState('')
   const avatarInputRef = useRef(null)
+
+  // ── Matching preferences ──
+  const [matchForm, setMatchForm] = useState({
+    naics_codes: [],
+    psc_codes: [],
+    set_aside_certifications: [],
+    matching_enabled: false,
+    bid_criteria: {},
+    capabilities_summary: '',
+  })
+  const [matchSaving, setMatchSaving] = useState(false)
+  const [matchError, setMatchError] = useState('')
+  const [matchSaved, setMatchSaved] = useState(false)
+
+  // Seeds the form once the profile first loads. Keyed on id (not the
+  // whole profile object) so a later profile update from saving here
+  // doesn't clobber further in-progress edits with what was just written.
+  useEffect(() => {
+    if (!profile) return
+    setMatchForm({
+      naics_codes: profile.naics_codes || [],
+      psc_codes: profile.psc_codes || [],
+      set_aside_certifications: profile.set_aside_certifications || [],
+      matching_enabled: profile.matching_enabled || false,
+      bid_criteria: profile.bid_criteria || {},
+      capabilities_summary: profile.capabilities_summary || '',
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile?.id])
+
+  function setCriteria(patch) {
+    setMatchForm((f) => ({ ...f, bid_criteria: { ...f.bid_criteria, ...patch } }))
+  }
+
+  async function saveMatchingPreferences() {
+    setMatchError('')
+    setMatchSaved(false)
+    setMatchSaving(true)
+    try {
+      await updateProfile({
+        naics_codes: matchForm.naics_codes,
+        psc_codes: matchForm.psc_codes,
+        set_aside_certifications: matchForm.set_aside_certifications,
+        matching_enabled: matchForm.matching_enabled,
+        bid_criteria: matchForm.bid_criteria,
+        capabilities_summary: matchForm.capabilities_summary.trim().slice(0, CAPABILITIES_MAX_LEN),
+      })
+      setMatchSaved(true)
+    } catch (err) {
+      console.error('Matching preferences save error:', err)
+      setMatchError('Could not save your matching preferences. Please try again.')
+    } finally {
+      setMatchSaving(false)
+    }
+  }
 
   function startEditing() {
     setForm({
@@ -238,6 +305,12 @@ export default function Profile() {
         >
           <Activity size={15} /> Activity
         </button>
+        <button
+          className={`${styles.tab} ${tab === 'matching' ? styles.tabActive : ''}`}
+          onClick={() => setTab('matching')}
+        >
+          <Target size={15} /> Matching Preferences
+        </button>
       </div>
 
       {tab === 'overview' && (
@@ -357,6 +430,239 @@ export default function Profile() {
             )}
           </div>
         </div>
+      )}
+
+      {tab === 'matching' && (
+        <div className={styles.card}>
+          <h3 className={styles.cardTitle}>Opportunity Matching</h3>
+          <p className={styles.bio} style={{ marginBottom: 'var(--sp-5)' }}>
+            Set your NAICS/PSC codes and certifications so we can match you against new SAM.gov
+            opportunities. Pro and Founding members see matches under "Matched Opportunities" in the nav.
+          </p>
+
+          {matchError && <div className="alert alert-error" style={{ marginBottom: 'var(--sp-4)' }}>{matchError}</div>}
+          {matchSaved && <div className="alert" style={{ marginBottom: 'var(--sp-4)', background: 'rgba(72,187,120,0.08)', borderColor: '#48BB78', color: '#276749' }}>Matching preferences saved.</div>}
+
+          <label style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-2)', marginBottom: 'var(--sp-5)', cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={matchForm.matching_enabled}
+              onChange={(e) => setMatchForm((f) => ({ ...f, matching_enabled: e.target.checked }))}
+            />
+            <span style={{ fontWeight: 600, color: 'var(--navy)' }}>Enable opportunity matching</span>
+          </label>
+
+          <div style={{ marginBottom: 'var(--sp-5)' }}>
+            <label className="label">NAICS Codes (up to {MAX_MATCHING_NAICS}, searched and selected)</label>
+            <NaicsMultiSelect
+              selected={matchForm.naics_codes}
+              onChange={(codes) => setMatchForm((f) => ({ ...f, naics_codes: codes }))}
+            />
+          </div>
+
+          <div style={{ marginBottom: 'var(--sp-5)' }}>
+            <label className="label">PSC Codes</label>
+            <TagInput
+              value={matchForm.psc_codes}
+              onChange={(codes) => setMatchForm((f) => ({ ...f, psc_codes: codes }))}
+              placeholder="Type a PSC code and press Enter (e.g. R425)"
+              transform={(s) => s.trim().toUpperCase()}
+              maxItems={MAX_PSC_CODES}
+            />
+          </div>
+
+          <div style={{ marginBottom: 'var(--sp-6)' }}>
+            <label className="label">Set-Aside Certifications</label>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--sp-3)', marginTop: 'var(--sp-2)' }}>
+              {SET_ASIDE_OPTIONS.map((cert) => (
+                <label key={cert} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.875rem', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={matchForm.set_aside_certifications.includes(cert)}
+                    onChange={(e) => {
+                      setMatchForm((f) => ({
+                        ...f,
+                        set_aside_certifications: e.target.checked
+                          ? [...f.set_aside_certifications, cert]
+                          : f.set_aside_certifications.filter((c) => c !== cert),
+                      }))
+                    }}
+                  />
+                  {cert}
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ marginBottom: 'var(--sp-6)' }}>
+            <label className="label" htmlFor="capabilities_summary">Capabilities / Past Performance Summary</label>
+            <textarea
+              id="capabilities_summary"
+              className="input"
+              rows={4}
+              maxLength={CAPABILITIES_MAX_LEN}
+              placeholder="Briefly describe your company's core capabilities and relevant past performance. Used by AI matching to judge fit when you haven't set explicit bid criteria."
+              value={matchForm.capabilities_summary}
+              onChange={(e) => setMatchForm((f) => ({ ...f, capabilities_summary: e.target.value.slice(0, CAPABILITIES_MAX_LEN) }))}
+            />
+            <p className={styles.fieldHint}>{matchForm.capabilities_summary.length}/{CAPABILITIES_MAX_LEN} characters</p>
+          </div>
+
+          <h3 className={styles.cardTitle}>Bid Criteria (optional)</h3>
+          <p className={styles.fieldHint} style={{ marginBottom: 'var(--sp-4)' }}>
+            Set your own go/no-go rules below and matches will be scored against them automatically.
+            Leave this section blank and we'll use AI judgment instead once that's live.
+          </p>
+
+          <div className={styles.editRow} style={{ marginBottom: 'var(--sp-4)' }}>
+            <div>
+              <label className="label" htmlFor="min_value">Minimum Contract Value ($)</label>
+              <input
+                id="min_value"
+                type="number"
+                min="0"
+                className="input"
+                value={matchForm.bid_criteria.min_value ?? ''}
+                onChange={(e) => setCriteria({ min_value: e.target.value === '' ? null : Number(e.target.value) })}
+              />
+            </div>
+            <div>
+              <label className="label" htmlFor="max_value">Maximum Contract Value ($)</label>
+              <input
+                id="max_value"
+                type="number"
+                min="0"
+                className="input"
+                value={matchForm.bid_criteria.max_value ?? ''}
+                onChange={(e) => setCriteria({ max_value: e.target.value === '' ? null : Number(e.target.value) })}
+              />
+            </div>
+          </div>
+
+          <div style={{ marginBottom: 'var(--sp-4)' }}>
+            <label className="label" htmlFor="min_deadline_days">Minimum Days Left to Respond</label>
+            <input
+              id="min_deadline_days"
+              type="number"
+              min="0"
+              className="input"
+              style={{ maxWidth: 200 }}
+              value={matchForm.bid_criteria.min_deadline_days ?? ''}
+              onChange={(e) => setCriteria({ min_deadline_days: e.target.value === '' ? null : Number(e.target.value) })}
+            />
+            <p className={styles.fieldHint}>Opportunities closing sooner than this will be flagged no-go.</p>
+          </div>
+
+          <div className={styles.editRow} style={{ marginBottom: 'var(--sp-4)' }}>
+            <div>
+              <label className="label">Preferred Agencies</label>
+              <TagInput
+                value={matchForm.bid_criteria.agency_allow || []}
+                onChange={(list) => setCriteria({ agency_allow: list })}
+                placeholder="Type an agency name and press Enter"
+                maxItems={MAX_AGENCY_TAGS}
+              />
+              <p className={styles.fieldHint}>If set, only these agencies will pass.</p>
+            </div>
+            <div>
+              <label className="label">Excluded Agencies</label>
+              <TagInput
+                value={matchForm.bid_criteria.agency_deny || []}
+                onChange={(list) => setCriteria({ agency_deny: list })}
+                placeholder="Type an agency name and press Enter"
+                maxItems={MAX_AGENCY_TAGS}
+              />
+            </div>
+          </div>
+
+          <label style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-2)', marginBottom: 'var(--sp-5)', cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={!!matchForm.bid_criteria.require_set_aside_match}
+              onChange={(e) => setCriteria({ require_set_aside_match: e.target.checked })}
+            />
+            Only go on opportunities matching one of my set-aside certifications
+          </label>
+
+          <button type="button" className="btn btn-primary" onClick={saveMatchingPreferences} disabled={matchSaving}>
+            {matchSaving ? 'Saving…' : 'Save Matching Preferences'}
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------
+// NAICS multi-select for matching preferences — same searchable-chip
+// pattern as the Proposal Builder's selector (src/pages/ProposalBuilder.jsx)
+// but with its own selection cap, since a member's real NAICS footprint
+// can span more industries than any single proposal declares.
+// ---------------------------------------------------------------------
+function NaicsMultiSelect({ selected, onChange }) {
+  const [query, setQuery] = useState('')
+  const results = query.trim() ? searchNaics(query) : []
+  const atLimit = selected.length >= MAX_MATCHING_NAICS
+
+  function addCode(code) {
+    if (atLimit || selected.includes(code)) return
+    onChange([...selected, code])
+    setQuery('')
+  }
+
+  function removeCode(code) {
+    onChange(selected.filter((c) => c !== code))
+  }
+
+  return (
+    <div>
+      {selected.length > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+          {selected.map((code) => (
+            <span key={code} className="badge badge-navy" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <strong>{code}</strong> — {getNaicsTitle(code)}
+              <button
+                type="button"
+                onClick={() => removeCode(code)}
+                aria-label={`Remove ${code}`}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', fontSize: 13, lineHeight: 1, padding: 0 }}
+              >
+                ×
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+
+      {atLimit ? (
+        <p className="fieldHint" style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0 }}>
+          Maximum of {MAX_MATCHING_NAICS} codes selected. Remove one to add another.
+        </p>
+      ) : (
+        <>
+          <input
+            className="input"
+            placeholder="Search by code (e.g. 541511) or keyword (e.g. software)"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+          {results.length > 0 && (
+            <div style={{ border: '1px solid var(--border)', borderRadius: 4, marginTop: 4, maxHeight: 220, overflowY: 'auto' }}>
+              {results.map((r) => (
+                <div
+                  key={r.code}
+                  onClick={() => addCode(r.code)}
+                  style={{ padding: '8px 10px', cursor: 'pointer', borderBottom: '1px solid var(--border)', fontSize: 13 }}
+                >
+                  <strong>{r.code}</strong> — {r.title}
+                </div>
+              ))}
+            </div>
+          )}
+          {query.trim() && results.length === 0 && (
+            <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>No matching NAICS code found.</p>
+          )}
+        </>
       )}
     </div>
   )

@@ -175,6 +175,12 @@
   min-width: 0;
 }
 
+.resourceIcon {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+}
+
 .resourceLabel {
   font-family: var(--font-display);
   font-size: 0.875rem;

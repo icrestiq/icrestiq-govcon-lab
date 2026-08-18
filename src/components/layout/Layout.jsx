@@ -3,10 +3,11 @@ import { Outlet, NavLink, Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../lib/AuthContext'
 import {
   LayoutDashboard, MessageSquare, ShoppingBag,
-  LogOut, Menu, X, Shield, ChevronRight, CreditCard, User, Crown, FileText, Newspaper
+  LogOut, Menu, X, Shield, ChevronRight, CreditCard, User, Crown, FileText, Newspaper, Radar
 } from 'lucide-react'
 import Footer from './Footer'
 import Avatar from '../Avatar'
+import { isProOrFounding } from '../../lib/tier'
 import styles from './Layout.module.css'
 
 const NAV = [
@@ -78,6 +79,20 @@ export default function Layout() {
               <ChevronRight size={14} className={styles.navChevron} />
             </NavLink>
           ))}
+
+          {isProOrFounding(profile, isAdmin) && (
+            <NavLink
+              to="/opportunities"
+              className={({ isActive }) =>
+                `${styles.navItem} ${isActive ? styles.navActive : ''}`
+              }
+              onClick={() => setMobileOpen(false)}
+            >
+              <Radar size={18} />
+              <span>Matched Opportunities</span>
+              <ChevronRight size={14} className={styles.navChevron} />
+            </NavLink>
+          )}
 
           {isAdmin && (
             <>

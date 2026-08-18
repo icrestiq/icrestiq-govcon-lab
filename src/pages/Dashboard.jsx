@@ -3,16 +3,20 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../lib/AuthContext'
 import { createPortalSession } from '../lib/stripe'
 import { MessageSquare, ShoppingBag, TrendingUp, ArrowRight, Zap, CreditCard, GraduationCap, Shirt } from 'lucide-react'
+import VersionCard from '../components/VersionCard'
 import styles from './Dashboard.module.css'
 
-// Each resource gets a distinct color matching GovCon Mastery style
+// Each resource gets a distinct color matching GovCon Mastery style.
+// `image`: optional path under /public (e.g. '/icons/dibbs.png') — square,
+// transparent PNG, displayed at 40px. Falls back to no icon (today's
+// look) when omitted, so this is safe to leave blank per-entry.
 const RESOURCES = [
-  { label: 'DIBBS Portal',           url: 'https://www.dibbs.bsm.dla.mil/',        tag: 'Procurement',   color: 'blue'   },
-  { label: 'SAM.gov',                url: 'https://sam.gov/',                       tag: 'Registration',  color: 'green'  },
-  { label: 'BidNet Direct',          url: 'https://www.bidnet.com/',                tag: 'State/Local',   color: 'purple' },
-  { label: 'GovSpend',               url: 'https://www.govspend.com/',              tag: 'Intel',         color: 'orange' },
-  { label: 'FPDS-NG',                url: 'https://www.fpds.gov/',                  tag: 'Awards Data',   color: 'red'    },
-  { label: 'Beta SAM Opportunities', url: 'https://sam.gov/search/?index=opp',     tag: 'Solicitations', color: 'teal'   },
+  { label: 'DIBBS Portal',           url: 'https://www.dibbs.bsm.dla.mil/',        tag: 'Procurement',   color: 'blue',   image: '/icons/dibbs.png' },
+  { label: 'SAM.gov',                url: 'https://sam.gov/',                       tag: 'Registration',  color: 'green',  image: '/icons/sam-gov.png' },
+  { label: 'BidNet Direct',          url: 'https://www.bidnet.com/',                tag: 'State/Local',   color: 'purple', image: '/icons/bidnet.png' },
+  { label: 'GovSpend',               url: 'https://www.govspend.com/',              tag: 'Intel',         color: 'orange', image: '/icons/govspend.png' },
+  { label: 'FPDS-NG',                url: 'https://www.fpds.gov/',                  tag: 'Awards Data',   color: 'red',    image: '/icons/fpds-ng.png' },
+  { label: 'Beta SAM Opportunities', url: 'https://sam.gov/search/?index=opp',     tag: 'Solicitations', color: 'teal',   image: '/icons/beta-sam.png' },
 ]
 
 const QUICK_LINKS = [
@@ -151,11 +155,12 @@ export default function Dashboard() {
           <h2 className={styles.sectionTitle}>GovCon Quick Links</h2>
         </div>
         <div className={styles.resourceGrid}>
-          {RESOURCES.map(({ label, url, tag, color }) => {
+          {RESOURCES.map(({ label, url, tag, color, image }) => {
             const pill = PILL_COLORS[color]
             return (
               <a key={label} href={url} target="_blank" rel="noopener noreferrer"
                 className={`card card-hover ${styles.resource}`}>
+                {image && <img src={image} alt="" className={styles.resourceIcon} />}
                 <div className={styles.resourceLabel}>{label}</div>
                 <span className={styles.pill} style={{
                   background: pill.bg,
@@ -169,6 +174,8 @@ export default function Dashboard() {
           })}
         </div>
       </div>
+
+      <VersionCard />
     </div>
   )
 }

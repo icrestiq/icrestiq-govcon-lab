@@ -21,6 +21,12 @@ export function isPaidMember(profile) {
   return [TIERS.MEMBER, TIERS.PRO, TIERS.FOUNDING].includes(profile?.membership_tier)
 }
 
+// Gates the Matched Opportunities tab — same founder-equivalent-admin
+// pattern as isFoundingMember above.
+export function isProOrFounding(profile, isAdmin = false) {
+  return isAdmin || [TIERS.PRO, TIERS.FOUNDING].includes(profile?.membership_tier)
+}
+
 export const TIER_LABELS = {
   [TIERS.FREE]: 'Free',
   [TIERS.MEMBER]: 'Lab Member',

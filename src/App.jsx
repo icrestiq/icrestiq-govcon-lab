@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './lib/AuthContext'
+import { isProOrFounding } from './lib/tier'
 import Layout from './components/layout/Layout'
 
 // Route-level code splitting — previously every page was a static import,
@@ -26,6 +27,7 @@ const Blog = lazy(() => import('./pages/Blog'))
 const BlogPost = lazy(() => import('./pages/BlogPost'))
 const ProposalBuilder = lazy(() => import('./pages/ProposalBuilder'))
 const Profile = lazy(() => import('./pages/Profile'))
+const MatchedOpportunities = lazy(() => import('./pages/MatchedOpportunities'))
 const AdminPanel = lazy(() => import('./pages/AdminPanel'))
 const CheckoutSuccess = lazy(() => import('./pages/CheckoutSuccess'))
 const CheckoutCancel = lazy(() => import('./pages/CheckoutCancel'))
@@ -57,6 +59,17 @@ function AdminRoute({ children }) {
   if (loading) return <div className="loading-screen"><div className="spinner" /></div>
   if (!user) return <Navigate to="/login" replace />
   if (!isAdmin) return <Navigate to="/dashboard" replace />
+  return children
+}
+
+// Gates Matched Opportunities behind Pro/Founding (or admin), same shape
+// as AdminRoute above — signed-in-but-wrong-tier members bounce to
+// /profile, where Matching Preferences (open to every tier) lives.
+function TierRoute({ children }) {
+  const { user, profile, isAdmin, loading } = useAuth()
+  if (loading) return <div className="loading-screen"><div className="spinner" /></div>
+  if (!user) return <Navigate to="/login" replace />
+  if (!isProOrFounding(profile, isAdmin)) return <Navigate to="/profile" replace />
   return children
 }
 
@@ -115,6 +128,7 @@ export default function App() {
         <Route path="chat/:roomId" element={<Chat />} />
         <Route path="tools/proposal-builder" element={<ProposalBuilder />} />
         <Route path="profile" element={<Profile />} />
+        <Route path="opportunities" element={<TierRoute><MatchedOpportunities /></TierRoute>} />
       </Route>
 
       {/* Admin */}

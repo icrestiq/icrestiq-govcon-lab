@@ -48,6 +48,43 @@ export default async function handler(req, res) {
         const session = event.data.object
         if (session.payment_status !== 'paid') break
 
+        // Suggested Bid is a separate per-use purchase, not a Store
+        // product — doesn't touch orders/user_purchases, just marks the
+        // bid_requests row paid and hands off to the Edge Function that
+        // does the actual (paid-for) AI work. That handoff happens here,
+        // server-to-server, specifically so it can never be triggered by
+        // the client without a real confirmed charge.
+        if (session.metadata?.feature === 'suggested_bid') {
+          const { bidRequestId } = session.metadata
+          const { error: bidUpdateError } = await supabase
+            .from('bid_requests')
+            .update({
+              status: 'paid',
+              stripe_payment_intent_id: session.payment_intent,
+            })
+            .eq('id', bidRequestId)
+          if (bidUpdateError) {
+            console.error('Failed to mark bid_request paid:', bidUpdateError.message, { bidRequestId })
+            throw new Error(`bid_requests update failed: ${bidUpdateError.message}`)
+          }
+
+          try {
+            await fetch(`${process.env.SUPABASE_FUNCTIONS_URL || 'https://zohrpargudmogfywciik.supabase.co/functions/v1'}/generate_suggested_bid`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ bidRequestId }),
+            })
+          } catch (triggerErr) {
+            // Don't fail the webhook over this — the row is already
+            // 'paid', so a stuck request is recoverable (retry trigger,
+            // or refund) without re-charging the member.
+            console.error('Failed to trigger generate_suggested_bid:', triggerErr.message, { bidRequestId })
+          }
+
+          console.log(`Suggested Bid paid, generation triggered: ${bidRequestId}`)
+          break
+        }
+
         const { userId, productId, productName } = session.metadata
 
         // NOTE: orders.id is a UUID primary key with its own default

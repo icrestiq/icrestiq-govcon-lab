@@ -41,6 +41,33 @@ export async function createCheckoutSession({ productId, userId, userEmail, mode
   return res.json() // { sessionId, url }
 }
 
+// ── Suggested Bid checkout helper ───────────────────────────────
+// Display-only pricing — the actual charge amount is always determined
+// server-side from the caller's real membership_tier (see
+// api/stripe/suggested-bid-checkout.js), never trusted from the client.
+export const SUGGESTED_BID_PRICING = {
+  pro: { label: '$7', searchCap: 8 },
+  founding: { label: '$2', searchCap: 5 },
+  // role='admin' testing on their own account — backend skips Stripe
+  // entirely for this key (see suggested-bid-checkout.js).
+  admin: { label: 'Free (Admin Test)', searchCap: 8 },
+}
+
+export async function createSuggestedBidCheckout({ opportunityId, userId }) {
+  const res = await fetch('/api/stripe/suggested-bid-checkout', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ opportunityId, userId }),
+  })
+
+  if (!res.ok) {
+    const err = await res.json()
+    throw new Error(err.error || 'Checkout failed')
+  }
+
+  return res.json() // { url }
+}
+
 // ── Subscription portal helper ────────────────────────────────
 export async function createPortalSession({ userId }) {
   const res = await fetch('/api/stripe/portal', {
