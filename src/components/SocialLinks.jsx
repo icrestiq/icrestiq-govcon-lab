@@ -30,7 +30,7 @@ function ThreadsIcon({ size = 18, ...props }) {
 // so it's reused here rather than adding another custom SVG.
 const LINKS = [
   { href: 'https://x.com/govconlab', label: 'X (Twitter)', Icon: X },
-  { href: 'https://www.facebook.com/iCrestQGovConLab', label: 'Facebook', Icon: Facebook },
+  { href: 'https://www.facebook.com/profile.php?id=61592367374514', label: 'Facebook', Icon: Facebook },
   { href: 'https://www.threads.net/@govconlab', label: 'Threads', Icon: ThreadsIcon },
   { href: 'https://www.instagram.com/govconlab', label: 'Instagram', Icon: Instagram },
 ]
