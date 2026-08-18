@@ -169,6 +169,63 @@
   margin-bottom: var(--sp-5);
 }
 
+/* ── Highlighted feature callout — visually distinct from the plain
+   checkmark list, for a feature that deserves more than one line among
+   many (Matched Opportunities, gated to Pro/Founding only) ── */
+.featureHighlight {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-3);
+  background: #FFF0CC;
+  border: 1px solid rgba(146,98,10,0.25);
+  border-radius: var(--r-md);
+  padding: var(--sp-3) var(--sp-4);
+  margin-bottom: var(--sp-5);
+}
+
+.featureHighlightIcon { color: #92620A; flex-shrink: 0; margin-top: 2px; }
+
+.featureHighlightTitle {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.8125rem;
+  color: var(--navy);
+  margin-bottom: 2px;
+}
+
+.featureHighlightDesc {
+  font-size: 0.75rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.founderFeatureHighlight {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-3);
+  background: rgba(201,168,76,0.15);
+  border: 1px solid rgba(201,168,76,0.4);
+  border-radius: var(--r-md);
+  padding: var(--sp-3) var(--sp-4);
+  margin-bottom: var(--sp-5);
+}
+
+.founderFeatureHighlightIcon { color: var(--gold); flex-shrink: 0; margin-top: 2px; }
+
+.founderFeatureHighlightTitle {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.8125rem;
+  color: #FFFFFF;
+  margin-bottom: 2px;
+}
+
+.founderFeatureHighlightDesc {
+  font-size: 0.75rem;
+  line-height: 1.5;
+  color: rgba(255,255,255,0.75);
+}
+
 .featureList {
   list-style: none;
   display: flex;

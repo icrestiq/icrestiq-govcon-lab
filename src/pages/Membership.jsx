@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { useAuth } from '../lib/AuthContext'
 import { createCheckoutSession } from '../lib/stripe'
-import { Check, Zap, Crown, Star, Tag } from 'lucide-react'
+import { Check, Zap, Crown, Star, Tag, Radar } from 'lucide-react'
 import styles from './Membership.module.css'
 
 export const TIERS = [
@@ -64,6 +64,14 @@ export const TIERS = [
     badgeType: 'amber',
     badgeColor: '#92620A', badgeBg: '#FFF0CC',
     description: 'For operators scaling fast.',
+    // Rendered as its own callout, not a plain bullet — this is gated to
+    // Pro/Founding only (see isProOrFounding in lib/tier.js), so it's
+    // deliberately not in Lab Member's feature list at all.
+    highlightFeature: {
+      icon: Radar,
+      title: 'Matched Opportunities',
+      desc: 'Live SAM.gov opportunities matched to your NAICS/PSC codes every day, scored and ranked by fit — see what’s worth bidding on before you dig through SAM.gov yourself.',
+    },
     features: [
       'Everything in Lab Member',
       'Monthly live Q&A with Keith',
@@ -85,6 +93,11 @@ export const FOUNDING = {
   price: '$497',
   period: 'one-time · lifetime access',
   description: 'Lock in everything — forever. No monthly fees, ever. First 25 spots only.',
+  highlightFeature: {
+    icon: Radar,
+    title: 'Matched Opportunities',
+    desc: 'Live SAM.gov opportunities matched to your NAICS/PSC codes every day, scored and ranked by fit — included as part of lifetime Lab Pro access.',
+  },
   features: [
     'Lifetime Lab Pro access — never pay monthly',
     'Name on the Founding Members wall',
@@ -256,6 +269,16 @@ export default function Membership() {
               </div>
               <p className={styles.tierDesc}>{tier.description}</p>
 
+              {tier.highlightFeature && (
+                <div className={styles.featureHighlight}>
+                  <tier.highlightFeature.icon size={16} className={styles.featureHighlightIcon} />
+                  <div>
+                    <div className={styles.featureHighlightTitle}>{tier.highlightFeature.title}</div>
+                    <p className={styles.featureHighlightDesc}>{tier.highlightFeature.desc}</p>
+                  </div>
+                </div>
+              )}
+
               <ul className={styles.featureList}>
                 {tier.features.map(f => (
                   <li key={f} className={styles.featureItem}>
@@ -318,6 +341,16 @@ export default function Membership() {
           </div>
           <p className={styles.founderPeriod}>{FOUNDING.period}</p>
           <p className={styles.founderDesc}>{FOUNDING.description}</p>
+
+          {FOUNDING.highlightFeature && (
+            <div className={styles.founderFeatureHighlight}>
+              <FOUNDING.highlightFeature.icon size={16} className={styles.founderFeatureHighlightIcon} />
+              <div>
+                <div className={styles.founderFeatureHighlightTitle}>{FOUNDING.highlightFeature.title}</div>
+                <p className={styles.founderFeatureHighlightDesc}>{FOUNDING.highlightFeature.desc}</p>
+              </div>
+            </div>
+          )}
 
           <ul className={styles.featureList}>
             {FOUNDING.features.map(f => (
