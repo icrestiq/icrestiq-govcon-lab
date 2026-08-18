@@ -1,6 +1,7 @@
 
 // Shared footer component — appears on all pages
 import { MapPin, Mail } from 'lucide-react'
+import SocialLinks from '../SocialLinks'
 import styles from './Footer.module.css'
 
 export default function Footer() {
@@ -15,6 +16,7 @@ export default function Footer() {
           <Mail size={13} />
           <a href="mailto:hello@icrestiq.com">hello@icrestiq.com</a>
         </div>
+        <SocialLinks size={16} style={{ color: 'rgba(255,255,255,0.6)' }} linkClassName={styles.socialLink} />
       </div>
       <div className={styles.copy}>
         © {new Date().getFullYear()} iCrestiQ LLC · All rights reserved · govconlab.com

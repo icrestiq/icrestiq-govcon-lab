@@ -9,6 +9,7 @@ import DigestSignup from '../components/DigestSignup'
 import FoundingSpotsCounter, { useFoundingSpotsRemaining } from '../components/FoundingSpotsCounter'
 import ProofSection from '../components/ProofSection'
 import SampleOutputStrip from '../components/SampleOutputStrip'
+import SocialLinks from '../components/SocialLinks'
 import styles from './Landing.module.css'
 
 const FEATURES = [
@@ -373,6 +374,10 @@ export default function Landing() {
             <Link to="/blog" className={styles.contactLink} style={{ display: 'block', marginTop: 4 }}>
               Blog →
             </Link>
+          </div>
+          <div>
+            <div className={styles.contactLabel}>Follow</div>
+            <SocialLinks linkClassName={styles.contactLink} />
           </div>
         </div>
       </section>

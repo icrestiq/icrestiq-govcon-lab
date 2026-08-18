@@ -34,6 +34,9 @@
 
 .contactItem svg { color: var(--gold); flex-shrink: 0; }
 
+.socialLink { transition: color 0.12s; }
+.socialLink:hover { color: var(--gold) !important; }
+
 .copy {
   font-family: var(--font-mono);
   font-size: 0.6875rem;

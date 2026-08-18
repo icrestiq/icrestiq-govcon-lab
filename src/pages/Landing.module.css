@@ -567,7 +567,7 @@
 .contactInner {
   max-width: 900px; margin: 0 auto;
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
   gap: var(--sp-6);
   align-items: center;
 }
