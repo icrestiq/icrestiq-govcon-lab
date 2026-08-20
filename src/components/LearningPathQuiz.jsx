@@ -63,6 +63,11 @@ const RESULTS = {
         desc: 'Community, weekly intel, and real savings once you want more support.',
         href: '/store/lab-monthly',
       },
+      {
+        label: 'GovCon BookKeeping Suite',
+        desc: 'Chart of accounts, P&L, and a live KPI dashboard built for GovCon — worth setting up before your first award, not after.',
+        href: '/store/cb16b0bd-59df-4468-a3dd-e86a38724874',
+      },
     ],
   },
   STARTING: {
@@ -83,6 +88,11 @@ const RESULTS = {
         label: 'Browse the niche playbooks',
         desc: 'Nine industry-specific playbooks — exact FSC/PSC codes and sourcing strategy for your product category.',
         href: '/store',
+      },
+      {
+        label: 'GovCon BookKeeping Suite',
+        desc: 'Chart of accounts, P&L, and a live KPI dashboard built for GovCon.',
+        href: '/store/cb16b0bd-59df-4468-a3dd-e86a38724874',
       },
     ],
   },
