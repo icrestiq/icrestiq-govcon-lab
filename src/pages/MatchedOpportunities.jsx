@@ -86,9 +86,12 @@ export default function MatchedOpportunities() {
         `)
         .eq('profile_id', user.id)
       if (error) throw error
-      setMatches((data || []).filter((m) => m.opportunities))
+      const filtered = (data || []).filter((m) => m.opportunities)
+      setMatches(filtered)
+      return filtered
     } catch (err) {
       console.error('Failed to load matched opportunities:', err)
+      return null
     } finally {
       setLoading(false)
     }
@@ -112,8 +115,13 @@ export default function MatchedOpportunities() {
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || 'Refresh failed')
-      setRefreshMessage(json.newMatches > 0 ? `Found ${json.newMatches} new match${json.newMatches === 1 ? '' : 'es'}.` : 'No new matches right now.')
-      await loadMatches()
+      const updated = await loadMatches()
+      const totalText = updated ? ` — ${updated.length} total.` : '.'
+      setRefreshMessage(
+        json.newMatches > 0
+          ? `Found ${json.newMatches} new match${json.newMatches === 1 ? '' : 'es'}${totalText}`
+          : `No new matches since your last refresh${totalText}`
+      )
     } catch (err) {
       console.error('Refresh matches failed:', err)
       setRefreshMessage('Could not refresh matches. Please try again.')
@@ -244,7 +252,7 @@ export default function MatchedOpportunities() {
         </p>
         {profile?.matching_enabled && (
           <div style={{ marginTop: 'var(--sp-3)' }}>
-            <button type="button" className="btn btn-ghost" onClick={handleRefreshMatches} disabled={refreshing}>
+            <button type="button" className={`btn btn-ghost ${styles.btnGreen}`} onClick={handleRefreshMatches} disabled={refreshing}>
               <RefreshCw size={14} className={refreshing ? styles.spin : ''} />
               {refreshing ? 'Refreshing…' : 'Refresh My Matches'}
             </button>
@@ -651,7 +659,7 @@ function SuggestedBidSection({ opportunityId, userId, tier, bidRequest, autoExpa
   const research = bidRequest.supplier_research || {}
   return (
     <div className={styles.bidSection}>
-      <button type="button" className="btn btn-ghost" onClick={() => setExpanded((v) => !v)}>
+      <button type="button" className={`btn btn-ghost ${styles.btnGreen}`} onClick={() => setExpanded((v) => !v)}>
         {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
         {expanded ? 'Hide' : 'View'} Suggested Bid
       </button>

@@ -37,8 +37,19 @@
 
 .refreshHint {
   font-size: 0.8125rem;
-  color: var(--text-muted);
+  color: #276749;
   margin-top: var(--sp-2);
+}
+
+.btnGreen {
+  color: #276749;
+  border-color: #48BB78;
+}
+
+.btnGreen:hover {
+  border-color: #48BB78;
+  color: #276749;
+  background: rgba(72, 187, 120, 0.08);
 }
 
 .pitchCard {
