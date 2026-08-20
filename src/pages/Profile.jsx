@@ -58,6 +58,10 @@ export default function Profile() {
   const [matchSaving, setMatchSaving] = useState(false)
   const [matchError, setMatchError] = useState('')
   const [matchSaved, setMatchSaved] = useState(false)
+  // '' | 'pulling' | 'done' | 'error' — tracks the background SAM.gov pull
+  // for newly-added codes, separate from the save itself so the save
+  // button re-enables immediately rather than waiting on SAM.gov calls.
+  const [pullStatus, setPullStatus] = useState('')
 
   // Seeds the form once the profile first loads. Keyed on id (not the
   // whole profile object) so a later profile update from saving here
@@ -79,10 +83,55 @@ export default function Profile() {
     setMatchForm((f) => ({ ...f, bid_criteria: { ...f.bid_criteria, ...patch } }))
   }
 
+  // Pulls fresh SAM.gov results for just the codes that are new this save
+  // (not the member's whole list — they can register up to 15+15 codes,
+  // and each SAM.gov call needs ~2s spacing, so a full re-pull on every
+  // save would be too slow to run inline here). Runs in the background,
+  // separate from the save's own loading state, and refreshes this
+  // member's matches once the pull completes. The daily cron still covers
+  // every registered code regardless, so a failure here is non-critical —
+  // it just means waiting for tomorrow's automatic pull instead of seeing
+  // fresh matches immediately.
+  async function pullNewCodesInBackground(newNaicsCodes, newPscCodes) {
+    setPullStatus('pulling')
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const authHeaders = {
+        'Content-Type': 'application/json',
+        ...(session ? { Authorization: `Bearer ${session.access_token}` } : {}),
+      }
+
+      const pullRes = await fetch('https://zohrpargudmogfywciik.supabase.co/functions/v1/sam_gov_pull_codes', {
+        method: 'POST',
+        headers: authHeaders,
+        body: JSON.stringify({ profileId: profile.id, naicsCodes: newNaicsCodes, pscCodes: newPscCodes }),
+      })
+      if (!pullRes.ok) throw new Error(`Pull failed with status ${pullRes.status}`)
+
+      await fetch('https://zohrpargudmogfywciik.supabase.co/functions/v1/match_opportunities', {
+        method: 'POST',
+        headers: authHeaders,
+        body: JSON.stringify({ profileId: profile.id }),
+      })
+
+      setPullStatus('done')
+    } catch (err) {
+      console.error('Background opportunity pull error:', err)
+      setPullStatus('error')
+    }
+  }
+
   async function saveMatchingPreferences() {
     setMatchError('')
     setMatchSaved(false)
+    setPullStatus('')
     setMatchSaving(true)
+
+    const priorNaics = profile?.naics_codes || []
+    const priorPsc = profile?.psc_codes || []
+    const newNaicsCodes = matchForm.naics_codes.filter((c) => !priorNaics.includes(c))
+    const newPscCodes = matchForm.psc_codes.filter((c) => !priorPsc.includes(c))
+
     try {
       await updateProfile({
         naics_codes: matchForm.naics_codes,
@@ -93,6 +142,10 @@ export default function Profile() {
         capabilities_summary: matchForm.capabilities_summary.trim().slice(0, CAPABILITIES_MAX_LEN),
       })
       setMatchSaved(true)
+
+      if (matchForm.matching_enabled && (newNaicsCodes.length > 0 || newPscCodes.length > 0)) {
+        pullNewCodesInBackground(newNaicsCodes, newPscCodes)
+      }
     } catch (err) {
       console.error('Matching preferences save error:', err)
       setMatchError('Could not save your matching preferences. Please try again.')
@@ -442,6 +495,9 @@ export default function Profile() {
 
           {matchError && <div className="alert alert-error" style={{ marginBottom: 'var(--sp-4)' }}>{matchError}</div>}
           {matchSaved && <div className="alert" style={{ marginBottom: 'var(--sp-4)', background: 'rgba(72,187,120,0.08)', borderColor: '#48BB78', color: '#276749' }}>Matching preferences saved.</div>}
+          {pullStatus === 'pulling' && <p className={styles.fieldHint} style={{ marginBottom: 'var(--sp-4)' }}>Fetching current opportunities for your new codes — check "Matched Opportunities" in a minute.</p>}
+          {pullStatus === 'done' && <p className={styles.fieldHint} style={{ marginBottom: 'var(--sp-4)' }}>New opportunities fetched — check "Matched Opportunities" for fresh matches.</p>}
+          {pullStatus === 'error' && <p className={styles.fieldHint} style={{ marginBottom: 'var(--sp-4)' }}>Couldn't fetch new opportunities right now — they'll still show up after tomorrow's automatic pull.</p>}
 
           <label style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-2)', marginBottom: 'var(--sp-5)', cursor: 'pointer' }}>
             <input
