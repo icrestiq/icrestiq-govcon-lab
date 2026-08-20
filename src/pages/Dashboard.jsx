@@ -4,6 +4,7 @@ import { useAuth } from '../lib/AuthContext'
 import { createPortalSession } from '../lib/stripe'
 import { MessageSquare, ShoppingBag, TrendingUp, ArrowRight, Zap, CreditCard, GraduationCap, Shirt } from 'lucide-react'
 import VersionCard from '../components/VersionCard'
+import LearningPathQuiz from '../components/LearningPathQuiz'
 import styles from './Dashboard.module.css'
 
 // Each resource gets a distinct color matching GovCon Mastery style.
@@ -119,8 +120,11 @@ export default function Dashboard() {
         </a>
       </div>
 
+      {/* Learning Path Quiz */}
+      <LearningPathQuiz />
+
       {/* Free Class Promo */}
-      
+
         <a href="https://class.govconlab.com"
         target="_blank"
         rel="noopener noreferrer"
