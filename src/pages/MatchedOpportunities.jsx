@@ -666,13 +666,13 @@ function SuggestedBidSection({ opportunityId, userId, tier, bidRequest, autoExpa
           {bid.technical_approach && (
             <div className={styles.bidBlock}>
               <h4>Suggested Approach</h4>
-              <p>{bid.technical_approach}</p>
+              <BidBullets content={bid.technical_approach} />
             </div>
           )}
           {bid.risk_notes && (
             <div className={styles.bidBlock}>
               <h4>Risk Notes</h4>
-              <p>{bid.risk_notes}</p>
+              <BidBullets content={bid.risk_notes} />
             </div>
           )}
 
@@ -752,4 +752,19 @@ function RfqDraftBlock({ label, draft }) {
       <p className={styles.rfqBody}>{draft.body}</p>
     </div>
   )
+}
+
+// Renders Suggested Approach / Risk Notes as a bullet list. Newer bids
+// store these as string arrays (one bullet per entry); bids generated
+// before this change stored a single prose string — rendered as a plain
+// paragraph so already-purchased results don't break.
+function BidBullets({ content }) {
+  if (Array.isArray(content)) {
+    return (
+      <ul>
+        {content.map((line, i) => <li key={i}>{line}</li>)}
+      </ul>
+    )
+  }
+  return <p>{content}</p>
 }
