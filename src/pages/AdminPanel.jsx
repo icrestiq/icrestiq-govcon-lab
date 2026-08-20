@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/AuthContext'
-import { Users, Package, MessageSquare, Plus, Trash2, Edit, Tag, Upload, X, Image as ImageIcon, Copy, Check, Download, Newspaper, Eye, Activity, FileText, MessageCircle, Heart } from 'lucide-react'
+import { Users, Package, MessageSquare, Plus, Trash2, Edit, Tag, Upload, X, Image as ImageIcon, Copy, Check, Download, Newspaper, Eye, Activity, FileText, MessageCircle, Heart, BarChart3 } from 'lucide-react'
 import { htmlToBodyText, plainTextToBodyText } from '../lib/blogPasteImport'
 import Avatar from '../components/Avatar'
 import ActivityHeatmap from '../components/ActivityHeatmap'
@@ -14,6 +14,7 @@ const TABS = [
   { id: 'messages',    label: 'Messages',        icon: MessageSquare },
   { id: 'images',      label: 'Image Uploader',  icon: ImageIcon },
   { id: 'blog',        label: 'Blog Posts',      icon: Newspaper },
+  { id: 'analytics',   label: 'Site Analytics',  icon: BarChart3 },
 ]
 
 export default function AdminPanel() {
@@ -186,6 +187,9 @@ async function testMonthlyRewards() {
 
       {/* ── Blog Posts ── */}
       {tab === 'blog' && <BlogTab />}
+
+      {/* ── Site Analytics ── */}
+      {tab === 'analytics' && <AnalyticsTab />}
     </div>
   )
 }
@@ -1925,6 +1929,129 @@ function PersonDetailModal({ person, onClose, onDeleted, onRemoveFromDigest }) {
         )}
         </div>
       </div>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------
+// Site Analytics — reads Vercel Web Analytics via api/admin/site-analytics
+// (which calls Vercel's own API server-side with VERCEL_API_TOKEN). Shows
+// total site visits, /go landing page visits specifically, and where
+// visitors to each are coming from.
+// ---------------------------------------------------------------------
+const DAY_OPTIONS = [7, 30, 90]
+
+function AnalyticsTab() {
+  const [days, setDays] = useState(30)
+  const [data, setData] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [notEnabled, setNotEnabled] = useState(false)
+
+  useEffect(() => { loadAnalytics() }, [days])
+
+  async function loadAnalytics() {
+    setLoading(true)
+    setError('')
+    setNotEnabled(false)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const res = await fetch(`/api/admin/site-analytics?days=${days}`, {
+        headers: { Authorization: `Bearer ${session?.access_token}` },
+      })
+      const json = await res.json()
+      if (json.enabled === false) {
+        setNotEnabled(true)
+        return
+      }
+      if (!res.ok) throw new Error(json.error || 'Failed to load analytics')
+      setData(json)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  function ReferrerTable({ title, rows }) {
+    return (
+      <div>
+        <h3 style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--navy)', marginBottom: 'var(--sp-3)' }}>{title}</h3>
+        {rows.length === 0 ? (
+          <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>No referrer data for this window.</p>
+        ) : (
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
+            <thead>
+              <tr style={{ textAlign: 'left', color: 'var(--text-muted)', borderBottom: '1px solid var(--border)' }}>
+                <th style={{ padding: 'var(--sp-2) 0', fontWeight: 500 }}>Source</th>
+                <th style={{ padding: 'var(--sp-2) 0', fontWeight: 500, textAlign: 'right' }}>Visits</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r, i) => (
+                <tr key={i} style={{ borderBottom: '1px solid var(--border)' }}>
+                  <td style={{ padding: 'var(--sp-2) 0', color: 'var(--navy)' }}>{r.referrerHostname || 'Direct / no referrer'}</td>
+                  <td style={{ padding: 'var(--sp-2) 0', textAlign: 'right', color: 'var(--text-secondary)' }}>{r.count}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    )
+  }
+
+  return (
+    <div>
+      <div className={styles.tabActions}>
+        <h2 className={styles.tabTitle}>Site Analytics</h2>
+        <div style={{ display: 'flex', gap: 'var(--sp-2)' }}>
+          {DAY_OPTIONS.map((d) => (
+            <button
+              key={d}
+              className={`btn ${days === d ? 'btn-primary' : 'btn-ghost'}`}
+              style={{ padding: 'var(--sp-2) var(--sp-4)', fontSize: '0.8125rem' }}
+              onClick={() => setDays(d)}
+            >
+              {d}d
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {error && <p style={{ color: 'var(--red)', fontSize: '0.8125rem', marginBottom: 'var(--sp-4)' }}>{error}</p>}
+
+      {notEnabled && (
+        <div className="alert alert-info" style={{ marginBottom: 'var(--sp-4)' }}>
+          Web Analytics isn't enabled for this project yet — enable it from the Vercel dashboard's Analytics tab (or <code>vercel project web-analytics</code>), and make sure VERCEL_API_TOKEN is set. Nothing has been tracked before now, so numbers start from whenever it's turned on.
+        </div>
+      )}
+
+      {loading && <div className="spinner" />}
+
+      {!loading && !notEnabled && data && (
+        <>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 'var(--sp-4)', marginBottom: 'var(--sp-8)' }}>
+            <div className={styles.table} style={{ padding: 'var(--sp-5)' }}>
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6875rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 'var(--sp-2)' }}>
+                govconlab.com visitors — last {days}d
+              </div>
+              <div style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--navy)' }}>{data.totalVisits.toLocaleString()}</div>
+            </div>
+            <div className={styles.table} style={{ padding: 'var(--sp-5)' }}>
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6875rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 'var(--sp-2)' }}>
+                /go visitors — last {days}d
+              </div>
+              <div style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--navy)' }}>{data.goVisits.toLocaleString()}</div>
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 'var(--sp-8)' }}>
+            <ReferrerTable title="Where site-wide visitors come from" rows={data.referrers} />
+            <ReferrerTable title="Where /go visitors come from" rows={data.goReferrers} />
+          </div>
+        </>
+      )}
     </div>
   )
 }

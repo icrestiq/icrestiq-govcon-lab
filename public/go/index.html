@@ -766,5 +766,12 @@
   });
 })();
 </script>
+<!-- This page is a standalone static file (not part of the React app), so
+     it needs its own copy of the Vercel Analytics snippet — the <Analytics />
+     component in src/main.jsx only tracks pages that mount the React SPA. -->
+<script>
+  window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
+</script>
+<script defer src="/_vercel/insights/script.js"></script>
 </body>
 </html>
