@@ -762,6 +762,24 @@ function RfqDraftBlock({ label, draft }) {
   )
 }
 
+const URL_PATTERN = /(https?:\/\/[^\s)]+)/g
+
+// Turns any raw URL in a string into a real clickable link — used so a
+// risk-note bullet that recommends a specific product (see
+// buildBidDraftPrompt's productCatalogText) renders as a link instead of
+// plain text pasted mid-sentence. Checks with startsWith rather than
+// re-testing the shared global regex, since a stateful /g regex's
+// lastIndex would otherwise carry over incorrectly across repeated
+// .test() calls in the same map().
+function linkifyText(text) {
+  const parts = String(text).split(URL_PATTERN)
+  return parts.map((part, i) =>
+    part.startsWith('http://') || part.startsWith('https://')
+      ? <a key={i} href={part} target="_blank" rel="noopener noreferrer">{part}</a>
+      : <span key={i}>{part}</span>
+  )
+}
+
 // Renders Suggested Approach / Risk Notes as a bullet list. Newer bids
 // store these as string arrays (one bullet per entry); bids generated
 // before this change stored a single prose string — rendered as a plain
@@ -770,9 +788,9 @@ function BidBullets({ content }) {
   if (Array.isArray(content)) {
     return (
       <ul>
-        {content.map((line, i) => <li key={i}>{line}</li>)}
+        {content.map((line, i) => <li key={i}>{linkifyText(line)}</li>)}
       </ul>
     )
   }
-  return <p>{content}</p>
+  return <p>{linkifyText(content)}</p>
 }
