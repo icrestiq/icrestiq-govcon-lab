@@ -314,6 +314,7 @@
 
 .badgeGroup {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--sp-2);
   flex-shrink: 0;
 }
@@ -382,6 +383,35 @@
 
 .link:hover {
   text-decoration: underline;
+}
+
+.cardActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+}
+
+.hideLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(229, 62, 62, 0.08);
+  border: 1px solid rgba(229, 62, 62, 0.25);
+  border-radius: 100px;
+  padding: 5px 12px;
+  font-family: inherit;
+  font-weight: 600;
+  font-size: 0.75rem;
+  color: var(--red);
+  cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s;
+}
+
+.hideLink:hover {
+  background: rgba(229, 62, 62, 0.16);
+  border-color: var(--red);
 }
 
 .footerLink {
@@ -471,10 +501,15 @@
 
 .rfqHeader {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: var(--sp-3);
+  gap: var(--sp-2) var(--sp-3);
   margin-bottom: var(--sp-2);
+}
+
+.rfqHeader .btn {
+  flex-shrink: 0;
 }
 
 .rfqSubject {
@@ -503,4 +538,12 @@
   .page { padding: var(--sp-5); }
   .cardTop { flex-direction: column; }
   .pitchGrid { grid-template-columns: 1fr; }
+  /* Full-width buttons on narrow screens instead of shrinking text/icon
+     down to fit — matches how btn-primary/btn-gold CTAs read better as a
+     tappable bar on mobile than a cramped inline pill. */
+  .bidSection .btn,
+  .rfqHeader .btn {
+    width: 100%;
+    justify-content: center;
+  }
 }

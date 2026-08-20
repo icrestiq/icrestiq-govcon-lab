@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/AuthContext'
 import { createSuggestedBidCheckout, SUGGESTED_BID_PRICING } from '../lib/stripe'
-import { Radar, ExternalLink, Settings, ChevronDown, ChevronUp, Sparkles, Loader, RefreshCw, Copy, Check, FileText, Users, Truck, DollarSign, Database, Eye, Maximize2, X } from 'lucide-react'
+import { Radar, ExternalLink, Settings, ChevronDown, ChevronUp, Sparkles, Loader, RefreshCw, Copy, Check, FileText, Users, Truck, DollarSign, Database, Eye, EyeOff, Maximize2, X } from 'lucide-react'
 import { Link, useSearchParams } from 'react-router-dom'
 import styles from './MatchedOpportunities.module.css'
 
@@ -41,6 +41,8 @@ export default function MatchedOpportunities() {
   const [bidRequests, setBidRequests] = useState({}) // keyed by opportunity_id
   const [loading, setLoading] = useState(true)
   const [showLowScoring, setShowLowScoring] = useState(false)
+  const [showClosed, setShowClosed] = useState(false)
+  const [showHidden, setShowHidden] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const [refreshMessage, setRefreshMessage] = useState('')
   const pollRef = useRef(null)
@@ -79,7 +81,7 @@ export default function MatchedOpportunities() {
       const { data, error } = await supabase
         .from('opportunity_matches')
         .select(`
-          id, match_reason, match_score, recommendation, recommendation_basis,
+          id, match_reason, match_score, recommendation, recommendation_basis, hidden_by_user,
           opportunities ( id, title, agency, solicitation_number, response_deadline, sam_gov_url, set_aside_type, estimated_value )
         `)
         .eq('profile_id', user.id)
@@ -120,6 +122,16 @@ export default function MatchedOpportunities() {
     }
   }
 
+  async function handleToggleHidden(matchId, hide) {
+    try {
+      const { error } = await supabase.from('opportunity_matches').update({ hidden_by_user: hide }).eq('id', matchId)
+      if (error) throw error
+      setMatches((prev) => prev.map((m) => (m.id === matchId ? { ...m, hidden_by_user: hide } : m)))
+    } catch (err) {
+      console.error('Failed to update hidden state:', err)
+    }
+  }
+
   async function loadBidRequests() {
     try {
       const { data, error } = await supabase
@@ -135,12 +147,34 @@ export default function MatchedOpportunities() {
     }
   }
 
-  // Sorted client-side (not via PostgREST) — scored matches first,
-  // highest fit first, unscored ones (match_score still null, awaiting
-  // the AI pass) fall to the end and are ordered by deadline instead of
-  // being interleaved arbitrarily among the scored ones.
+  // A past deadline is chronologically "earliest," which used to let closed
+  // opportunities sort above active ones in the unscored tiebreak below —
+  // closed always sorts last now, full stop, regardless of score.
+  const isClosed = (m) => {
+    const d = m.opportunities.response_deadline
+    return d ? new Date(d).getTime() < Date.now() : false
+  }
+
+  // Sorted client-side (not via PostgREST): hidden-by-user matches always
+  // last of all (a member's own explicit "don't show me this" beats every
+  // other signal), then closed opportunities (most-recently-closed first);
+  // within still-open, unhidden ones, scored matches first by fit, unscored
+  // ones (match_score still null, awaiting the AI pass) fall to the end
+  // ordered by soonest deadline.
   const sortedMatches = useMemo(() => {
     return [...matches].sort((a, b) => {
+      if (a.hidden_by_user !== b.hidden_by_user) return a.hidden_by_user ? 1 : -1
+
+      const aClosed = isClosed(a)
+      const bClosed = isClosed(b)
+      if (aClosed !== bClosed) return aClosed ? 1 : -1
+
+      if (aClosed && bClosed) {
+        const aDeadline = a.opportunities.response_deadline ? new Date(a.opportunities.response_deadline).getTime() : -Infinity
+        const bDeadline = b.opportunities.response_deadline ? new Date(b.opportunities.response_deadline).getTime() : -Infinity
+        return bDeadline - aDeadline
+      }
+
       if (a.match_score != null && b.match_score != null) {
         if (a.match_score !== b.match_score) return b.match_score - a.match_score
       } else if (a.match_score != null) {
@@ -152,12 +186,18 @@ export default function MatchedOpportunities() {
       const bDeadline = b.opportunities.response_deadline ? new Date(b.opportunities.response_deadline).getTime() : Infinity
       return aDeadline - bDeadline
     })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [matches])
 
-  const lowScoreCount = sortedMatches.filter((m) => m.match_score != null && m.match_score < LOW_SCORE_THRESHOLD).length
-  const visibleMatches = showLowScoring
-    ? sortedMatches
-    : sortedMatches.filter((m) => m.match_score == null || m.match_score >= LOW_SCORE_THRESHOLD)
+  const hiddenCount = sortedMatches.filter((m) => m.hidden_by_user).length
+  const closedCount = sortedMatches.filter((m) => !m.hidden_by_user && isClosed(m)).length
+  const lowScoreCount = sortedMatches.filter((m) => !m.hidden_by_user && !isClosed(m) && m.match_score != null && m.match_score < LOW_SCORE_THRESHOLD).length
+  const visibleMatches = sortedMatches.filter((m) => {
+    if (m.hidden_by_user) return showHidden
+    if (isClosed(m)) return showClosed
+    if (m.match_score != null && m.match_score < LOW_SCORE_THRESHOLD) return showLowScoring
+    return true
+  })
 
   const deadlineLabel = (deadline) => {
     if (!deadline) return 'No deadline listed'
@@ -177,7 +217,7 @@ export default function MatchedOpportunities() {
     const daysLeft = Math.ceil((new Date(deadline).getTime() - Date.now()) / 86400000)
     if (daysLeft < 0) return styles.deadlineClosed
     if (daysLeft <= 3) return styles.deadlineUrgent
-    if (daysLeft <= 7) return styles.deadlineSoon
+    if (daysLeft <= 14) return styles.deadlineSoon
     return ''
   }
 
@@ -269,11 +309,21 @@ export default function MatchedOpportunities() {
                   )}
                 </div>
                 {m.match_reason && <p className={styles.reason}>{m.match_reason}</p>}
-                {opp.sam_gov_url && (
-                  <a href={opp.sam_gov_url} target="_blank" rel="noopener noreferrer" className={styles.link}>
-                    View on SAM.gov <ExternalLink size={13} />
-                  </a>
-                )}
+                <div className={styles.cardActions}>
+                  {opp.sam_gov_url && (
+                    <a href={opp.sam_gov_url} target="_blank" rel="noopener noreferrer" className={styles.link}>
+                      View on SAM.gov <ExternalLink size={13} />
+                    </a>
+                  )}
+                  <button
+                    type="button"
+                    className={styles.hideLink}
+                    onClick={() => handleToggleHidden(m.id, !m.hidden_by_user)}
+                  >
+                    {m.hidden_by_user ? <Eye size={13} /> : <EyeOff size={13} />}
+                    {m.hidden_by_user ? 'Unhide' : 'Hide this opportunity'}
+                  </button>
+                </div>
 
                 <SuggestedBidSection
                   opportunityId={opp.id}
@@ -293,6 +343,20 @@ export default function MatchedOpportunities() {
         <button type="button" className="btn btn-ghost" style={{ margin: '0 auto', display: 'flex' }} onClick={() => setShowLowScoring((v) => !v)}>
           {showLowScoring ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
           {showLowScoring ? 'Hide' : 'Show'} {lowScoreCount} lower-scoring match{lowScoreCount === 1 ? '' : 'es'}
+        </button>
+      )}
+
+      {!loading && closedCount > 0 && (
+        <button type="button" className="btn btn-ghost" style={{ margin: 'var(--sp-2) auto 0', display: 'flex' }} onClick={() => setShowClosed((v) => !v)}>
+          {showClosed ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+          {showClosed ? 'Hide' : 'Show'} {closedCount} closed opportunit{closedCount === 1 ? 'y' : 'ies'}
+        </button>
+      )}
+
+      {!loading && hiddenCount > 0 && (
+        <button type="button" className="btn btn-ghost" style={{ margin: 'var(--sp-2) auto 0', display: 'flex' }} onClick={() => setShowHidden((v) => !v)}>
+          {showHidden ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+          {showHidden ? 'Hide' : 'Show'} {hiddenCount} hidden opportunit{hiddenCount === 1 ? 'y' : 'ies'}
         </button>
       )}
 

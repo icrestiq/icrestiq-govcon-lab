@@ -139,53 +139,315 @@
 .fben li:before{content:"✓";position:absolute;left:0;color:var(--gold);font-weight:700}
 .fben b{color:var(--navy)}
 .fnote{font-size:.78rem;color:var(--muted);margin:-6px 0 14px;line-height:1.5}
+
+/* ── QUIZ PANEL (replaces the old hero panel only) ──────────
+   Reuses the site's real --navy/--gold variables directly (defined in
+   :root above) rather than a separate palette, so this is an exact match
+   to the rest of the page, not just a similar shade. */
+.quizPanel{
+  background:var(--navy); color:#fff; padding:34px 0 40px;
+  position:relative; overflow:hidden;
+}
+.quizPanel::after{content:"";position:absolute;inset:auto 0 0 0;height:3px;
+  background:linear-gradient(90deg,var(--gold) 0%,var(--gold-dim) 55%,transparent 100%)}
+.quizPanel .brandrow{display:flex;align-items:center;gap:9px;margin-bottom:22px}
+.quizPanel .mark{width:26px;height:26px;border-radius:4px;background:var(--gold);color:var(--navy);
+  font-family:var(--display);font-weight:700;font-size:13px;display:grid;place-items:center}
+.quizPanel .brandname{font-family:var(--display);font-weight:600;font-size:15px;color:#fff}
+
+.quiz-progress{height:6px;border-radius:100px;background:rgba(255,255,255,.15);overflow:hidden;margin-bottom:24px}
+.quiz-progress-bar{height:100%;width:0%;background:var(--gold);border-radius:100px;transition:width .35s ease}
+
+.quiz-screen{animation:qFadeIn .3s ease}
+@keyframes qFadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+
+.q-eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--gold);margin-bottom:10px}
+.q-h1{font-family:var(--display);font-weight:700;font-size:clamp(26px,7.2vw,36px);line-height:1.16;
+  letter-spacing:-.01em;color:#fff}
+.q-h1 em{font-style:normal;color:var(--gold)}
+.q-sub{color:#C6CEDD;font-size:15.5px;margin-top:12px;line-height:1.55}
+.q-count{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--gold);margin-bottom:8px}
+.q-question{font-family:var(--display);font-weight:600;font-size:clamp(19px,5vw,23px);line-height:1.25;
+  color:#fff;margin-bottom:16px}
+
+.quiz-calc-wrap{text-align:center;padding:36px 0}
+.quiz-spinner{width:44px;height:44px;border:3px solid rgba(255,255,255,.15);border-top-color:var(--gold);
+  border-radius:50%;margin:0 auto;animation:qSpin .8s linear infinite}
+@keyframes qSpin{to{transform:rotate(360deg)}}
+.quiz-calc-message{font-size:19px;margin-top:22px}
+
+.quiz-answers{display:flex;flex-direction:column;gap:10px;margin-top:4px}
+.quiz-answer{display:block;width:100%;text-align:left;font-family:var(--body);font-size:15px;
+  color:var(--navy);background:#fff;border:1.5px solid transparent;border-radius:10px;
+  padding:14px 16px;cursor:pointer;transition:border-color .15s ease,transform .15s ease,background .15s ease}
+.quiz-answer:hover{border-color:var(--gold);background:#FFFDF6;transform:translateY(-1px)}
+.quiz-answer:active{transform:translateY(0)}
+
+.quiz-btn{font-family:var(--display);font-weight:600;font-size:16px;padding:15px 18px;border:0;
+  border-radius:8px;background:var(--gold);color:var(--navy);cursor:pointer;width:100%;
+  text-align:center;transition:background .15s ease;margin-top:6px;display:block}
+.quiz-btn:hover{background:#D8B958}
+.quiz-btn[disabled]{opacity:.6;cursor:default}
+.quiz-btn.outline{background:transparent;color:#fff;border:1.5px solid rgba(255,255,255,.35)}
+.quiz-btn.outline:hover{background:rgba(255,255,255,.08);border-color:#fff}
+.quiz-micro{font-family:var(--mono);font-size:11.5px;color:#98A3B7;letter-spacing:.02em;
+  margin-top:10px;text-align:center}
+
+.quizPanel input[type=email],.quizPanel input[type=text]{font-family:var(--body);font-size:16px;
+  padding:15px 16px;border-radius:8px;border:1px solid var(--border-lit);background:#fff;
+  color:var(--navy);width:100%;margin-bottom:10px}
+.quizPanel input[type=email]::placeholder,.quizPanel input[type=text]::placeholder{color:var(--muted)}
+.quizPanel input[type=email]:focus,.quizPanel input[type=text]:focus{outline:2px solid var(--gold);outline-offset:1px}
+
+.quiz-msg{font-size:14px;margin-top:10px;padding:11px 13px;border-radius:8px;display:none}
+.quiz-msg.ok{display:block;background:rgba(201,168,76,.14);border:1px solid var(--gold-dim);color:#F0E4C2}
+.quiz-msg.err{display:block;background:rgba(197,48,48,.14);border:1px solid #C53030;color:#FFD9D9}
+
+.quiz-result-badge{display:inline-block;font-family:var(--mono);font-size:11px;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--navy);background:var(--gold);
+  border:1px solid var(--gold-dim);border-radius:100px;padding:5px 12px;margin-bottom:12px}
+.quiz-result-title{font-family:var(--display);font-weight:700;font-size:clamp(26px,7vw,32px);
+  color:#fff;margin-bottom:12px}
+.quiz-result-desc{font-size:15.5px;color:#C6CEDD;line-height:1.6;margin-bottom:16px}
+.quiz-result-list{list-style:none;padding:0;margin:0 0 18px;display:grid;gap:10px}
+.quiz-result-list li{position:relative;padding-left:22px;font-size:14px;line-height:1.55;color:#C6CEDD}
+.quiz-result-list li:before{content:"✓";position:absolute;left:0;color:var(--gold);font-weight:700}
+.quiz-confirm{font-size:13.5px;color:#F0E4C2;background:rgba(201,168,76,.14);
+  border:1px solid var(--gold-dim);border-radius:8px;padding:11px 13px;margin-bottom:18px}
+.quiz-cta-row{display:flex;flex-direction:column;gap:10px}
+.quiz-share{display:flex;gap:10px;margin-top:16px}
+.quiz-share button,.quiz-share a{flex:1;font-family:var(--display);font-weight:600;font-size:13px;
+  padding:11px 12px;border-radius:8px;border:1.5px solid rgba(255,255,255,.25);background:transparent;
+  color:#fff;cursor:pointer;text-align:center;display:block}
+.quiz-share button:hover,.quiz-share a:hover{border-color:var(--gold);color:var(--gold)}
 </style>
 </head>
 <body>
 
-<!-- ══ HERO ══════════════════════════════════════════════ -->
-<header class="hero">
+<!-- ══ QUIZ (replaces the old hero panel) ═══════════════════ -->
+<header class="quizPanel" id="quizPanel">
   <div class="wrap">
     <div class="brandrow">
       <div class="mark">iQ</div>
       <div class="brandname">GovCon Lab</div>
     </div>
 
-    <div class="hero-inner">
-      <div class="hero-media">
-        <img src="/images/go/5-free-govcon-tools.png"
-             alt="5 free GovCon tools: compliance matrix template, SAM.gov & UEI registration checklist, DIBBS/DLA quick-start guide, capability statement template, first 90 days GovCon accounting starter sheet"
-             loading="lazy" width="1004" height="1600" />
+    <div class="quiz-progress"><div class="quiz-progress-bar" id="quizProgressBar"></div></div>
+
+    <!-- ── INTRO ── -->
+    <div class="quiz-screen" data-screen="intro">
+      <div class="q-eyebrow">Free 90-Second Quiz</div>
+      <h1 class="q-h1">Is Government Contracting <em>Right For You?</em></h1>
+      <p class="q-sub">The government is always purchasing. It might as well be from us. Answer 8
+        honest questions and find out exactly where you stand — no fluff, no sales pitch, just a
+        real read on your next move.</p>
+      <button class="quiz-btn" type="button" id="quizStart">Start the quiz →</button>
+      <div class="quiz-micro">Takes about 90 seconds</div>
+    </div>
+
+    <!-- ── Q1 ── -->
+    <div class="quiz-screen" data-screen="q1" data-q="1" hidden>
+      <div class="q-count">Question 1 of 8</div>
+      <div class="q-question">What does your current business setup look like?</div>
+      <div class="quiz-answers">
+        <button class="quiz-answer" data-tag="SIDE_HUSTLER">No business yet, just curious</button>
+        <button class="quiz-answer" data-tag="SIDE_HUSTLER">Sole prop, or I just filed my LLC</button>
+        <button class="quiz-answer" data-tag="GROWING">Established small business, no gov't experience yet</button>
+        <button class="quiz-answer" data-tag="SERIOUS">Established business, I've dabbled in a bid or two</button>
       </div>
+    </div>
 
-      <div class="hero-content">
-        <div class="eyebrow">5 Free Tools Today · Get Exclusive Gov't Solicitation List Every Monday</div>
-        <h1>Get 5 free GovCon tools — <em>and my Monday list of real federal solicitations.</em></h1>
-        <p class="sub">Real DIBBS and SAM.gov product solicitations — NSNs, quantities, set-asides,
-          deadlines — sent every Monday morning, plus the compliance matrix, SAM.gov/UEI checklist,
-          DIBBS/DLA guide, capability statement template, and accounting starter sheet, free.</p>
+    <!-- ── Q2 ── -->
+    <div class="quiz-screen" data-screen="q2" data-q="2" hidden>
+      <div class="q-count">Question 2 of 8</div>
+      <div class="q-question">How many hours a week can you realistically give this?</div>
+      <div class="quiz-answers">
+        <button class="quiz-answer" data-tag="SIDE_HUSTLER">2–3 hours, whenever I can grab it</button>
+        <button class="quiz-answer" data-tag="GROWING">5–8 hours</button>
+        <button class="quiz-answer" data-tag="GROWING">10–15 hours</button>
+        <button class="quiz-answer" data-tag="SERIOUS">This IS the job now</button>
+      </div>
+    </div>
 
-        <form id="digest" novalidate>
-          <!-- Honeypot: visually hidden and out of tab order so real visitors
-               never see or fill it. Any bot that blindly fills every input
-               populates it, which api/digest/subscribe.js checks server-side. -->
-          <div aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden">
-            <label for="company">Company (leave this blank)</label>
-            <input id="company" name="company" type="text" tabindex="-1" autocomplete="off" />
-          </div>
-          <input id="firstName" type="text" name="firstName" required autocomplete="given-name"
-                 placeholder="First name" aria-label="Your first name" />
-          <input id="lastName" type="text" name="lastName" autocomplete="family-name"
-                 placeholder="Last name" aria-label="Your last name" />
-          <input id="email" type="email" name="email" required autocomplete="email"
-                 inputmode="email" placeholder="you@company.com" aria-label="Your email address" />
-          <div class="cf-turnstile" data-sitekey="0x4AAAAAAEQ5qXqIODs9pgvr"
-               data-callback="onTurnstileToken" data-expired-callback="onTurnstileReset"
-               data-error-callback="onTurnstileReset" style="margin:4px 0"></div>
-          <button class="btn" type="submit" id="sub">Email me the 5 tools</button>
-          <div class="micro">Free forever · No card · Unsubscribe in one click</div>
-          <div class="msg" id="msg" role="status"></div>
-        </form>
+    <!-- ── Q3 ── -->
+    <div class="quiz-screen" data-screen="q3" data-q="3" hidden>
+      <div class="q-count">Question 3 of 8</div>
+      <div class="q-question">What's pulling you toward government contracting?</div>
+      <div class="quiz-answers">
+        <button class="quiz-answer" data-tag="SIDE_HUSTLER">Extra income without quitting my day job</button>
+        <button class="quiz-answer" data-tag="GROWING">Diversifying revenue since word-of-mouth is unpredictable</button>
+        <button class="quiz-answer" data-tag="GROWING">Steady, recurring big-ticket revenue</button>
+        <button class="quiz-answer" data-tag="SERIOUS">Ready to make GovCon my primary revenue engine</button>
+      </div>
+    </div>
+
+    <!-- ── Q4 ── -->
+    <div class="quiz-screen" data-screen="q4" data-q="4" hidden>
+      <div class="q-count">Question 4 of 8</div>
+      <div class="q-question">How do you feel about paperwork and compliance?</div>
+      <div class="quiz-answers">
+        <button class="quiz-answer" data-tag="SIDE_HUSTLER">Honestly terrifies me a little</button>
+        <button class="quiz-answer" data-tag="GROWING">Fine as long as there's a checklist</button>
+        <button class="quiz-answer" data-tag="GROWING">I actually like process and documentation</button>
+        <button class="quiz-answer" data-tag="SERIOUS">I've got (or want) someone handling it for me</button>
+      </div>
+    </div>
+
+    <!-- ── Q5 ── -->
+    <div class="quiz-screen" data-screen="q5" data-q="5" hidden>
+      <div class="q-count">Question 5 of 8</div>
+      <div class="q-question">What's your risk tolerance right now?</div>
+      <div class="quiz-answers">
+        <button class="quiz-answer" data-tag="SIDE_HUSTLER">Very low, testing the waters</button>
+        <button class="quiz-answer" data-tag="GROWING">Moderate, willing to invest a little to learn</button>
+        <button class="quiz-answer" data-tag="GROWING">I'll invest real money if I see a real path</button>
+        <button class="quiz-answer" data-tag="SERIOUS">High, I'm ready to go all in</button>
+      </div>
+    </div>
+
+    <!-- ── Q6 ── -->
+    <div class="quiz-screen" data-screen="q6" data-q="6" hidden>
+      <div class="q-count">Question 6 of 8</div>
+      <div class="q-question">How fast do you want to see results?</div>
+      <div class="quiz-answers">
+        <button class="quiz-answer" data-tag="SIDE_HUSTLER">No rush, just exploring</button>
+        <button class="quiz-answer" data-tag="GROWING">Within 3–6 months</button>
+        <button class="quiz-answer" data-tag="SERIOUS">Want to submit a real bid in 30 days</button>
+        <button class="quiz-answer" data-tag="SERIOUS">Yesterday</button>
+      </div>
+    </div>
+
+    <!-- ── Q7 ── -->
+    <div class="quiz-screen" data-screen="q7" data-q="7" hidden>
+      <div class="q-count">Question 7 of 8</div>
+      <div class="q-question">What's your current primary income source?</div>
+      <div class="quiz-answers">
+        <button class="quiz-answer" data-tag="SIDE_HUSTLER">Full-time job elsewhere</button>
+        <button class="quiz-answer" data-tag="GROWING">My existing small business</button>
+        <button class="quiz-answer" data-tag="GROWING">Freelance/consulting</button>
+        <button class="quiz-answer" data-tag="SERIOUS">Already contracting or dedicated to this full-time</button>
+      </div>
+    </div>
+
+    <!-- ── Q8 ── -->
+    <div class="quiz-screen" data-screen="q8" data-q="8" hidden>
+      <div class="q-count">Question 8 of 8</div>
+      <div class="q-question">If you found the right opportunity today, what would you do?</div>
+      <div class="quiz-answers">
+        <button class="quiz-answer" data-tag="SIDE_HUSTLER">Bookmark it, come back "someday"</button>
+        <button class="quiz-answer" data-tag="GROWING">Research it thoroughly before acting</button>
+        <button class="quiz-answer" data-tag="GROWING">Ask someone who's done it for a gut check</button>
+        <button class="quiz-answer" data-tag="SERIOUS">Go after it</button>
+      </div>
+    </div>
+
+    <!-- ── CALCULATING ── -->
+    <div class="quiz-screen" data-screen="calculating" hidden>
+      <div class="quiz-calc-wrap">
+        <div class="quiz-spinner"></div>
+        <div class="q-h1 quiz-calc-message" id="quizCalcMessage">Reviewing your answers…</div>
+      </div>
+    </div>
+
+    <!-- ── EMAIL CAPTURE ── -->
+    <div class="quiz-screen" data-screen="email" hidden>
+      <div class="q-eyebrow">Your Result Is Ready</div>
+      <h1 class="q-h1">Almost there.</h1>
+      <p class="q-sub">Enter your email to get your result — PLUS 5 free GovCon tools and a spot on
+        our weekly RFQ report.</p>
+      <form id="quizEmailForm" novalidate style="margin-top:18px">
+        <!-- Honeypot: visually hidden and out of tab order so real visitors
+             never see or fill it. Any bot that blindly fills every input
+             populates it, which api/quiz/subscribe.js checks server-side. -->
+        <div aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden">
+          <label for="quizCompany">Company (leave this blank)</label>
+          <input id="quizCompany" name="company" type="text" tabindex="-1" autocomplete="off" />
+        </div>
+        <input id="quizFirstName" type="text" name="firstName" required autocomplete="given-name"
+               placeholder="First name" aria-label="Your first name" />
+        <input id="quizEmail" type="email" name="email" required autocomplete="email"
+               inputmode="email" placeholder="you@company.com" aria-label="Your email address" />
+        <button class="quiz-btn" type="submit" id="quizEmailBtn">Show me my result →</button>
+        <div class="cf-turnstile" data-sitekey="0x4AAAAAAEQ5qXqIODs9pgvr"
+             data-callback="onQuizTurnstileToken" data-expired-callback="onQuizTurnstileReset"
+             data-error-callback="onQuizTurnstileReset" style="margin:10px 0 0"></div>
+        <div class="quiz-micro">Free forever · No card · Unsubscribe in one click</div>
+        <div class="quiz-msg" id="quizMsg" role="status"></div>
+      </form>
+    </div>
+
+    <!-- ── RESULT: SIDE_HUSTLER ── -->
+    <div class="quiz-screen" data-screen="result-side_hustler" hidden>
+      <div class="quiz-result-badge">Your Result</div>
+      <div class="quiz-result-title">The Side Hustler</div>
+      <p class="quiz-result-desc">Starting small isn't a weakness here — it's the smart move. You
+        don't need to quit your day job or bet the farm to find out if this is real. Right now the
+        goal is just proof: one small win that tells you "yes, I can actually do this."</p>
+      <ul class="quiz-result-list">
+        <li>Get your LLC/registration basics and SAM.gov profile squared away first — that's the real starting line.</li>
+        <li>Look for small, low-competition bids before you ever chase a big contract.</li>
+        <li>You don't have to go all-in to get your first honest answer.</li>
+        <li>Every serious contractor you'll ever meet started exactly where you are now.</li>
+      </ul>
+      <div class="quiz-confirm">Check your inbox — your 5 free GovCon tools are on the way, and
+        you're now on our Weekly RFQ Report list.</div>
+      <div class="quiz-cta-row">
+        <a class="quiz-btn" href="https://class.govconlab.com?utm_source=link_in_bio&utm_medium=social&utm_content=quiz_side_hustler">Start with the free GovCon Mastery course →</a>
+      </div>
+      <div class="quiz-share">
+        <button type="button" data-share-copy>Copy link</button>
+        <a href="https://twitter.com/intent/tweet?text=I%27m%20apparently%20%22The%20Side%20Hustler%22%20according%20to%20this%20govt%20contracting%20quiz%20%F0%9F%91%80%20Take%20it%20yourself%3A&url=https%3A%2F%2Fwww.govconlab.com%2Fgo" target="_blank" rel="noopener">Share to X</a>
+      </div>
+    </div>
+
+    <!-- ── RESULT: GROWING ── -->
+    <div class="quiz-screen" data-screen="result-growing" hidden>
+      <div class="quiz-result-badge">Your Result</div>
+      <div class="quiz-result-title">The Growing Small Business Owner</div>
+      <p class="quiz-result-desc">You've already built something real — now it's time to add a
+        revenue stream that doesn't live and die by referrals or ad spend. Government contracting
+        rewards exactly the kind of process-minded operator you already are.</p>
+      <ul class="quiz-result-list">
+        <li>Diversify away from word-of-mouth with buyers who purchase on a schedule, not a whim.</li>
+        <li>Your existing business credibility already does a lot of the qualifying work for you.</li>
+        <li>The learning curve is real, but shorter than you think once you're inside a system built for it.</li>
+        <li>You're past the "should I even try this" stage — the real question now is how fast you scale it.</li>
+      </ul>
+      <div class="quiz-confirm">Check your inbox — your 5 free GovCon tools are on the way, and
+        you're now on our Weekly RFQ Report list.</div>
+      <div class="quiz-cta-row">
+        <a class="quiz-btn" href="/register?utm_source=link_in_bio&utm_medium=social&utm_content=quiz_growing">Join GovCon Lab — $57/mo →</a>
+      </div>
+      <div class="quiz-share">
+        <button type="button" data-share-copy>Copy link</button>
+        <a href="https://twitter.com/intent/tweet?text=I%27m%20apparently%20%22The%20Growing%20Small%20Business%20Owner%22%20according%20to%20this%20govt%20contracting%20quiz%20%F0%9F%91%80%20Take%20it%20yourself%3A&url=https%3A%2F%2Fwww.govconlab.com%2Fgo" target="_blank" rel="noopener">Share to X</a>
+      </div>
+    </div>
+
+    <!-- ── RESULT: SERIOUS ── -->
+    <div class="quiz-screen" data-screen="result-serious" hidden>
+      <div class="quiz-result-badge">Your Result</div>
+      <div class="quiz-result-title">The Serious Contractor-in-Training</div>
+      <p class="quiz-result-desc">You're not here to dabble — you're ready to make this the plan.
+        That means it's worth going all-in on the resources that get you moving fastest, not the
+        slow-drip version everyone else is taking.</p>
+      <ul class="quiz-result-list">
+        <li>Move fast: get direct access to niche playbooks, live Q&amp;A, and real bid help.</li>
+        <li>You're closer to a real award than you think — most of what's left is execution, not learning.</li>
+        <li>The people who move fastest here treat this like a real business line from day one, not an experiment.</li>
+        <li>Founding is worth a hard look if you want more than one niche — the math tends to favor going bigger.</li>
+      </ul>
+      <div class="quiz-confirm">Check your inbox — your 5 free GovCon tools are on the way, and
+        you're now on our Weekly RFQ Report list.</div>
+      <div class="quiz-cta-row">
+        <a class="quiz-btn" href="/membership?utm_source=link_in_bio&utm_medium=social&utm_content=quiz_pro">Go Pro — $107/mo →</a>
+        <a class="quiz-btn outline" href="/store/founding-member?utm_source=link_in_bio&utm_medium=social&utm_content=quiz_founding">Become a Founding Member — $497 one-time →</a>
+      </div>
+      <div class="quiz-share">
+        <button type="button" data-share-copy>Copy link</button>
+        <a href="https://twitter.com/intent/tweet?text=I%27m%20apparently%20%22The%20Serious%20Contractor-in-Training%22%20according%20to%20this%20govt%20contracting%20quiz%20%F0%9F%91%80%20Take%20it%20yourself%3A&url=https%3A%2F%2Fwww.govconlab.com%2Fgo" target="_blank" rel="noopener">Share to X</a>
       </div>
     </div>
   </div>
@@ -257,6 +519,34 @@
   </div>
 </section>
 
+<!-- ══ MATCHED OPPORTUNITIES ═════════════════════════════ -->
+<section>
+  <div class="wrap">
+    <div class="found">
+      <div class="eyebrow">Lab Pro &amp; Founding</div>
+      <h2>Stop scrolling SAM.gov every morning.</h2>
+      <p>Every day, new SAM.gov postings get matched automatically to your NAICS and PSC codes —
+        no manual searching, no missing a solicitation because you didn't check that day.</p>
+      <ul class="fben">
+        <li><b>An AI-drafted price range</b> — grounded in real historical federal award data for
+          that NAICS code, not a guess.</li>
+        <li><b>Honest risk notes</b> before you spend time on a bid — approved-source restrictions,
+          certification gaps, anything that could disqualify you.</li>
+        <li><b>AI-researched supplier and shipping/packaging leads</b>, with sources, so you're not
+          starting the sourcing search from zero.</li>
+        <li><b>Two ready-to-send RFQ emails</b> — already drafted, already referencing the
+          solicitation number, deadline, and NSN/part numbers where listed.</li>
+      </ul>
+      <p class="fnote">Most GovCon opportunity-intelligence platforms charge a separate monthly
+        subscription just for the matching, then still leave you to draft every outreach email
+        yourself. This is built into your membership — and the one-time Suggested Bid unlock
+        ($7 Lab Pro · $2 Founding, per opportunity) doesn't just hand you a list, it drafts the
+        emails you'd actually send.</p>
+      <a class="btn" href="/register?utm_source=link_in_bio&utm_medium=social&utm_content=matched_opportunities">See your matches</a>
+    </div>
+  </div>
+</section>
+
 <!-- ══ MEMBERSHIP ════════════════════════════════════════ -->
 <section class="tiers">
   <div class="wrap">
@@ -310,65 +600,169 @@
   </div>
 </footer>
 
-<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script>
+<script>
 (function () {
-  var f = document.getElementById('digest'),
-      i = document.getElementById('email'),
-      fn = document.getElementById('firstName'),
-      ln = document.getElementById('lastName'),
-      c = document.getElementById('company'),
-      b = document.getElementById('sub'),
-      m = document.getElementById('msg'),
-      renderedAt = Date.now(),
-      turnstileToken = '';
+  var TOTAL_Q = 8;
+  var panel = document.getElementById('quizPanel');
+  var screens = panel.querySelectorAll('.quiz-screen');
+  var progressBar = document.getElementById('quizProgressBar');
+  var answers = [];
+  var currentQ = 0;
+  var renderedAt = Date.now();
+  var turnstileToken = '';
 
   // Referenced by the widget's data-callback/data-expired-callback/
   // data-error-callback attributes above — the script tag loads async, so
   // these have to be real globals rather than closures set up after render.
-  window.onTurnstileToken = function (token) { turnstileToken = token; };
-  window.onTurnstileReset = function () { turnstileToken = ''; };
+  window.onQuizTurnstileToken = function (token) { turnstileToken = token; };
+  window.onQuizTurnstileReset = function () { turnstileToken = ''; };
 
-  function show(kind, text) { m.className = 'msg ' + kind; m.textContent = text; }
+  function showScreen(name) {
+    screens.forEach(function (s) { s.hidden = s.getAttribute('data-screen') !== name; });
+    panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
 
-  f.addEventListener('submit', async function (e) {
+  // step: 0 = intro, 1..8 = question N, 9 = email capture, 10 = result
+  function updateProgress(step) {
+    var pct = step <= 0 ? 0 : Math.min(100, (step / (TOTAL_Q + 1)) * 100);
+    progressBar.style.width = pct + '%';
+  }
+
+  document.getElementById('quizStart').addEventListener('click', function () {
+    currentQ = 1;
+    showScreen('q1');
+    updateProgress(1);
+  });
+
+  panel.querySelectorAll('.quiz-answer').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var screen = btn.closest('.quiz-screen');
+      var q = parseInt(screen.getAttribute('data-q'), 10);
+      answers[q - 1] = btn.getAttribute('data-tag');
+      if (q < TOTAL_Q) {
+        currentQ = q + 1;
+        showScreen('q' + currentQ);
+        updateProgress(currentQ);
+      } else {
+        runCalculatingScreen();
+        updateProgress(9);
+      }
+    });
+  });
+
+  // Brief interstitial between the last question and the email ask —
+  // deliberately short (~2.3s) and worded generically ("comparing against
+  // real outcomes") rather than claiming a specific database lookup that
+  // isn't actually happening; the result itself is already computed
+  // instantly, client-side, in computeResult() below.
+  function runCalculatingScreen() {
+    showScreen('calculating');
+    var messages = [
+      'Reviewing your answers…',
+      'Comparing against real GovCon outcomes…',
+      'Calculating your fit score…'
+    ];
+    var msgEl = document.getElementById('quizCalcMessage');
+    var i = 0;
+    msgEl.textContent = messages[0];
+    var interval = setInterval(function () {
+      i++;
+      if (i < messages.length) {
+        msgEl.textContent = messages[i];
+      } else {
+        clearInterval(interval);
+        showScreen('email');
+      }
+    }, 800);
+  }
+
+  // Whichever type accumulates the most answers wins; a tie always
+  // resolves to GROWING (the middle type), even if GROWING itself wasn't
+  // one of the tied leaders.
+  function computeResult() {
+    var counts = { SIDE_HUSTLER: 0, GROWING: 0, SERIOUS: 0 };
+    answers.forEach(function (a) { counts[a] = (counts[a] || 0) + 1; });
+    var max = Math.max(counts.SIDE_HUSTLER, counts.GROWING, counts.SERIOUS);
+    var top = Object.keys(counts).filter(function (k) { return counts[k] === max; });
+    return top.length === 1 ? top[0] : 'GROWING';
+  }
+
+  // ── Kit (ConvertKit) delivery ──────────────────────────────
+  // Posts to this app's own /api/quiz/subscribe rather than ConvertKit
+  // directly — that endpoint holds the real CONVERTKIT_API_KEY server-side
+  // (the same one api/convertkit/subscribe.js and api/digest/confirm.js
+  // already use) and applies the weekly-rfq-report tag itself, so no key
+  // and no numeric tag ID ever need to live in this page's source.
+  async function subscribeToKit(email, firstName, result, company) {
+    var res = await fetch('/api/quiz/subscribe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: email, firstName: firstName, result: result, company: company,
+        renderedAt: renderedAt, turnstileToken: turnstileToken
+      })
+    });
+    var data = await res.json().catch(function () { return {}; });
+    if (!res.ok) throw new Error(data.error || 'Something went wrong. Please try again.');
+  }
+
+  var emailForm = document.getElementById('quizEmailForm');
+  var firstNameInput = document.getElementById('quizFirstName');
+  var emailInput = document.getElementById('quizEmail');
+  var companyInput = document.getElementById('quizCompany');
+  var emailMsg = document.getElementById('quizMsg');
+  var emailBtn = document.getElementById('quizEmailBtn');
+
+  emailForm.addEventListener('submit', async function (e) {
     e.preventDefault();
-    var email = i.value.trim();
-    var firstName = fn.value.trim();
+    var firstName = firstNameInput.value.trim();
+    var email = emailInput.value.trim();
     if (!firstName) {
-      return show('err', 'First name is required.');
+      emailMsg.className = 'quiz-msg err';
+      emailMsg.textContent = 'First name is required.';
+      return;
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
-      return show('err', 'That email address does not look right.');
+      emailMsg.className = 'quiz-msg err';
+      emailMsg.textContent = 'That email address does not look right.';
+      return;
     }
     if (!turnstileToken) {
-      return show('err', 'Please complete the verification challenge.');
+      emailMsg.className = 'quiz-msg err';
+      emailMsg.textContent = 'Please complete the verification challenge.';
+      return;
     }
-    b.disabled = true; b.textContent = 'Sending…';
-    show('', '');
+    emailBtn.disabled = true;
+    emailBtn.textContent = 'Sending…';
+    emailMsg.className = 'quiz-msg';
+    emailMsg.textContent = '';
+    var result = computeResult();
     try {
-      var r = await fetch('/api/digest/subscribe', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ firstName: firstName, lastName: ln.value.trim(), email: email, source: '5-free-tools', company: c.value, renderedAt: renderedAt, turnstileToken: turnstileToken })
-      });
-      var d = await r.json();
-      if (!r.ok) throw new Error(d.error || 'Something went wrong. Please try again.');
-      if (d.status === 'already-confirmed') {
-        show('ok', "You're already on the list — Monday's issue is on its way.");
-      } else {
-        show('ok', 'Check your email and click the confirm link — your 5 downloads are in the email right after.');
-      }
-      f.reset();
-      b.textContent = 'Done ✓';
+      await subscribeToKit(email, firstName, result, companyInput.value);
+      showScreen('result-' + result.toLowerCase());
+      updateProgress(10);
     } catch (err) {
-      show('err', err.message);
-      b.disabled = false; b.textContent = 'Email me the 5 tools';
-      // Turnstile tokens are single-use — whether Supabase rejected this one
-      // or something else failed, it's already spent, so the widget needs a
-      // fresh challenge before the next submit attempt can work.
+      emailMsg.className = 'quiz-msg err';
+      emailMsg.textContent = err.message || 'Something went wrong. Please try again.';
+      emailBtn.disabled = false;
+      emailBtn.textContent = 'Show me my result →';
+      // Turnstile tokens are single-use — the widget needs a fresh
+      // challenge before the next submit attempt can work.
       if (window.turnstile) window.turnstile.reset();
       turnstileToken = '';
     }
+  });
+
+  // ── Share buttons ───────────────────────────────────────────
+  panel.querySelectorAll('[data-share-copy]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      navigator.clipboard.writeText('https://www.govconlab.com/go').then(function () {
+        var original = btn.textContent;
+        btn.textContent = 'Copied!';
+        setTimeout(function () { btn.textContent = original; }, 1800);
+      });
+    });
   });
 })();
 </script>
