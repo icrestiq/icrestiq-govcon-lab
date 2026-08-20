@@ -87,9 +87,9 @@ export default async function handler(req, res) {
   try {
     const [totalCount, goCount, referrers, goReferrers] = await Promise.all([
       vercelAnalytics('visits/count', { since: sinceStr, until: untilStr }),
-      vercelAnalytics('visits/count', { since: sinceStr, until: untilStr, filter: "route eq '/go'" }),
+      vercelAnalytics('visits/count', { since: sinceStr, until: untilStr, filter: "requestPath eq '/go'" }),
       vercelAnalytics('visits/aggregate', { since: sinceStr, until: untilStr, by: 'referrerHostname', limit: '15' }),
-      vercelAnalytics('visits/aggregate', { since: sinceStr, until: untilStr, by: 'referrerHostname', limit: '15', filter: "route eq '/go'" }),
+      vercelAnalytics('visits/aggregate', { since: sinceStr, until: untilStr, by: 'referrerHostname', limit: '15', filter: "requestPath eq '/go'" }),
     ])
 
     return res.status(200).json({
