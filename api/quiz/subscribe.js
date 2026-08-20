@@ -1,33 +1,45 @@
 // api/quiz/subscribe.js
-// Subscribes a /go quiz taker to ConvertKit via the shared helper — same
-// CONVERTKIT_API_KEY/CONVERTKIT_FORM_ID already configured in Vercel and
-// already used by api/convertkit/subscribe.js (member signup) and
-// api/digest/confirm.js (digest confirmation). No key or numeric tag ID
-// is ever sent to the browser; the quiz's client-side JS only talks to
-// this endpoint, never to ConvertKit directly.
+// Subscribes a /go quiz taker through the SAME double opt-in pipeline as
+// the homepage digest form (api/digest/subscribe.js -> api/digest/confirm.js):
+// insert a pending row in digest_subscribers, email a confirm link, and let
+// api/digest/confirm.js send the "5 free GovCon tools" welcome email (Gmail
+// SMTP) and apply ConvertKit tags once the visitor actually confirms.
 //
-// Doesn't require firstName (unlike api/convertkit/subscribe.js) — the
-// quiz only collects an email, matching what was actually asked for.
+// This replaces an earlier version that called ConvertKit directly and
+// never touched digest_subscribers — which meant quiz takers got Kit's own
+// native "confirm your subscription" email (a form-level Kit setting) but
+// never the 5 tools, since that delivery has only ever been driven by this
+// app's own Supabase + Gmail flow, not a Kit automation.
 //
-// BOT PROTECTION — same pattern as api/digest/subscribe.js, since this
-// endpoint has the same shape of exposure (a public POST target, visible
-// in this page's own unminified inline JS, that a bot could hit directly
-// without ever touching the quiz UI):
-//   1. Honeypot field (`company`) — silent fake-success on any value.
-//   2. Minimum fill time (`renderedAt`) — silent fake-success if the quiz
-//      + email step somehow completed in under MIN_FILL_TIME_MS.
-//   3. Cloudflare Turnstile (`turnstileToken`) — the real challenge; a
-//      missing/failed token is a genuine error so the widget can prompt a
-//      retry, not a silent fake-success.
+// BOT PROTECTION — same as before (honeypot + fill-time + Turnstile). Not
+// porting api/digest/subscribe.js's Gmail-dot-spam/MX-record checks here;
+// add them later if the quiz sees the same bot volume that form did.
 
-import { subscribeToConvertKit } from '../_lib/convertkit.js'
+import { createClient } from '@supabase/supabase-js'
+import nodemailer from 'nodemailer'
+import crypto from 'crypto'
+import { SITE_URL } from '../_lib/site-url.js'
+
+const supabase = createClient(
+  process.env.VITE_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+)
+
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.GMAIL_USER,
+    pass: process.env.GMAIL_APP_PASSWORD,
+  },
+})
 
 const TURNSTILE_SECRET_KEY = process.env.TURNSTILE_SECRET_KEY
 const MIN_FILL_TIME_MS = 1500
 
-// Same site key already live on Login/Register/ForgotPassword and the
-// original /go digest form — this is just the server-side half of that
-// same widget, reused here.
+function isValidEmail(email) {
+  return typeof email === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+}
+
 async function verifyTurnstile(token, remoteIp) {
   if (!token) return false
   const params = new URLSearchParams()
@@ -48,6 +60,21 @@ async function verifyTurnstile(token, remoteIp) {
   }
 }
 
+function confirmEmailCopy(confirmUrl) {
+  return {
+    subject: 'Confirm your email to get your 5 free GovCon tools',
+    text: [
+      `Thanks for taking the "Is Government Contracting Right For You?" quiz.`,
+      ``,
+      `One thing first: we only send your 5 free GovCon tools — and add you to Monday's digest of real federal solicitations — once you've confirmed this email address. Click below to verify.`,
+      ``,
+      confirmUrl,
+      ``,
+      `Didn't take this quiz? Ignore this email and you won't be added — nothing else happens.`,
+    ].join('\n'),
+  }
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*')
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
@@ -57,26 +84,25 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
 
   try {
-    const { email, firstName, result, company, renderedAt, turnstileToken } = req.body
+    const email = (req.body?.email || '').trim().toLowerCase()
+    const firstName = (req.body?.firstName || '').trim()
+    const result = typeof req.body?.result === 'string' ? req.body.result : null
+    const company = req.body?.company
+    const renderedAt = req.body?.renderedAt
+    const turnstileToken = req.body?.turnstileToken
 
     // --- Bot check 1: honeypot -------------------------------------
-    // Real visitors never populate this field. Silent fake-success so a
-    // bot doesn't learn to look for and skip this specific field.
     if ((company || '').trim()) {
-      return res.status(200).json({ message: 'Subscribed' })
+      return res.status(200).json({ status: 'check-email' })
     }
 
     // --- Bot check 2: minimum fill time ------------------------------
     const renderTime = Number(renderedAt)
     if (renderTime && Date.now() - renderTime < MIN_FILL_TIME_MS) {
-      return res.status(200).json({ message: 'Subscribed' })
+      return res.status(200).json({ status: 'check-email' })
     }
 
     // --- Bot check 3: Turnstile challenge -----------------------------
-    // A real error, not a silent fake-success, so the widget can prompt
-    // an actual retry. Skipped (fail-open) only if the secret isn't
-    // configured — it already is, per api/digest/subscribe.js using the
-    // same env var, so this should be active from first deploy.
     if (TURNSTILE_SECRET_KEY) {
       const remoteIp = (req.headers['x-forwarded-for'] || '').split(',')[0].trim()
       const turnstileOk = await verifyTurnstile(turnstileToken, remoteIp)
@@ -87,38 +113,55 @@ export default async function handler(req, res) {
       console.warn('TURNSTILE_SECRET_KEY not configured — skipping Turnstile verification for quiz subscribe')
     }
 
-    if (!firstName || typeof firstName !== 'string' || !firstName.trim()) {
+    if (!firstName) {
       return res.status(400).json({ error: 'First name is required' })
     }
-    if (!email || typeof email !== 'string') {
-      return res.status(400).json({ error: 'Email is required' })
+    if (!isValidEmail(email)) {
+      return res.status(400).json({ error: 'Enter a valid email address.' })
     }
 
-    const tags = ['govcon-lab', 'quiz-taker', 'weekly-rfq-report']
-    // Optional per-result tag (e.g. quiz-result-growing) — lets email
-    // follow-ups be segmented by result type later without a schema change.
-    if (result && typeof result === 'string') {
-      tags.push(`quiz-result-${result.toLowerCase().replace(/_/g, '-')}`)
+    const { data: existing, error: lookupError } = await supabase
+      .from('digest_subscribers')
+      .select('id, confirmed')
+      .eq('email', email)
+      .maybeSingle()
+
+    if (lookupError) throw lookupError
+
+    if (existing?.confirmed) {
+      return res.status(200).json({ status: 'already-confirmed' })
     }
 
-    const outcome = await subscribeToConvertKit({
-      email,
-      firstName: firstName.trim(),
-      fields: { source: 'go-quiz', quiz_result: result || 'unknown' },
-      tags,
-    })
+    const token = crypto.randomBytes(24).toString('hex')
 
-    if (outcome.skipped) {
-      // ConvertKit env vars not configured — don't block the quiz result
-      // over a config gap, just say so plainly in the response.
-      return res.status(200).json({ message: 'ConvertKit not configured, skipped' })
-    }
-    if (!outcome.ok) {
-      console.error('Quiz ConvertKit subscribe error:', outcome)
-      return res.status(502).json({ error: 'Could not subscribe. Please try again.' })
+    if (existing) {
+      const { error } = await supabase
+        .from('digest_subscribers')
+        .update({ confirm_token: token, source: 'go-quiz', first_name: firstName, quiz_result: result })
+        .eq('id', existing.id)
+      if (error) throw error
+    } else {
+      const { error } = await supabase
+        .from('digest_subscribers')
+        .insert({ email, source: 'go-quiz', confirmed: false, confirm_token: token, first_name: firstName, quiz_result: result })
+      if (error) throw error
     }
 
-    return res.status(200).json({ message: 'Subscribed' })
+    const confirmUrl = `${SITE_URL}/api/digest/confirm?token=${token}`
+    const copy = confirmEmailCopy(confirmUrl)
+
+    if (process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD) {
+      await transporter.sendMail({
+        from: process.env.GMAIL_USER,
+        to: email,
+        subject: copy.subject,
+        text: copy.text,
+      })
+    } else {
+      console.warn('Gmail SMTP not configured — quiz confirmation email not sent')
+    }
+
+    return res.status(200).json({ status: 'check-email' })
   } catch (err) {
     console.error('Quiz subscribe error:', err)
     return res.status(500).json({ error: 'Something went wrong. Please try again.' })

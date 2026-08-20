@@ -214,12 +214,19 @@ export default async function handler(req, res) {
     // from member-signup subscribers (api/convertkit/subscribe.js) so
     // they can still be segmented if ever needed.
     try {
+      const tags = ['govcon-lab', 'digest-subscriber', `digest-source-${data.source || 'unknown'}`]
+      if (data.source === 'go-quiz') {
+        tags.push('quiz-taker', 'weekly-rfq-report')
+        if (data.quiz_result) {
+          tags.push(`quiz-result-${String(data.quiz_result).toLowerCase().replace(/_/g, '-')}`)
+        }
+      }
       await subscribeToConvertKit({
         email: data.email,
         firstName: data.first_name || undefined,
         lastName: data.last_name || undefined,
         fields: { source: data.source || 'unknown', digest_confirmed_at: data.confirmed_at },
-        tags: ['govcon-lab', 'digest-subscriber', `digest-source-${data.source || 'unknown'}`],
+        tags,
       })
     } catch (ckErr) {
       console.error('digest ConvertKit subscribe error:', ckErr)
