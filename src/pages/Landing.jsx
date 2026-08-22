@@ -79,13 +79,13 @@ const NICHES = [
 // those already-true bullets get surfaced here, not the underlying price/period/name
 // data, so the two pages can't drift out of sync on the numbers that matter.
 const PRICING_SUMMARY = {
-  Free: [TIERS[0].features[1], TIERS[0].features[3], TIERS[0].features[0]],
+  'Free Tier': [TIERS[0].features[1], TIERS[0].features[3], TIERS[0].features[0]],
   'Lab Member': [TIERS[1].features[1], TIERS[1].features[2], TIERS[1].features[4]],
 }
 const FOUNDING_SUMMARY = ['Lifetime access to everything', 'Private Founding Members chat room', 'First 25 spots only']
 
 const PRICING_CTAS = {
-  Free: 'Create free account',
+  'Free Tier': 'Create free account',
   'Lab Member': 'Join the Lab',
 }
 
