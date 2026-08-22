@@ -1,7 +1,7 @@
 import { lazy, Suspense } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './lib/AuthContext'
-import { isProOrFounding } from './lib/tier'
+import { isMemberOrFounding } from './lib/tier'
 import Layout from './components/layout/Layout'
 
 // Route-level code splitting — previously every page was a static import,
@@ -62,14 +62,14 @@ function AdminRoute({ children }) {
   return children
 }
 
-// Gates Matched Opportunities behind Pro/Founding (or admin), same shape
+// Gates Matched Opportunities behind Member/Founding (or admin), same shape
 // as AdminRoute above — signed-in-but-wrong-tier members bounce to
 // /profile, where Matching Preferences (open to every tier) lives.
 function TierRoute({ children }) {
   const { user, profile, isAdmin, loading } = useAuth()
   if (loading) return <div className="loading-screen"><div className="spinner" /></div>
   if (!user) return <Navigate to="/login" replace />
-  if (!isProOrFounding(profile, isAdmin)) return <Navigate to="/profile" replace />
+  if (!isMemberOrFounding(profile, isAdmin)) return <Navigate to="/profile" replace />
   return children
 }
 

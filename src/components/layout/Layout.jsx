@@ -7,7 +7,7 @@ import {
 } from 'lucide-react'
 import Footer from './Footer'
 import Avatar from '../Avatar'
-import { isProOrFounding } from '../../lib/tier'
+import { isMemberOrFounding } from '../../lib/tier'
 import styles from './Layout.module.css'
 
 const NAV = [
@@ -80,7 +80,7 @@ export default function Layout() {
             </NavLink>
           ))}
 
-          {isProOrFounding(profile, isAdmin) && (
+          {isMemberOrFounding(profile, isAdmin) && (
             <NavLink
               to="/opportunities"
               className={({ isActive }) =>

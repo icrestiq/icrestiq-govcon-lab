@@ -22,14 +22,16 @@ export function isPaidMember(profile) {
 }
 
 // Gates the Matched Opportunities tab — same founder-equivalent-admin
-// pattern as isFoundingMember above.
-export function isProOrFounding(profile, isAdmin = false) {
-  return isAdmin || [TIERS.PRO, TIERS.FOUNDING].includes(profile?.membership_tier)
+// pattern as isFoundingMember above. 'pro' is kept in the allowed set even
+// though Lab Pro is retired as a purchasable tier, so any account still
+// carrying that legacy value doesn't lose access it already had.
+export function isMemberOrFounding(profile, isAdmin = false) {
+  return isAdmin || [TIERS.MEMBER, TIERS.PRO, TIERS.FOUNDING].includes(profile?.membership_tier)
 }
 
 export const TIER_LABELS = {
   [TIERS.FREE]: 'Free',
   [TIERS.MEMBER]: 'Lab Member',
-  [TIERS.PRO]: 'Lab Pro',
+  [TIERS.PRO]: 'Lab Pro', // legacy tier, no longer sold
   [TIERS.FOUNDING]: 'Founding Member',
 }

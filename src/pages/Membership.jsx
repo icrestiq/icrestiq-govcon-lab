@@ -9,7 +9,7 @@ export const TIERS = [
   {
     id: null,
     productId: null,
-    name: 'Free',
+    name: 'Free Tier',
     price: '$0',
     period: 'forever',
     icon: Star,
@@ -31,7 +31,7 @@ export const TIERS = [
     id: 'lab-monthly',
     productId: 'lab-monthly',
     name: 'Lab Member',
-    price: '$57',
+    price: '$47',
     period: '/month',
     icon: Zap,
     iconColor: '#4F6BED', iconBg: '#EBF4FF',
@@ -39,8 +39,16 @@ export const TIERS = [
     badgeType: 'navy',
     badgeColor: '#1B2A4A', badgeBg: '#E8ECF5',
     description: 'Full access for serious operators.',
+    // Gated to Member/Founding (see isMemberOrFounding in lib/tier.js) —
+    // rendered as its own callout rather than a plain bullet since it's
+    // the tier's headline feature.
+    highlightFeature: {
+      icon: Radar,
+      title: 'Matched Opportunities',
+      desc: 'Live SAM.gov opportunities matched to your NAICS/PSC codes every day, scored and ranked by fit — see what’s worth bidding on before you dig through SAM.gov yourself.',
+    },
     features: [
-      'Everything in Free',
+      'Everything in the Free Tier',
       'Full community — all 6 chat rooms',
       'Weekly RFQ Opportunity Digest',
       'Complete course library access',
@@ -51,39 +59,6 @@ export const TIERS = [
     ],
     cta: 'Join the Lab',
     highlight: true,
-  },
-  {
-    id: 'lab-pro-monthly',
-    productId: 'lab-pro-monthly',
-    name: 'Lab Pro',
-    price: '$107',
-    period: '/month',
-    icon: Crown,
-    iconColor: '#6B46C1', iconBg: '#FAF5FF',
-    badge: 'Best Value',
-    badgeType: 'amber',
-    badgeColor: '#92620A', badgeBg: '#FFF0CC',
-    description: 'For operators scaling fast.',
-    // Rendered as its own callout, not a plain bullet — this is gated to
-    // Pro/Founding only (see isProOrFounding in lib/tier.js), so it's
-    // deliberately not in Lab Member's feature list at all.
-    highlightFeature: {
-      icon: Radar,
-      title: 'Matched Opportunities',
-      desc: 'Live SAM.gov opportunities matched to your NAICS/PSC codes every day, scored and ranked by fit — see what’s worth bidding on before you dig through SAM.gov yourself.',
-    },
-    features: [
-      'Everything in Lab Member',
-      'Monthly live Q&A with Keith',
-      'Priority support in chat',
-      'Early access to new tools + automations',
-      'Make.com workflow library',
-      'Pro-only sourcing intel channel',
-      'Niche deep-dive each month',
-      'Cancel anytime',
-    ],
-    cta: 'Go Pro',
-    highlight: false,
   },
 ]
 
@@ -96,10 +71,16 @@ export const FOUNDING = {
   highlightFeature: {
     icon: Radar,
     title: 'Matched Opportunities',
-    desc: 'Live SAM.gov opportunities matched to your NAICS/PSC codes every day, scored and ranked by fit — included as part of lifetime Lab Pro access.',
+    desc: 'Live SAM.gov opportunities matched to your NAICS/PSC codes every day, scored and ranked by fit — included as part of lifetime Founding access.',
   },
   features: [
-    'Lifetime Lab Pro access — never pay monthly',
+    'Lifetime access — never pay monthly, everything included',
+    'Monthly live Q&A with Keith',
+    'Priority support in chat',
+    'Early access to new tools + automations',
+    'Make.com workflow library',
+    'Sourcing intel channel',
+    'Niche deep-dive each month',
     'Name on the Founding Members wall',
     'Direct input on product roadmap',
     'All future course drops included',

@@ -80,9 +80,9 @@ const RESULTS = {
         href: '/store/2601a099-47c5-46e4-9fe6-399b22eb3a42',
       },
       {
-        label: 'GovCon Lab Pro Membership',
-        desc: 'Live Q&A, priority support, and 25% off every digital product from here on.',
-        href: '/store/lab-pro-monthly',
+        label: 'Founding Member',
+        desc: 'Live Q&A, priority support, and every digital product on the site included for life.',
+        href: '/membership',
       },
       {
         label: 'Browse the niche playbooks',

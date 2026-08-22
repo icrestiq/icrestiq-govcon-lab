@@ -12,7 +12,6 @@ const PRODUCT_CONTENT = {
   'mil-spec-bible':  { name: 'MIL-SPEC Packaging Bible™',              type: 'digital' },
   'founding-member': { name: 'Founding Member — Lifetime Access',      type: 'membership' },
   'lab-monthly':     { name: 'iCrestiQ GovCon Lab — $57/mo Membership',      type: 'membership' },
-  'lab-pro-monthly': { name: 'iCrestiQ GovCon Lab Pro — $107/mo Membership', type: 'membership' },
 }
 
 export default function CheckoutSuccess() {

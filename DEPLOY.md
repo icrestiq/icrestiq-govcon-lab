@@ -198,7 +198,6 @@ For each product, go to: **Stripe Dashboard → Products → Add Product**
 | MIL-SPEC Packaging Bible™ | $147 | One-time |
 | Founding Member — Lifetime | $297 | One-time |
 | iCrestiQ GovCon Lab — Monthly | $47 | Recurring (monthly) |
-| iCrestiQ GovCon Lab Pro — Monthly | $97 | Recurring (monthly) |
 
 After creating each product, copy the **Price ID** (starts with `price_...`)
 

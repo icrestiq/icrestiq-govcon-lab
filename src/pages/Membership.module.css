@@ -1,6 +1,7 @@
 .page {
   padding: var(--sp-8);
   max-width: 1320px;
+  margin: 0 auto;
 }
 
 .header {
@@ -74,9 +75,11 @@
 }
 
 /* ── Grid ── */
+/* 3 cards render (Free, Lab Member, Founding) — 3 columns keeps them
+   centered under the header and wide enough that feature text doesn't wrap. */
 .grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: var(--sp-5);
   margin-bottom: var(--sp-8);
   align-items: stretch;

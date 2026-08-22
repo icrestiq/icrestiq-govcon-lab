@@ -46,8 +46,10 @@ export async function createCheckoutSession({ productId, userId, userEmail, mode
 // server-side from the caller's real membership_tier (see
 // api/stripe/suggested-bid-checkout.js), never trusted from the client.
 export const SUGGESTED_BID_PRICING = {
-  pro: { label: '$7', searchCap: 8 },
-  founding: { label: '$2', searchCap: 5 },
+  member: { label: '$2', searchCap: 5 },
+  // Legacy tier, no longer sold — grandfathered at Lab Member pricing.
+  pro: { label: '$2', searchCap: 5 },
+  founding: { label: '$1', searchCap: 8 },
   // role='admin' testing on their own account — backend skips Stripe
   // entirely for this key (see suggested-bid-checkout.js).
   admin: { label: 'Free (Admin Test)', searchCap: 8 },

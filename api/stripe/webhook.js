@@ -15,10 +15,12 @@ const supabase = createClient(
 
 // Maps each Stripe Price ID to the membership_tier value this app's
 // existing database constraint actually allows: free, member, pro,
-// founding, admin.
+// founding, admin. Lab Pro's price is intentionally absent — it's
+// retired and no longer sold, so no new subscription should ever map
+// to it (any account still on 'pro' got there before retirement and
+// is grandfathered, not re-derived from this table).
 const PRICE_TO_TIER = {
   'price_1Tq8oWBhEghNkTanlBCEKH0E': 'member',
-  'price_1Tq8paBhEghNkTanEVCjaTex': 'pro',
   'price_1Tq8qBBhEghNkTanqKQ4VJyj': 'founding',
 }
 

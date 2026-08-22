@@ -13,14 +13,18 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
 
-// Search cap is tier-differentiated too — Pro's higher price buys deeper
-// supplier/shipping research, not just a label.
+// Search cap is tier-differentiated too — Founding's lifetime tier buys
+// deeper supplier/shipping research, not just a lower price.
 const TIER_PRICING = {
-  pro: { amountCents: 700, searchCap: 8 },
-  founding: { amountCents: 200, searchCap: 5 },
+  member: { amountCents: 200, searchCap: 5 },
+  // Legacy tier, no longer sold (see TIER_LABELS in lib/tier.js) — any
+  // account still carrying it is grandfathered at Lab Member pricing
+  // rather than losing access outright.
+  pro: { amountCents: 200, searchCap: 5 },
+  founding: { amountCents: 100, searchCap: 8 },
   // Not a real membership tier — role='admin' testing this feature on
-  // their own account. Free, same search depth as Pro, and skips Stripe
-  // entirely below (see isAdmin branch) so testing doesn't require
+  // their own account. Free, same search depth as Founding, and skips
+  // Stripe entirely below (see isAdmin branch) so testing doesn't require
   // charging a real card for nothing.
   admin: { amountCents: 0, searchCap: 8 },
 }
@@ -52,7 +56,7 @@ export default async function handler(req, res) {
     const tierKey = isAdmin ? 'admin' : profile.membership_tier
     const pricing = TIER_PRICING[tierKey]
     if (!pricing) {
-      return res.status(403).json({ error: 'Suggested Bid is available to Lab Pro and Founding members only' })
+      return res.status(403).json({ error: 'Suggested Bid is available to Lab Member and Founding members only' })
     }
 
     const { data: opportunity, error: oppError } = await supabase

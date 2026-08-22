@@ -52,6 +52,25 @@
   background: rgba(72, 187, 120, 0.08);
 }
 
+.btnBlue {
+  color: #2B6CB0;
+  border-color: #4299E1;
+}
+
+.btnBlue:hover {
+  border-color: #4299E1;
+  color: #2B6CB0;
+  background: rgba(66, 153, 225, 0.08);
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+}
+
 .pitchCard {
   background: linear-gradient(135deg, rgba(201, 168, 76, 0.08), rgba(27, 42, 74, 0.03));
   border: 1px solid rgba(201, 168, 76, 0.3);
@@ -325,6 +344,7 @@
 
 .badgeGroup {
   display: flex;
+  align-items: center;
   flex-wrap: wrap;
   gap: var(--sp-2);
   flex-shrink: 0;

@@ -5,9 +5,18 @@
 // site change — not every small fix, but new features / significant
 // rebuilds. Newest entry first.
 
-export const SITE_VERSION = '2.3'
+export const SITE_VERSION = '2.4'
 
 export const CHANGELOG = [
+  {
+    version: '2.4',
+    date: '2026-08-21',
+    notes: [
+      'Retired the Lab Pro membership tier — its exclusive perks (live Q&A, priority support, Make.com library, sourcing intel channel, niche deep-dives) now live inside Founding Member instead',
+      'Matched Opportunities and Suggested Bid are now available to Lab Member, not just Pro/Founding',
+      'Suggested Bid pricing changed to $2 per opportunity for Lab Member, $1 for Founding members',
+    ],
+  },
   {
     version: '2.3',
     date: '2026-08-20',

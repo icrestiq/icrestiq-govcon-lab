@@ -9,6 +9,10 @@
     {
       "path": "/api/digest/send-reminders",
       "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/notion/stale-quote-alert",
+      "schedule": "0 13 * * *"
     }
   ],
   "rewrites": [

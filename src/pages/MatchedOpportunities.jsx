@@ -34,6 +34,33 @@ function scoreBadgeClass(score) {
   return 'badge-red'
 }
 
+// Deadline-window filter — separate from the closed/no-go/low-score
+// collapse toggles below (those hide things by default; this narrows the
+// list on request). "none" checks the deadline is missing rather than a
+// day-count range, since a missing deadline can't fall in any of the
+// numbered windows.
+const DEADLINE_BUCKETS = [
+  { value: 'all', label: 'All deadlines' },
+  { value: '0-10', label: '0–10 days left' },
+  { value: '11-15', label: '11–15 days left' },
+  { value: '16-20', label: '16–20 days left' },
+  { value: '21-25', label: '21–25 days left' },
+  { value: '26-30', label: '26–30 days left' },
+  { value: '31+', label: '31+ days — older' },
+  { value: 'none', label: 'No deadline listed' },
+]
+
+function matchesDeadlineBucket(m, bucket) {
+  if (bucket === 'all') return true
+  const deadline = m.opportunities.response_deadline
+  if (bucket === 'none') return !deadline
+  if (!deadline) return false
+  const daysLeft = Math.ceil((new Date(deadline).getTime() - Date.now()) / 86400000)
+  if (bucket === '31+') return daysLeft >= 31
+  const [min, max] = bucket.split('-').map(Number)
+  return daysLeft >= min && daysLeft <= max
+}
+
 export default function MatchedOpportunities() {
   const { user, profile, isAdmin } = useAuth()
   const [searchParams] = useSearchParams()
@@ -42,7 +69,10 @@ export default function MatchedOpportunities() {
   const [loading, setLoading] = useState(true)
   const [showLowScoring, setShowLowScoring] = useState(false)
   const [showClosed, setShowClosed] = useState(false)
+  const [showNoGo, setShowNoGo] = useState(false)
   const [showHidden, setShowHidden] = useState(false)
+  const [deadlineBucket, setDeadlineBucket] = useState('all')
+  const [expandedIds, setExpandedIds] = useState(() => new Set())
   const [refreshing, setRefreshing] = useState(false)
   const [refreshMessage, setRefreshMessage] = useState('')
   const pollRef = useRef(null)
@@ -75,6 +105,18 @@ export default function MatchedOpportunities() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bidRequests])
 
+  // A return from Stripe checkout (?bid_request=...) needs its row expanded
+  // automatically — the row itself is collapsed by default now, so without
+  // this the purchase a member just paid for would land on a page where
+  // their result is hidden behind a click they don't know to make.
+  useEffect(() => {
+    const highlightedBidRequestId = searchParams.get('bid_request')
+    if (!highlightedBidRequestId) return
+    const match = matches.find((m) => bidRequests[m.opportunities.id]?.id === highlightedBidRequestId)
+    if (match) setExpandedIds((prev) => new Set(prev).add(match.id))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [matches, bidRequests])
+
   async function loadMatches() {
     setLoading(true)
     try {
@@ -103,6 +145,16 @@ export default function MatchedOpportunities() {
   async function handleRefreshMatches() {
     setRefreshing(true)
     setRefreshMessage('')
+    // Captured before the call, not read from the function's own response —
+    // match_opportunities also runs silently in the background right after
+    // a profile save (see Profile.jsx), so by the time someone clicks this
+    // button that earlier run may already have inserted everything. This
+    // function's own newMatches count would then correctly report 0, but
+    // showing "No new matches" next to a total that grew since this page
+    // last loaded read as a contradiction to the user. Comparing totals
+    // instead reflects what actually changed since they last looked,
+    // regardless of which invocation of match_opportunities did the work.
+    const beforeCount = matches.length
     try {
       const { data: { session } } = await supabase.auth.getSession()
       const res = await fetch('https://zohrpargudmogfywciik.supabase.co/functions/v1/match_opportunities', {
@@ -116,11 +168,13 @@ export default function MatchedOpportunities() {
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || 'Refresh failed')
       const updated = await loadMatches()
-      const totalText = updated ? ` — ${updated.length} total.` : '.'
+      const afterCount = updated ? updated.length : beforeCount
+      const totalText = updated ? ` — ${afterCount} total.` : '.'
+      const grew = afterCount - beforeCount
       setRefreshMessage(
-        json.newMatches > 0
-          ? `Found ${json.newMatches} new match${json.newMatches === 1 ? '' : 'es'}${totalText}`
-          : `No new matches since your last refresh${totalText}`
+        grew > 0
+          ? `Found ${grew} new match${grew === 1 ? '' : 'es'}${totalText}`
+          : `No new matches since your last visit${totalText}`
       )
     } catch (err) {
       console.error('Refresh matches failed:', err)
@@ -128,6 +182,15 @@ export default function MatchedOpportunities() {
     } finally {
       setRefreshing(false)
     }
+  }
+
+  function toggleExpanded(matchId) {
+    setExpandedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(matchId)) next.delete(matchId)
+      else next.add(matchId)
+      return next
+    })
   }
 
   async function handleToggleHidden(matchId, hide) {
@@ -197,15 +260,34 @@ export default function MatchedOpportunities() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [matches])
 
+  // A member who's actually paid for a Suggested Bid on an opportunity has
+  // made an explicit, deliberate decision that overrides any automatic
+  // scoring or bid-criteria assessment — closed/no-go/low-score should
+  // never auto-collapse it. Mirrors the same "purchases are protected, not
+  // disposable list clutter" principle already applied server-side in
+  // purge_expired_matches and match_opportunities' NAICS/PSC pruning.
+  // Explicit hidden_by_user is the one exception: a member's own "hide
+  // this" still wins even over their own purchase.
+  const hasPurchase = (m) => !!bidRequests[m.opportunities.id]
+
   const hiddenCount = sortedMatches.filter((m) => m.hidden_by_user).length
-  const closedCount = sortedMatches.filter((m) => !m.hidden_by_user && isClosed(m)).length
-  const lowScoreCount = sortedMatches.filter((m) => !m.hidden_by_user && !isClosed(m) && m.match_score != null && m.match_score < LOW_SCORE_THRESHOLD).length
-  const visibleMatches = sortedMatches.filter((m) => {
-    if (m.hidden_by_user) return showHidden
-    if (isClosed(m)) return showClosed
-    if (m.match_score != null && m.match_score < LOW_SCORE_THRESHOLD) return showLowScoring
-    return true
-  })
+  const closedCount = sortedMatches.filter((m) => !m.hidden_by_user && !hasPurchase(m) && isClosed(m)).length
+  // A member's own bid criteria (min/max value, agency allow/deny, deadline,
+  // set-aside match) is a stronger, more deliberate signal than raw fit
+  // score — checked ahead of low-scoring so a 90/100-scored match that
+  // still fails their own deadline rule collapses here, not in the main list.
+  const noGoCount = sortedMatches.filter((m) => !m.hidden_by_user && !hasPurchase(m) && !isClosed(m) && m.recommendation === 'no-go').length
+  const lowScoreCount = sortedMatches.filter((m) => !m.hidden_by_user && !hasPurchase(m) && !isClosed(m) && m.recommendation !== 'no-go' && m.match_score != null && m.match_score < LOW_SCORE_THRESHOLD).length
+  const visibleMatches = sortedMatches
+    .filter((m) => {
+      if (m.hidden_by_user) return showHidden
+      if (hasPurchase(m)) return true
+      if (isClosed(m)) return showClosed
+      if (m.recommendation === 'no-go') return showNoGo
+      if (m.match_score != null && m.match_score < LOW_SCORE_THRESHOLD) return showLowScoring
+      return true
+    })
+    .filter((m) => matchesDeadlineBucket(m, deadlineBucket))
 
   const deadlineLabel = (deadline) => {
     if (!deadline) return 'No deadline listed'
@@ -215,6 +297,16 @@ export default function MatchedOpportunities() {
     if (daysLeft < 0) return `${formatted} (closed)`
     if (daysLeft === 0) return `${formatted} (today)`
     return `${formatted} (${daysLeft} day${daysLeft === 1 ? '' : 's'} left)`
+  }
+
+  // Compact "Days Left" column value — the table row itself only has room
+  // for a number, not the full formatted date; that still shows in the
+  // expanded detail row via deadlineLabel above.
+  const daysLeftValue = (deadline) => {
+    if (!deadline) return '—'
+    const daysLeft = Math.ceil((new Date(deadline).getTime() - Date.now()) / 86400000)
+    if (daysLeft < 0) return 'Closed'
+    return String(daysLeft)
   }
 
   // Deadline pressure is a real purchase driver — style it accordingly
@@ -252,10 +344,25 @@ export default function MatchedOpportunities() {
         </p>
         {profile?.matching_enabled && (
           <div style={{ marginTop: 'var(--sp-3)' }}>
-            <button type="button" className={`btn btn-ghost ${styles.btnGreen}`} onClick={handleRefreshMatches} disabled={refreshing}>
-              <RefreshCw size={14} className={refreshing ? styles.spin : ''} />
-              {refreshing ? 'Refreshing…' : 'Refresh My Matches'}
-            </button>
+            <div className={styles.headerActions}>
+              <button type="button" className={`btn btn-ghost ${styles.btnGreen}`} onClick={handleRefreshMatches} disabled={refreshing}>
+                <RefreshCw size={14} className={refreshing ? styles.spin : ''} />
+                {refreshing ? 'Refreshing…' : 'Refresh My Matches'}
+              </button>
+              <Link to="/profile" className={`btn btn-ghost ${styles.btnBlue}`}>
+                <Settings size={14} /> Edit Matching Preferences
+              </Link>
+              <select
+                className="btn btn-ghost"
+                value={deadlineBucket}
+                onChange={(e) => setDeadlineBucket(e.target.value)}
+                aria-label="Filter by deadline window"
+              >
+                {DEADLINE_BUCKETS.map((b) => (
+                  <option key={b.value} value={b.value}>{b.label}</option>
+                ))}
+              </select>
+            </div>
             {refreshMessage && <p className={styles.refreshHint}>{refreshMessage}</p>}
           </div>
         )}
@@ -285,70 +392,152 @@ export default function MatchedOpportunities() {
         <div className={styles.list}>
           {visibleMatches.map((m) => {
             const opp = m.opportunities
+            const purchased = hasPurchase(m)
+            const isExpanded = expandedIds.has(m.id)
+
+            // Unpurchased — everything always visible. This is the scan-and-
+            // decide view: no click should stand between a member and the
+            // information they need to judge whether to bid.
+            if (!purchased) {
+              return (
+                <div key={m.id} className={styles.card}>
+                  <div className={styles.cardTop}>
+                    <h3 className={styles.oppTitle}>{opp.title}</h3>
+                    <div className={styles.badgeGroup}>
+                      {opp.estimated_value != null && (
+                        <span className="badge badge-green">Est. ${Number(opp.estimated_value).toLocaleString()}</span>
+                      )}
+                      {m.match_score != null && (
+                        <span className={`badge ${scoreBadgeClass(m.match_score)}`}>{m.match_score}/100</span>
+                      )}
+                      {m.recommendation && (
+                        <span className={`badge ${RECOMMENDATION_BADGE[m.recommendation] || 'badge-navy'}`}>
+                          {RECOMMENDATION_LABEL[m.recommendation] || m.recommendation}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className={styles.metaRow}>
+                    <span>{opp.agency || 'Agency not listed'}</span>
+                    <span>·</span>
+                    <span className={deadlineUrgencyClass(opp.response_deadline)}>{deadlineLabel(opp.response_deadline)}</span>
+                    <span>·</span>
+                    <span>Sol. #{opp.solicitation_number}</span>
+                    {opp.set_aside_type && (
+                      <>
+                        <span>·</span>
+                        <span>{competitionLabel(opp.set_aside_type)}</span>
+                      </>
+                    )}
+                  </div>
+                  {m.match_reason && <p className={styles.reason}>{m.match_reason}</p>}
+                  <div className={styles.cardActions}>
+                    {opp.sam_gov_url && (
+                      <a href={opp.sam_gov_url} target="_blank" rel="noopener noreferrer" className={styles.link}>
+                        View on SAM.gov <ExternalLink size={13} />
+                      </a>
+                    )}
+                    <button
+                      type="button"
+                      className={styles.hideLink}
+                      onClick={() => handleToggleHidden(m.id, !m.hidden_by_user)}
+                    >
+                      {m.hidden_by_user ? <Eye size={13} /> : <EyeOff size={13} />}
+                      {m.hidden_by_user ? 'Unhide' : 'Hide this opportunity'}
+                    </button>
+                  </div>
+
+                  <SuggestedBidSection
+                    opportunityId={opp.id}
+                    userId={user.id}
+                    tier={isAdmin ? 'admin' : profile?.membership_tier}
+                    bidRequest={bidRequests[opp.id]}
+                    autoExpand={bidRequests[opp.id]?.id === highlightedBidRequestId}
+                    onRequested={loadBidRequests}
+                  />
+                </div>
+              )
+            }
+
+            // Purchased — already decided, already bought. Collapsed by
+            // default so it doesn't clutter the scan-and-decide view; click
+            // to check on it when you actually want to.
             return (
               <div key={m.id} className={styles.card}>
-                <div className={styles.cardTop}>
+                <div
+                  className={styles.cardTop}
+                  style={{ cursor: 'pointer' }}
+                  onClick={() => toggleExpanded(m.id)}
+                >
                   <h3 className={styles.oppTitle}>{opp.title}</h3>
                   <div className={styles.badgeGroup}>
-                    {opp.estimated_value != null && (
-                      <span className="badge badge-green">Est. ${Number(opp.estimated_value).toLocaleString()}</span>
-                    )}
-                    {m.match_score != null && (
-                      <span className={`badge ${scoreBadgeClass(m.match_score)}`}>{m.match_score}/100</span>
-                    )}
+                    <span className={deadlineUrgencyClass(opp.response_deadline)}>{daysLeftValue(opp.response_deadline)} days left</span>
                     {m.recommendation && (
                       <span className={`badge ${RECOMMENDATION_BADGE[m.recommendation] || 'badge-navy'}`}>
                         {RECOMMENDATION_LABEL[m.recommendation] || m.recommendation}
                       </span>
                     )}
+                    <span className="badge badge-navy">Purchased</span>
+                    {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                   </div>
                 </div>
-                <div className={styles.metaRow}>
-                  <span>{opp.agency || 'Agency not listed'}</span>
-                  <span>·</span>
-                  <span className={deadlineUrgencyClass(opp.response_deadline)}>{deadlineLabel(opp.response_deadline)}</span>
-                  <span>·</span>
-                  <span>Sol. #{opp.solicitation_number}</span>
-                  {opp.set_aside_type && (
-                    <>
+                {isExpanded && (
+                  <>
+                    <div className={styles.metaRow}>
+                      <span>{opp.agency || 'Agency not listed'}</span>
                       <span>·</span>
-                      <span>{competitionLabel(opp.set_aside_type)}</span>
-                    </>
-                  )}
-                </div>
-                {m.match_reason && <p className={styles.reason}>{m.match_reason}</p>}
-                <div className={styles.cardActions}>
-                  {opp.sam_gov_url && (
-                    <a href={opp.sam_gov_url} target="_blank" rel="noopener noreferrer" className={styles.link}>
-                      View on SAM.gov <ExternalLink size={13} />
-                    </a>
-                  )}
-                  <button
-                    type="button"
-                    className={styles.hideLink}
-                    onClick={() => handleToggleHidden(m.id, !m.hidden_by_user)}
-                  >
-                    {m.hidden_by_user ? <Eye size={13} /> : <EyeOff size={13} />}
-                    {m.hidden_by_user ? 'Unhide' : 'Hide this opportunity'}
-                  </button>
-                </div>
+                      <span>{deadlineLabel(opp.response_deadline)}</span>
+                      <span>·</span>
+                      <span>Sol. #{opp.solicitation_number}</span>
+                      {opp.set_aside_type && (
+                        <>
+                          <span>·</span>
+                          <span>{competitionLabel(opp.set_aside_type)}</span>
+                        </>
+                      )}
+                    </div>
+                    {m.match_reason && <p className={styles.reason}>{m.match_reason}</p>}
+                    <div className={styles.cardActions}>
+                      {opp.sam_gov_url && (
+                        <a href={opp.sam_gov_url} target="_blank" rel="noopener noreferrer" className={styles.link}>
+                          View on SAM.gov <ExternalLink size={13} />
+                        </a>
+                      )}
+                      <button
+                        type="button"
+                        className={styles.hideLink}
+                        onClick={() => handleToggleHidden(m.id, !m.hidden_by_user)}
+                      >
+                        {m.hidden_by_user ? <Eye size={13} /> : <EyeOff size={13} />}
+                        {m.hidden_by_user ? 'Unhide' : 'Hide this opportunity'}
+                      </button>
+                    </div>
 
-                <SuggestedBidSection
-                  opportunityId={opp.id}
-                  userId={user.id}
-                  tier={isAdmin ? 'admin' : profile?.membership_tier}
-                  bidRequest={bidRequests[opp.id]}
-                  autoExpand={bidRequests[opp.id]?.id === highlightedBidRequestId}
-                  onRequested={loadBidRequests}
-                />
+                    <SuggestedBidSection
+                      opportunityId={opp.id}
+                      userId={user.id}
+                      tier={isAdmin ? 'admin' : profile?.membership_tier}
+                      bidRequest={bidRequests[opp.id]}
+                      autoExpand={bidRequests[opp.id]?.id === highlightedBidRequestId}
+                      onRequested={loadBidRequests}
+                    />
+                  </>
+                )}
               </div>
             )
           })}
         </div>
       )}
 
+      {!loading && noGoCount > 0 && (
+        <button type="button" className="btn btn-ghost" style={{ margin: '0 auto', display: 'flex' }} onClick={() => setShowNoGo((v) => !v)}>
+          {showNoGo ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+          {showNoGo ? 'Hide' : 'Show'} {noGoCount} match{noGoCount === 1 ? '' : 'es'} that don't meet your bid criteria
+        </button>
+      )}
+
       {!loading && lowScoreCount > 0 && (
-        <button type="button" className="btn btn-ghost" style={{ margin: '0 auto', display: 'flex' }} onClick={() => setShowLowScoring((v) => !v)}>
+        <button type="button" className="btn btn-ghost" style={{ margin: 'var(--sp-2) auto 0', display: 'flex' }} onClick={() => setShowLowScoring((v) => !v)}>
           {showLowScoring ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
           {showLowScoring ? 'Hide' : 'Show'} {lowScoreCount} lower-scoring match{lowScoreCount === 1 ? '' : 'es'}
         </button>
@@ -430,7 +619,7 @@ function SuggestedBidPitchCard() {
           the price and leads are estimates and leads to verify, not certified figures or vetted vendors.
         </span>
       </div>
-      <p className={styles.pitchPrice}>$7 per opportunity for Lab Pro members · $2 for Founding members</p>
+      <p className={styles.pitchPrice}>$2 per opportunity for Lab Member · $1 for Founding members</p>
     </div>
   )
 }
@@ -578,7 +767,7 @@ function SuggestedBidSection({ opportunityId, userId, tier, bidRequest, autoExpa
   const [expanded, setExpanded] = useState(!!autoExpand)
 
   const pricing = SUGGESTED_BID_PRICING[tier]
-  if (!pricing) return null // Suggested Bid is Lab Pro / Founding only
+  if (!pricing) return null // Suggested Bid is Lab Member / Founding only
 
   async function handleStart() {
     setStartError('')
