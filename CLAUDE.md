@@ -28,6 +28,15 @@ Never describe code as live merely because it exists in the repository.
 - Do not update PROJECT_HANDOFF.md unless asked at the end of a meaningful work session.
 - Do not query live production systems, provider dashboards, databases, subscriber records, Stripe, Supabase, Make.com, Vercel, Notion, Kit, or other external services unless the user explicitly authorizes that live-system check.
 
+## Permission Rules
+
+* Local edits, builds and tests: permitted
+* Git commits: permitted when requested
+* Pushes and production deployments: one-time explicit approval
+* Database migrations or production-data changes: explicit approval with a preview
+* Deletion, billing changes, secrets and customer communications: always require separate approval
+* Never broaden or permanently save permissions without approval
+
 ## End-of-Session Handoff
 
 When asked to update the handoff, record:
