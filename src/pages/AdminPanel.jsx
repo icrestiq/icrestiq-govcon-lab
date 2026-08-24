@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/AuthContext'
-import { Users, Package, MessageSquare, Plus, Trash2, Edit, Tag, Upload, X, Image as ImageIcon, Copy, Check, Download, Newspaper, Eye, Activity, FileText, MessageCircle, Heart, BarChart3 } from 'lucide-react'
+import { Users, Package, MessageSquare, Plus, Trash2, Edit, Tag, Upload, X, Image as ImageIcon, Copy, Check, Download, Newspaper, Eye, Activity, FileText, MessageCircle, Heart, BarChart3, Flag } from 'lucide-react'
 import { htmlToBodyText, plainTextToBodyText } from '../lib/blogPasteImport'
 import Avatar from '../components/Avatar'
 import ActivityHeatmap from '../components/ActivityHeatmap'
@@ -15,6 +15,7 @@ const TABS = [
   { id: 'images',      label: 'Image Uploader',  icon: ImageIcon },
   { id: 'blog',        label: 'Blog Posts',      icon: Newspaper },
   { id: 'analytics',   label: 'Site Analytics',  icon: BarChart3 },
+  { id: 'flagged-notes', label: 'Flagged Notes', icon: Flag },
 ]
 
 export default function AdminPanel() {
@@ -190,6 +191,7 @@ async function testMonthlyRewards() {
 
       {/* ── Site Analytics ── */}
       {tab === 'analytics' && <AnalyticsTab />}
+      {tab === 'flagged-notes' && <FlaggedNotesTab />}
     </div>
   )
 }
@@ -314,6 +316,171 @@ function ReportsTab() {
             </button>
             <button className="btn btn-ghost" onClick={() => deleteReport(report)} title="Delete this report — leaves the post itself alone">
               <Trash2 size={14} /> Delete Report
+            </button>
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// ── Flagged Notes Tab — Sourcing Pipeline Phase 3 moderation ──
+function FlaggedNotesTab() {
+  const [flags, setFlags] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [actingId, setActingId] = useState(null)
+
+  useEffect(() => { loadFlags() }, [])
+
+  async function authHeader() {
+    const { data: { session } } = await supabase.auth.getSession()
+    return { Authorization: `Bearer ${session?.access_token}` }
+  }
+
+  async function loadFlags() {
+    setLoading(true)
+    setError('')
+    try {
+      const { data: flagRows, error: flagErr } = await supabase
+        .from('note_flags')
+        .select('*')
+        .order('created_at', { ascending: false })
+      if (flagErr) throw flagErr
+
+      const noteIds = [...new Set((flagRows || []).map(f => f.note_id))]
+      const { data: notes, error: notesErr } = noteIds.length
+        ? await supabase.from('notes').select('*').in('id', noteIds)
+        : { data: [], error: null }
+      if (notesErr) throw notesErr
+      const noteById = Object.fromEntries((notes || []).map(n => [n.id, n]))
+
+      const companyIds = [...new Set((notes || []).map(n => n.company_id).filter(Boolean))]
+      const contactIds = [...new Set((notes || []).map(n => n.contact_id).filter(Boolean))]
+      const [{ data: companies }, { data: contacts }] = await Promise.all([
+        companyIds.length ? supabase.from('companies').select('id, name').in('id', companyIds) : Promise.resolve({ data: [] }),
+        contactIds.length ? supabase.from('contacts').select('id, name').in('id', contactIds) : Promise.resolve({ data: [] }),
+      ])
+      const companyById = Object.fromEntries((companies || []).map(c => [c.id, c.name]))
+      const contactById = Object.fromEntries((contacts || []).map(c => [c.id, c.name]))
+
+      // author_id/flagged_by_profile_id both reference profiles — fetched
+      // as a flat lookup (same approach as ReportsTab's reporterNames)
+      // rather than an embedded select, since notes has two profile FKs
+      // (author_id, removed_by_profile_id) which makes Supabase's
+      // FK-inference embed ambiguous.
+      const profileIds = [...new Set([
+        ...(notes || []).map(n => n.author_id),
+        ...(flagRows || []).map(f => f.flagged_by_profile_id),
+      ].filter(Boolean))]
+      const { data: profiles } = profileIds.length
+        ? await supabase.from('profiles').select('id, username, first_name, last_name').in('id', profileIds)
+        : { data: [] }
+      const nameById = Object.fromEntries((profiles || []).map(p => [
+        p.id, p.first_name ? `${p.first_name} ${p.last_name || ''}`.trim() : p.username,
+      ]))
+
+      const rows = (flagRows || []).map(f => {
+        const note = noteById[f.note_id]
+        return {
+          ...f,
+          note,
+          entityName: note ? (note.company_id ? companyById[note.company_id] : contactById[note.contact_id]) : null,
+          entityType: note ? (note.company_id ? 'Company' : 'Contact') : null,
+          authorName: note ? (nameById[note.author_id] || 'Unknown member') : null,
+          flaggerName: nameById[f.flagged_by_profile_id] || 'Unknown member',
+        }
+      })
+      setFlags(rows)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function removeNote(flag) {
+    if (!flag.note) return
+    if (!confirm('Remove this note from the shared directory? This unshares it and records the removal. This cannot be undone.')) return
+    setActingId(flag.id)
+    try {
+      const headers = await authHeader()
+      const res = await fetch('/api/admin/moderate-note', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...headers },
+        body: JSON.stringify({ noteId: flag.note_id, reason: 'Removed via flagged-notes moderation' }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to remove note')
+      // Other pending flags on the same note (if it was flagged by more
+      // than one member) are now stale too — the note is unshared either way.
+      setFlags(prev => prev.filter(f => f.note_id !== flag.note_id))
+    } catch (err) {
+      alert('Could not remove note: ' + err.message)
+    } finally {
+      setActingId(null)
+    }
+  }
+
+  async function dismissFlag(flag) {
+    setActingId(flag.id)
+    try {
+      const { error: err } = await supabase.from('note_flags').delete().eq('id', flag.id)
+      if (err) throw err
+      setFlags(prev => prev.filter(f => f.id !== flag.id))
+    } catch (err) {
+      alert('Could not dismiss flag: ' + err.message)
+    } finally {
+      setActingId(null)
+    }
+  }
+
+  return (
+    <div>
+      <div className={styles.tabActions}>
+        <h2 className={styles.tabTitle}>Flagged Notes ({flags.length})</h2>
+      </div>
+
+      {error && (
+        <div className="alert alert-info" style={{ marginBottom: 'var(--sp-5)', borderColor: 'var(--red)', color: 'var(--red)' }}>
+          {error}
+        </div>
+      )}
+
+      {loading && <div className={styles.tableEmpty}>Loading flagged notes…</div>}
+      {!loading && flags.length === 0 && (
+        <div className={styles.tableEmpty}>No flagged notes. All clear.</div>
+      )}
+
+      {!loading && flags.map(flag => (
+        <div key={flag.id} className="card" style={{ marginBottom: 'var(--sp-4)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 'var(--sp-3)' }}>
+            <div>
+              <span className="badge badge-red" style={{ marginRight: 'var(--sp-2)' }}>Flagged</span>
+              <span className="mono" style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                {flag.note ? `${flag.entityType}: ${flag.entityName || 'unknown'}` : 'note no longer exists'} · {new Date(flag.created_at).toLocaleString()}
+              </span>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 'var(--sp-1)' }}>
+                Flagged by <strong style={{ color: 'var(--text-secondary)' }}>{flag.flaggerName}</strong>
+              </div>
+            </div>
+          </div>
+
+          <div style={{ background: 'var(--surface-2)', borderRadius: 'var(--r-md)', padding: 'var(--sp-3) var(--sp-4)', marginBottom: 'var(--sp-4)' }}>
+            <p style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--navy)', marginBottom: 'var(--sp-1)' }}>
+              {flag.authorName || 'Unknown member'} wrote:
+            </p>
+            <p style={{ fontSize: '0.9375rem', color: 'var(--text-primary)' }}>
+              {flag.note?.body || '(note no longer exists)'}
+            </p>
+          </div>
+
+          <div style={{ display: 'flex', gap: 'var(--sp-3)' }}>
+            <button className="btn btn-danger" disabled={actingId === flag.id || !flag.note} onClick={() => removeNote(flag)}>
+              <Trash2 size={14} /> Remove Note
+            </button>
+            <button className="btn btn-ghost" disabled={actingId === flag.id} onClick={() => dismissFlag(flag)} title="Dismiss this flag — leaves the note itself alone">
+              <Check size={14} /> Dismiss Flag
             </button>
           </div>
         </div>

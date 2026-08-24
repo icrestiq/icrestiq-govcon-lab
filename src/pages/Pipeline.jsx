@@ -233,7 +233,7 @@ function CompaniesTab() {
               <div className={styles.expandedPanel}>
                 {c.address && <p className={styles.detailLine}>{c.address}</p>}
                 <CompanyContacts companyId={c.id} />
-                <NotesPanel parentField="company_id" parentId={c.id} />
+                <NotesPanel parentField="company_id" parentId={c.id} allowSharing />
               </div>
             )}
           </div>
@@ -393,7 +393,7 @@ function ContactsTab() {
                 {(ct.email || ct.phone) && (
                   <p className={styles.detailLine}>{[ct.email, ct.phone].filter(Boolean).join(' · ')}</p>
                 )}
-                <NotesPanel parentField="contact_id" parentId={ct.id} />
+                <NotesPanel parentField="contact_id" parentId={ct.id} allowSharing />
               </div>
             )}
           </div>
@@ -404,17 +404,24 @@ function ContactsTab() {
 }
 
 // ---------------------------------------------------------------------
-// Notes — read-only-shared for now (shared always false at insert time;
-// the share toggle, flagging, and admin removal UI are Phase 3). Still
-// worth showing the private-by-default framing now so it isn't a surprise
-// later.
+// Notes (Phase 3: sharing + flagging). `allowSharing` gates both the
+// share toggle and the flag button — pass it only where notes attach to
+// a shared-directory entity (company/contact). Deal notes stay
+// unshareable: even though the schema's `shared` column doesn't
+// distinguish, sharing a note tied to a private deal wouldn't be visible
+// to anyone anyway (deals stay profile_id-scoped), so the control is
+// simply never offered there. Admin removal isn't done here — see
+// AdminPanel's Flagged Notes tab, which goes through a service-role API
+// route rather than a direct client call, since the protect_note_removal_
+// fields trigger only trusts service_role regardless of profiles.role.
 // ---------------------------------------------------------------------
-function NotesPanel({ parentField, parentId }) {
+function NotesPanel({ parentField, parentId, allowSharing = false }) {
   const { user } = useAuth()
   const [notes, setNotes] = useState(null)
   const [body, setBody] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [flaggingId, setFlaggingId] = useState(null)
 
   const load = useCallback(async () => {
     const { data, error: err } = await supabase.from('notes').select('*').eq(parentField, parentId).order('created_at', { ascending: false })
@@ -442,6 +449,34 @@ function NotesPanel({ parentField, parentId }) {
     }
   }
 
+  async function toggleShared(note) {
+    setError('')
+    const nextShared = !note.shared
+    setNotes((prev) => prev.map((n) => (n.id === note.id ? { ...n, shared: nextShared } : n)))
+    const { error: err } = await supabase.from('notes').update({ shared: nextShared }).eq('id', note.id)
+    if (err) {
+      setError(err.message)
+      setNotes((prev) => prev.map((n) => (n.id === note.id ? { ...n, shared: !nextShared } : n)))
+    }
+  }
+
+  async function flagNote(noteId) {
+    setFlaggingId(noteId)
+    setError('')
+    try {
+      const { error: err } = await supabase.from('note_flags').insert({ note_id: noteId, flagged_by_profile_id: user.id })
+      if (err) throw err
+    } catch (err) {
+      // note_flags has no SELECT access for regular members (admin-only —
+      // see the RLS policy), so there's no way to pre-check "did I already
+      // flag this" — catching the unique-constraint violation is the only
+      // way to give a friendly answer instead of a raw Postgres error.
+      setError(/duplicate key value/i.test(err.message) ? 'You already flagged this note.' : (err.message || 'Could not flag this note.'))
+    } finally {
+      setFlaggingId(null)
+    }
+  }
+
   return (
     <div className={styles.notesPanel}>
       <div className={styles.notesHeader}><MessageSquare size={13} /> Notes</div>
@@ -452,19 +487,41 @@ function NotesPanel({ parentField, parentId }) {
         <p className={styles.fieldHintSmall}>No notes yet — private to you unless you choose to share one later.</p>
       ) : (
         <ul className={styles.notesList}>
-          {notes.map((n) => (
-            <li key={n.id} className={styles.noteItem}>
-              <p>{n.body}</p>
-              <span className={styles.noteMeta}>{new Date(n.created_at).toLocaleDateString()} · Private</span>
-            </li>
-          ))}
+          {notes.map((n) => {
+            const isAuthor = n.author_id === user.id
+            return (
+              <li key={n.id} className={styles.noteItem}>
+                <p>{n.body}</p>
+                <div className={styles.noteFooter}>
+                  <span className={styles.noteMeta}>
+                    {new Date(n.created_at).toLocaleDateString()} · {n.shared ? 'Shared' : 'Private'}
+                  </span>
+                  {allowSharing && isAuthor && (
+                    <button type="button" className={styles.noteActionBtn} onClick={() => toggleShared(n)}>
+                      {n.shared ? 'Unshare' : 'Share'}
+                    </button>
+                  )}
+                  {allowSharing && !isAuthor && n.shared && (
+                    <button
+                      type="button"
+                      className={styles.noteActionBtn}
+                      disabled={flaggingId === n.id}
+                      onClick={() => flagNote(n.id)}
+                    >
+                      {flaggingId === n.id ? 'Flagging…' : 'Flag'}
+                    </button>
+                  )}
+                </div>
+              </li>
+            )
+          })}
         </ul>
       )}
       <div className={styles.noteComposer}>
         <textarea
           className="input"
           rows={2}
-          placeholder="Add a note — visible only to you for now."
+          placeholder={allowSharing ? 'Add a note — private by default, share it any time.' : 'Add a note — visible only to you.'}
           value={body}
           onChange={(e) => setBody(e.target.value)}
         />

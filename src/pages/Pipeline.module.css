@@ -233,6 +233,40 @@
   margin-top: var(--sp-1);
 }
 
+.noteFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  margin-top: var(--sp-1);
+}
+
+.noteFooter .noteMeta {
+  margin-top: 0;
+}
+
+.noteActionBtn {
+  font-family: var(--font-body);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--navy);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px 4px;
+  text-decoration: underline;
+  flex-shrink: 0;
+}
+
+.noteActionBtn:hover {
+  color: var(--gold);
+}
+
+.noteActionBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .noteComposer {
   display: flex;
   flex-direction: column;
