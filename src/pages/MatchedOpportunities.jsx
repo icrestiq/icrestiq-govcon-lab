@@ -66,6 +66,7 @@ export default function MatchedOpportunities() {
   const [searchParams] = useSearchParams()
   const [matches, setMatches] = useState([])
   const [bidRequests, setBidRequests] = useState({}) // keyed by opportunity_id
+  const [dealsByBidRequestId, setDealsByBidRequestId] = useState({}) // Sourcing Pipeline Phase 1 — keyed by bid_request_id
   const [loading, setLoading] = useState(true)
   const [showLowScoring, setShowLowScoring] = useState(false)
   const [showClosed, setShowClosed] = useState(false)
@@ -215,6 +216,25 @@ export default function MatchedOpportunities() {
       setBidRequests(byOpportunity)
     } catch (err) {
       console.error('Failed to load bid requests:', err)
+    }
+
+    // Sourcing Pipeline Phase 1 — a completed bid_request auto-creates a
+    // Deal; this lookup is what lets "View in Pipeline" deep-link straight
+    // to it. Best-effort and separate from the bid_requests fetch above:
+    // a hiccup here shouldn't block the member from seeing their
+    // Suggested Bid results, which is the primary thing this page does.
+    try {
+      const { data: deals, error: dealsError } = await supabase
+        .from('deals')
+        .select('id, bid_request_id')
+        .eq('profile_id', user.id)
+        .not('bid_request_id', 'is', null)
+      if (dealsError) throw dealsError
+      const byBidRequest = {}
+      for (const d of deals || []) byBidRequest[d.bid_request_id] = d.id
+      setDealsByBidRequestId(byBidRequest)
+    } catch (err) {
+      console.error('Failed to load pipeline deals:', err)
     }
   }
 
@@ -452,6 +472,7 @@ export default function MatchedOpportunities() {
                     userId={user.id}
                     tier={isAdmin ? 'admin' : profile?.membership_tier}
                     bidRequest={bidRequests[opp.id]}
+                    dealId={dealsByBidRequestId[bidRequests[opp.id]?.id]}
                     autoExpand={bidRequests[opp.id]?.id === highlightedBidRequestId}
                     onRequested={loadBidRequests}
                   />
@@ -518,6 +539,7 @@ export default function MatchedOpportunities() {
                       userId={user.id}
                       tier={isAdmin ? 'admin' : profile?.membership_tier}
                       bidRequest={bidRequests[opp.id]}
+                      dealId={dealsByBidRequestId[bidRequests[opp.id]?.id]}
                       autoExpand={bidRequests[opp.id]?.id === highlightedBidRequestId}
                       onRequested={loadBidRequests}
                     />
@@ -761,7 +783,7 @@ function SampleBidPreview() {
 // checkout.js re-derives both server-side from the caller's real
 // membership_tier before ever creating a charge.
 // ---------------------------------------------------------------------
-function SuggestedBidSection({ opportunityId, userId, tier, bidRequest, autoExpand, onRequested }) {
+function SuggestedBidSection({ opportunityId, userId, tier, bidRequest, dealId, autoExpand, onRequested }) {
   const [starting, setStarting] = useState(false)
   const [startError, setStartError] = useState('')
   const [expanded, setExpanded] = useState(!!autoExpand)
@@ -852,6 +874,11 @@ function SuggestedBidSection({ opportunityId, userId, tier, bidRequest, autoExpa
         {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
         {expanded ? 'Hide' : 'View'} Suggested Bid
       </button>
+      {dealId && (
+        <Link to={`/pipeline?tab=deals&deal=${dealId}`} className="btn btn-ghost" style={{ marginLeft: 'var(--sp-2)' }}>
+          View in Pipeline <ExternalLink size={13} />
+        </Link>
+      )}
 
       {expanded && (
         <div className={styles.bidResults}>

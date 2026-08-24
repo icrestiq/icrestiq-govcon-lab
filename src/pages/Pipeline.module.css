@@ -274,3 +274,137 @@
   align-items: center;
   max-width: 420px;
 }
+
+/* ── Kanban board (Phase 2) ── */
+.board {
+  display: flex;
+  gap: var(--sp-4);
+  overflow-x: auto;
+  padding-bottom: var(--sp-3);
+  align-items: flex-start;
+}
+
+.column {
+  flex: 0 0 260px;
+  background: var(--surface-2, #F8F9FB);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: var(--sp-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.columnHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: var(--navy);
+  padding: 0 var(--sp-1);
+}
+
+.columnCount {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  color: var(--text-muted);
+  background: #FFFFFF;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 1px 8px;
+}
+
+.columnDropZone {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  min-height: 64px;
+  border-radius: var(--r-md);
+  transition: background 0.12s;
+}
+
+.columnDropZoneOver {
+  background: var(--gold-muted);
+}
+
+.dealCard {
+  background: #FFFFFF;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: var(--sp-3);
+  cursor: grab;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  box-shadow: 0 1px 2px rgba(27,42,74,0.05);
+  touch-action: none;
+}
+
+.dealCard:active { cursor: grabbing; }
+.dealCardDragging { opacity: 0.5; }
+
+.dealCardTitle {
+  font-weight: 600;
+  color: var(--navy);
+  font-size: 0.8125rem;
+  font-family: var(--font-display);
+}
+
+.dealCardMeta {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.emptyColumn {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-align: center;
+  padding: var(--sp-4) 0;
+}
+
+/* ── Deal detail modal ── */
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(27, 42, 74, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: var(--sp-4);
+}
+
+.modalCard {
+  background: #FFFFFF;
+  border-radius: var(--r-xl);
+  max-width: 640px;
+  width: 100%;
+  max-height: 85vh;
+  overflow-y: auto;
+  padding: var(--sp-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+.modalHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-3);
+}
+
+.modalTitle {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  color: var(--navy);
+}
+
+.modalMetaRow {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+}

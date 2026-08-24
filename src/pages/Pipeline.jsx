@@ -1,15 +1,20 @@
 // src/pages/Pipeline.jsx
-// Phase 0 + Phase 1 of the native "Sourcing Pipeline" CRM (see the
-// published scoping artifact). Companies and Contacts are a shared
-// directory across every paid member (RLS gates on membership_tier, not
-// profile_id — see the phase0_sourcing_pipeline_schema migration); Deal
-// Stages are private per profile. As of Phase 1, generate_suggested_bid
-// auto-creates a Deal (linked to whatever companies its research found)
-// the moment a Suggested Bid purchase completes — the Deals tab below is
-// a read-only list to see that automation's output, not a Kanban board.
-// Drag-drop, a deal detail page, and manual deal creation are Phase 2.
+// Phases 0–2 of the native "Sourcing Pipeline" CRM (see the published
+// scoping artifact). Companies and Contacts are a shared directory across
+// every paid member (RLS gates on membership_tier, not profile_id — see
+// the phase0_sourcing_pipeline_schema migration); Deal Stages are private
+// per profile. As of Phase 1, generate_suggested_bid auto-creates a Deal
+// (linked to whatever companies its research found) the moment a
+// Suggested Bid purchase completes. As of Phase 2, the Deals tab is a
+// real drag-and-drop Kanban board (dnd-kit) with a deal detail modal —
+// where the notes the Phase 1 automation writes finally become visible.
+// Manual deal creation, and Quotes wired into Proposal Builder, are not
+// built yet (the latter deferred as its own follow-up, not part of this
+// phase).
 
 import { useState, useEffect, useCallback } from 'react'
+import { useSearchParams } from 'react-router-dom'
+import { DndContext, useDraggable, useDroppable, useSensor, useSensors, PointerSensor } from '@dnd-kit/core'
 import { useAuth } from '../lib/AuthContext'
 import { supabase } from '../lib/supabase'
 import {
@@ -62,7 +67,20 @@ function labelFor(options, value) {
 }
 
 export default function Pipeline() {
-  const [tab, setTab] = useState('companies')
+  const [searchParams, setSearchParams] = useSearchParams()
+  // Captured once via lazy init, not read reactively — the clearing effect
+  // below wipes these query params right after mount so a page refresh
+  // doesn't keep re-opening the same deal, and a reactive read would just
+  // see them disappear on the very next render.
+  const [tab, setTab] = useState(() => (searchParams.get('tab') === 'deals' ? 'deals' : 'companies'))
+  const [initialDealId] = useState(() => searchParams.get('deal'))
+
+  useEffect(() => {
+    if (searchParams.get('tab') || searchParams.get('deal')) {
+      setSearchParams({}, { replace: true })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   return (
     <div className={styles.page}>
@@ -92,7 +110,7 @@ export default function Pipeline() {
       {tab === 'companies' && <CompaniesTab />}
       {tab === 'contacts' && <ContactsTab />}
       {tab === 'stages' && <StagesTab />}
-      {tab === 'deals' && <DealsTab />}
+      {tab === 'deals' && <DealsTab initialDealId={initialDealId} />}
     </div>
   )
 }
@@ -605,63 +623,213 @@ function StagesTab() {
 }
 
 // ---------------------------------------------------------------------
-// Deals — read-only list. Deals are created only by the Suggested Bid
-// purchase automation in this phase (generate_suggested_bid), not by
-// hand — this tab exists to see that automation's output, not to manage
-// deals. Drag-drop between stages, a deal detail page, and manual deal
-// creation are Phase 2.
+// Deals — a real Kanban board (Phase 2). Deals are still only created by
+// the Suggested Bid purchase automation (generate_suggested_bid), not by
+// hand — that's a later phase — but from here they can be dragged between
+// stages, and clicking a card opens the detail modal where its notes
+// (written by the automation since Phase 1, invisible until now) finally
+// become visible.
 // ---------------------------------------------------------------------
-function DealsTab() {
+function DealsTab({ initialDealId }) {
   const { user } = useAuth()
   const [deals, setDeals] = useState(null)
+  const [stages, setStages] = useState([])
   const [error, setError] = useState('')
+  const [selectedDealId, setSelectedDealId] = useState(initialDealId || null)
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
 
-  useEffect(() => {
-    supabase
-      .from('deals')
-      .select('id, title, value_estimate, created_at, deal_stages(name), deal_companies(role_on_deal, companies(name, company_type))')
-      .eq('profile_id', user.id)
-      .order('created_at', { ascending: false })
-      .then(({ data, error: err }) => {
-        if (err) { setError(err.message); return }
-        setDeals(data || [])
-      })
+  const load = useCallback(async () => {
+    const [{ data: stageRows, error: stageErr }, { data: dealRows, error: dealErr }] = await Promise.all([
+      supabase.from('deal_stages').select('id, name, sort_order').eq('profile_id', user.id).order('sort_order'),
+      supabase
+        .from('deals')
+        .select('id, title, value_estimate, stage_id, created_at, deal_companies(role_on_deal, companies(name, company_type))')
+        .eq('profile_id', user.id)
+        .order('created_at', { ascending: false }),
+    ])
+    if (stageErr) { setError(stageErr.message); return }
+    if (dealErr) { setError(dealErr.message); return }
+    setStages(stageRows || [])
+    setDeals(dealRows || [])
   }, [user.id])
 
+  useEffect(() => { load() }, [load])
+
+  async function handleDragEnd(event) {
+    const { active, over } = event
+    if (!over) return
+    const dealId = active.id
+    const newStageId = over.id
+    const deal = deals.find((d) => d.id === dealId)
+    if (!deal || deal.stage_id === newStageId) return
+
+    const prevStageId = deal.stage_id
+    setDeals((prev) => prev.map((d) => (d.id === dealId ? { ...d, stage_id: newStageId } : d)))
+    const { error: err } = await supabase.from('deals').update({ stage_id: newStageId }).eq('id', dealId)
+    if (err) {
+      setError(err.message)
+      setDeals((prev) => prev.map((d) => (d.id === dealId ? { ...d, stage_id: prevStageId } : d)))
+    }
+  }
+
   if (deals === null) return <div className="spinner" />
+
+  const dealsByStage = {}
+  for (const d of deals) {
+    if (!dealsByStage[d.stage_id]) dealsByStage[d.stage_id] = []
+    dealsByStage[d.stage_id].push(d)
+  }
 
   return (
     <div className={styles.tabPanel}>
       <p className={styles.count}>
-        {deals.length} {deals.length === 1 ? 'deal' : 'deals'} — created automatically when a Suggested Bid purchase completes.
+        {deals.length} {deals.length === 1 ? 'deal' : 'deals'} — drag a card to change its stage, or click one for details.
       </p>
       {error && <div className="alert alert-error">{error}</div>}
 
-      {deals.length === 0 && (
-        <p className={styles.emptyState}>
-          No deals yet — buy a Suggested Bid on a matched opportunity and it'll show up here automatically.
-        </p>
+      {stages.length === 0 ? (
+        <p className={styles.emptyState}>No pipeline stages yet — visit the Pipeline Stages tab to set one up.</p>
+      ) : deals.length === 0 ? (
+        <p className={styles.emptyState}>No deals yet — buy a Suggested Bid on a matched opportunity and it'll show up here automatically.</p>
+      ) : (
+        <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+          <div className={styles.board}>
+            {stages.map((stage) => (
+              <div key={stage.id} className={styles.column}>
+                <div className={styles.columnHeader}>
+                  <span>{stage.name}</span>
+                  <span className={styles.columnCount}>{dealsByStage[stage.id]?.length || 0}</span>
+                </div>
+                <StageDropZone stageId={stage.id}>
+                  {(dealsByStage[stage.id] || []).map((deal) => (
+                    <DealCard key={deal.id} deal={deal} onClick={() => setSelectedDealId(deal.id)} />
+                  ))}
+                  {(!dealsByStage[stage.id] || dealsByStage[stage.id].length === 0) && (
+                    <p className={styles.emptyColumn}>No deals</p>
+                  )}
+                </StageDropZone>
+              </div>
+            ))}
+          </div>
+        </DndContext>
       )}
 
-      <div className={styles.list}>
-        {deals.map((d) => (
-          <div key={d.id} className={styles.listRow}>
-            <div className={styles.rowMain}>
-              <span className={styles.rowTitle}>{d.title}</span>
-              <span className="badge badge-navy">{d.deal_stages?.name || 'No stage'}</span>
-              {typeof d.value_estimate === 'number' && (
-                <span className={styles.rowMeta}>${Math.round(d.value_estimate).toLocaleString()} est.</span>
+      {selectedDealId && (
+        <DealDetailModal
+          dealId={selectedDealId}
+          stages={stages}
+          onClose={() => setSelectedDealId(null)}
+          onStageChange={(dealId, newStageId) => {
+            setDeals((prev) => prev.map((d) => (d.id === dealId ? { ...d, stage_id: newStageId } : d)))
+          }}
+        />
+      )}
+    </div>
+  )
+}
+
+function StageDropZone({ stageId, children }) {
+  const { setNodeRef, isOver } = useDroppable({ id: stageId })
+  return (
+    <div ref={setNodeRef} className={`${styles.columnDropZone} ${isOver ? styles.columnDropZoneOver : ''}`}>
+      {children}
+    </div>
+  )
+}
+
+function DealCard({ deal, onClick }) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: deal.id })
+  const style = transform ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` } : undefined
+  const companyCount = deal.deal_companies?.length || 0
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...listeners}
+      {...attributes}
+      className={`${styles.dealCard} ${isDragging ? styles.dealCardDragging : ''}`}
+      onClick={onClick}
+    >
+      <span className={styles.dealCardTitle}>{deal.title}</span>
+      {typeof deal.value_estimate === 'number' && (
+        <span className={styles.dealCardMeta}>${Math.round(deal.value_estimate).toLocaleString()} est.</span>
+      )}
+      {companyCount > 0 && (
+        <span className={styles.dealCardMeta}>{companyCount} linked {companyCount === 1 ? 'company' : 'companies'}</span>
+      )}
+    </div>
+  )
+}
+
+// Notes here are what generate_suggested_bid's createCrmDeal has been
+// writing since Phase 1 (AI summary, RFQ drafts) — this modal is the
+// first place any of that becomes visible to a member.
+function DealDetailModal({ dealId, stages, onClose, onStageChange }) {
+  const [deal, setDeal] = useState(null)
+  const [error, setError] = useState('')
+
+  const load = useCallback(async () => {
+    const { data, error: err } = await supabase
+      .from('deals')
+      .select('id, title, value_estimate, stage_id, opportunity_id, deal_companies(role_on_deal, companies(id, name, company_type))')
+      .eq('id', dealId)
+      .single()
+    if (err) { setError(err.message); return }
+    setDeal(data)
+  }, [dealId])
+
+  useEffect(() => { load() }, [load])
+
+  async function changeStage(newStageId) {
+    const prevStageId = deal.stage_id
+    setDeal((d) => ({ ...d, stage_id: newStageId }))
+    const { error: err } = await supabase.from('deals').update({ stage_id: newStageId }).eq('id', dealId)
+    if (err) {
+      setError(err.message)
+      setDeal((d) => ({ ...d, stage_id: prevStageId }))
+      return
+    }
+    onStageChange?.(dealId, newStageId)
+  }
+
+  return (
+    <div className={styles.modalOverlay} onClick={onClose}>
+      <div className={styles.modalCard} onClick={(e) => e.stopPropagation()}>
+        <div className={styles.modalHeader}>
+          <h2 className={styles.modalTitle}>{deal?.title || 'Loading…'}</h2>
+          <button className={styles.iconBtn} onClick={onClose}><X size={18} /></button>
+        </div>
+
+        {error && <div className="alert alert-error">{error}</div>}
+
+        {!deal ? (
+          <div className="spinner" />
+        ) : (
+          <>
+            <div className={styles.modalMetaRow}>
+              <select className="input" style={{ maxWidth: 220 }} value={deal.stage_id} onChange={(e) => changeStage(e.target.value)}>
+                {stages.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+              {typeof deal.value_estimate === 'number' && (
+                <span className="badge badge-navy">${Math.round(deal.value_estimate).toLocaleString()} est.</span>
               )}
             </div>
-            {d.deal_companies?.length > 0 && (
-              <div className={styles.chipRow} style={{ width: '100%', paddingLeft: 'var(--sp-2)' }}>
-                {d.deal_companies.map((dc, i) => (
-                  <span key={i} className={roleBadgeClass(dc.role_on_deal)}>{dc.companies?.name}</span>
-                ))}
+
+            {deal.deal_companies?.length > 0 && (
+              <div>
+                <label className="label">Linked companies</label>
+                <div className={styles.chipRow} style={{ marginTop: 'var(--sp-2)' }}>
+                  {deal.deal_companies.map((dc, i) => (
+                    <span key={i} className={roleBadgeClass(dc.role_on_deal)}>{dc.companies?.name}</span>
+                  ))}
+                </div>
               </div>
             )}
-          </div>
-        ))}
+
+            <NotesPanel parentField="deal_id" parentId={dealId} />
+          </>
+        )}
       </div>
     </div>
   )
