@@ -619,7 +619,7 @@ function SuggestedBidPitchCard() {
           the price and leads are estimates and leads to verify, not certified figures or vetted vendors.
         </span>
       </div>
-      <p className={styles.pitchPrice}>$2 per opportunity for Lab Member · $1 for Founding members</p>
+      <p className={styles.pitchPrice}>$2 per opportunity — Founding members get deeper research (8 web searches vs. 5)</p>
     </div>
   )
 }

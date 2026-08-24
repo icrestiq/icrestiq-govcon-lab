@@ -21,7 +21,13 @@ const TIER_PRICING = {
   // account still carrying it is grandfathered at Lab Member pricing
   // rather than losing access outright.
   pro: { amountCents: 200, searchCap: 5 },
-  founding: { amountCents: 100, searchCap: 8 },
+  // Raised from $1 to $2 on 2026-08-24 — at $1, Stripe's $0.30+2.9% fee
+  // alone took ~33% of the charge before any AI cost, and Founding's
+  // 8-search cap (vs Member's 5) meant the cheaper tier was also the more
+  // expensive one to fulfill. Founding still gets deeper research
+  // (searchCap 8) for the same price as Member — that's the tier's
+  // remaining differentiator now, not a lower price.
+  founding: { amountCents: 200, searchCap: 8 },
   // Not a real membership tier — role='admin' testing this feature on
   // their own account. Free, same search depth as Founding, and skips
   // Stripe entirely below (see isAdmin branch) so testing doesn't require

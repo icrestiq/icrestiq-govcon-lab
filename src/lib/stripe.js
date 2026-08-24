@@ -49,7 +49,9 @@ export const SUGGESTED_BID_PRICING = {
   member: { label: '$2', searchCap: 5 },
   // Legacy tier, no longer sold — grandfathered at Lab Member pricing.
   pro: { label: '$2', searchCap: 5 },
-  founding: { label: '$1', searchCap: 8 },
+  // Raised from $1 to $2 on 2026-08-24 — see the matching comment in
+  // api/stripe/suggested-bid-checkout.js for why.
+  founding: { label: '$2', searchCap: 8 },
   // role='admin' testing on their own account — backend skips Stripe
   // entirely for this key (see suggested-bid-checkout.js).
   admin: { label: 'Free (Admin Test)', searchCap: 8 },

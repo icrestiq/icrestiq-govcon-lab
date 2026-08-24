@@ -5,9 +5,17 @@
 // site change — not every small fix, but new features / significant
 // rebuilds. Newest entry first.
 
-export const SITE_VERSION = '2.4'
+export const SITE_VERSION = '2.5'
 
 export const CHANGELOG = [
+  {
+    version: '2.5',
+    date: '2026-08-24',
+    notes: [
+      'Suggested Bid pricing for Founding members changed from $1 to $2 per opportunity, matching Lab Member — Founding still gets deeper research (8 web searches vs. 5)',
+      'Suggested Bid RFQ email drafts now use the opportunity\'s actual delivery destination when SAM.gov provides one, instead of always defaulting to a placeholder',
+    ],
+  },
   {
     version: '2.4',
     date: '2026-08-21',
