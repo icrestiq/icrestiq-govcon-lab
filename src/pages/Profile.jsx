@@ -65,15 +65,11 @@ export default function Profile() {
   const [pullStatus, setPullStatus] = useState('')
 
   // ── Notion connection ──
+  // Notion Sync is retired as of 2026-08-24 (superseded by the native
+  // Sourcing Pipeline CRM) — this now only reads existing connection status
+  // for members who had one, never offers a new connect/reconnect action.
   const [notionStatus, setNotionStatus] = useState(null) // null while loading, then the /api/notion/status shape
-  const [notionRedirectMsg, setNotionRedirectMsg] = useState('') // from ?notion= on landing back from the OAuth callback
-
-  // ── Notion database picker (shown once connected but no database chosen yet) ──
-  const [notionDatabases, setNotionDatabases] = useState(null) // null = not loaded yet, [] = loaded, empty
-  const [notionTotalShared, setNotionTotalShared] = useState(0) // how many databases were shared during consent, before the template-schema filter
-  const [notionDbError, setNotionDbError] = useState('')
-  const [notionDbSelected, setNotionDbSelected] = useState('')
-  const [notionDbSaving, setNotionDbSaving] = useState(false)
+  const [notionRedirectMsg, setNotionRedirectMsg] = useState('') // from ?notion= on landing back from a stray old OAuth callback link
 
   // Picks up ?notion=connected|denied|invalid_state|error left by
   // api/notion/oauth-callback.js, shows it once, then strips the query
@@ -96,14 +92,6 @@ export default function Profile() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab, user])
 
-  // Only worth listing databases once we know the connection is active and
-  // no database has been picked yet — avoids an extra Notion API call on
-  // every tab visit once a customer has already finished this step.
-  useEffect(() => {
-    if (notionStatus?.connected && !notionStatus?.hasOpportunitiesDatabase) loadNotionDatabases()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [notionStatus?.connected, notionStatus?.hasOpportunitiesDatabase])
-
   async function loadNotionStatus() {
     try {
       const res = await fetch(`/api/notion/status?userId=${user.id}`)
@@ -112,48 +100,6 @@ export default function Profile() {
     } catch (err) {
       console.error('Notion status fetch error:', err)
       setNotionStatus({ connected: false })
-    }
-  }
-
-  async function loadNotionDatabases() {
-    setNotionDbError('')
-    try {
-      const res = await fetch(`/api/notion/databases?userId=${user.id}`)
-      const data = await res.json()
-      if (!res.ok) {
-        if (data.revoked) { setNotionStatus({ connected: false, status: 'revoked' }); return }
-        throw new Error(data.error || 'Could not load your Notion databases.')
-      }
-      setNotionDatabases(data.databases)
-      setNotionTotalShared(data.totalShared || 0)
-    } catch (err) {
-      console.error('Notion databases fetch error:', err)
-      setNotionDbError(err.message || 'Could not load your Notion databases.')
-      setNotionDatabases([])
-    }
-  }
-
-  async function saveNotionDatabase() {
-    if (!notionDbSelected) return
-    setNotionDbSaving(true)
-    setNotionDbError('')
-    try {
-      const res = await fetch('/api/notion/select-database', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.id, databaseId: notionDbSelected }),
-      })
-      const data = await res.json()
-      if (!res.ok) {
-        if (data.revoked) { setNotionStatus({ connected: false, status: 'revoked' }); return }
-        throw new Error(data.error || 'Could not save your database selection.')
-      }
-      await loadNotionStatus()
-    } catch (err) {
-      console.error('Notion select-database error:', err)
-      setNotionDbError(err.message || 'Could not save your database selection.')
-    } finally {
-      setNotionDbSaving(false)
     }
   }
 
@@ -751,89 +697,20 @@ export default function Profile() {
       {tab === 'notion' && notionEligible && (
         <div className={styles.card}>
           <h3 className={styles.cardTitle}>Notion Sync</h3>
-          <p className={styles.bio} style={{ marginBottom: 'var(--sp-5)' }}>
-            Connect your GovCon Command Center Notion workspace to have Sourcing Research results
-            and matched opportunities synced straight into it.
-          </p>
-
-          {notionRedirectMsg === 'connected' && (
-            <div className="alert" style={{ marginBottom: 'var(--sp-4)', background: 'rgba(72,187,120,0.08)', borderColor: '#48BB78', color: '#276749' }}>
-              Notion connected.
-            </div>
-          )}
-          {notionRedirectMsg === 'denied' && (
-            <div className="alert alert-error" style={{ marginBottom: 'var(--sp-4)' }}>
-              Notion connection was cancelled. No changes were made.
-            </div>
-          )}
-          {(notionRedirectMsg === 'invalid_state' || notionRedirectMsg === 'error') && (
-            <div className="alert alert-error" style={{ marginBottom: 'var(--sp-4)' }}>
-              Something went wrong connecting Notion. Please try again.
-            </div>
-          )}
+          <div className="alert" style={{ marginBottom: 'var(--sp-5)' }}>
+            Notion Sync has been retired — Sourcing Research results and matched opportunities now
+            live in the built-in Sourcing Pipeline instead. New Notion connections are no longer
+            available.
+          </div>
 
           {notionStatus === null ? (
             <div className="spinner" />
           ) : notionStatus.connected ? (
-            <>
-              <p className={styles.bio} style={{ marginBottom: 'var(--sp-4)' }}>
-                Connected to <strong>{notionStatus.workspaceName || 'your Notion workspace'}</strong>.
-              </p>
-              {!notionStatus.hasOpportunitiesDatabase && (
-                <div style={{ marginBottom: 'var(--sp-5)' }}>
-                  <label className="label">Which database is your Opportunities database?</label>
-                  {notionDbError && <div className="alert alert-error" style={{ margin: 'var(--sp-2) 0' }}>{notionDbError}</div>}
-                  {notionDatabases === null ? (
-                    <p className={styles.fieldHint}>Loading your Notion databases…</p>
-                  ) : notionDbError ? null : notionDatabases.length === 0 ? (
-                    <p className={styles.fieldHint}>
-                      {notionTotalShared === 0 ? (
-                        'No databases shared. Make sure you select your Opportunities database when approving access in Notion, then reconnect.'
-                      ) : (
-                        "None of your shared databases match the GovCon Command Center template. Make sure you've duplicated the template into your workspace (not a different database), share that one during reconnect, and pick it here."
-                      )}
-                    </p>
-                  ) : (
-                    <div style={{ display: 'flex', gap: 'var(--sp-3)', alignItems: 'center', flexWrap: 'wrap', marginTop: 'var(--sp-2)' }}>
-                      <select
-                        className="input"
-                        style={{ maxWidth: 320 }}
-                        value={notionDbSelected}
-                        onChange={(e) => setNotionDbSelected(e.target.value)}
-                      >
-                        <option value="">Select a database…</option>
-                        {notionDatabases.map((db) => (
-                          <option key={db.id} value={db.id}>{db.title}</option>
-                        ))}
-                      </select>
-                      <button
-                        type="button"
-                        className="btn btn-primary"
-                        disabled={!notionDbSelected || notionDbSaving}
-                        onClick={saveNotionDatabase}
-                      >
-                        {notionDbSaving ? 'Saving…' : 'Save'}
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
-              <a className="btn btn-ghost" href={`/api/notion/authorize?userId=${user.id}`}>
-                Reconnect Notion
-              </a>
-            </>
-          ) : (
-            <>
-              {notionStatus.status === 'revoked' && (
-                <p className={styles.fieldHint} style={{ marginBottom: 'var(--sp-4)' }}>
-                  Your previous connection was disconnected or revoked. Reconnect to resume syncing.
-                </p>
-              )}
-              <a className="btn btn-primary" href={`/api/notion/authorize?userId=${user.id}`}>
-                Connect Notion
-              </a>
-            </>
-          )}
+            <p className={styles.bio}>
+              Your existing connection to <strong>{notionStatus.workspaceName || 'your Notion workspace'}</strong> is
+              still on file but is no longer actively synced.
+            </p>
+          ) : null}
         </div>
       )}
     </div>
