@@ -267,6 +267,65 @@
   cursor: not-allowed;
 }
 
+/* ── Tasks ── */
+.taskItem {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-2);
+  padding: var(--sp-2) 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.taskItem:last-child { border-bottom: none; }
+
+.taskCheckBtn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  line-height: 0;
+}
+
+.taskCheckBtn:hover { color: var(--navy); }
+
+.taskBody {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.taskTitle {
+  font-size: 0.875rem;
+  color: var(--text-primary);
+}
+
+.taskTitleDone {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  text-decoration: line-through;
+}
+
+.taskDue {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.6875rem;
+  color: var(--text-muted);
+}
+
+.taskDueOverdue {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.6875rem;
+  color: var(--red);
+  font-weight: 600;
+}
+
 .noteComposer {
   display: flex;
   flex-direction: column;

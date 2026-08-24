@@ -20,6 +20,7 @@ import { supabase } from '../lib/supabase'
 import {
   Building2, Users, Columns3, Plus, Pencil, Trash2, X, ChevronUp, ChevronDown,
   MessageSquare, ChevronDown as ChevronDownIcon, ChevronRight, Briefcase,
+  ListTodo, Square, CheckSquare, Calendar,
 } from 'lucide-react'
 import styles from './Pipeline.module.css'
 
@@ -105,12 +106,16 @@ export default function Pipeline() {
         <button className={`${styles.tab} ${tab === 'deals' ? styles.tabActive : ''}`} onClick={() => setTab('deals')}>
           <Briefcase size={15} /> Deals
         </button>
+        <button className={`${styles.tab} ${tab === 'tasks' ? styles.tabActive : ''}`} onClick={() => setTab('tasks')}>
+          <ListTodo size={15} /> Tasks
+        </button>
       </div>
 
       {tab === 'companies' && <CompaniesTab />}
       {tab === 'contacts' && <ContactsTab />}
       {tab === 'stages' && <StagesTab />}
       {tab === 'deals' && <DealsTab initialDealId={initialDealId} />}
+      {tab === 'tasks' && <TasksTab />}
     </div>
   )
 }
@@ -233,6 +238,7 @@ function CompaniesTab() {
               <div className={styles.expandedPanel}>
                 {c.address && <p className={styles.detailLine}>{c.address}</p>}
                 <CompanyContacts companyId={c.id} />
+                <TasksPanel parentField="company_id" parentId={c.id} />
                 <NotesPanel parentField="company_id" parentId={c.id} allowSharing />
               </div>
             )}
@@ -393,11 +399,109 @@ function ContactsTab() {
                 {(ct.email || ct.phone) && (
                   <p className={styles.detailLine}>{[ct.email, ct.phone].filter(Boolean).join(' · ')}</p>
                 )}
+                <TasksPanel parentField="contact_id" parentId={ct.id} />
                 <NotesPanel parentField="contact_id" parentId={ct.id} allowSharing />
               </div>
             )}
           </div>
         ))}
+      </div>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------
+// Tasks (Phase 3b: private per-owner to-dos, attached to a company,
+// contact, or deal). No sharing — unlike notes, a task is a personal
+// reminder, not directory content. The Tasks tab (below) is the "all my
+// open tasks across everything, soonest due date first" reminders view;
+// this panel is the "tasks scoped to just this one record" view.
+// ---------------------------------------------------------------------
+function TasksPanel({ parentField, parentId }) {
+  const { user } = useAuth()
+  const [tasks, setTasks] = useState(null)
+  const [title, setTitle] = useState('')
+  const [dueDate, setDueDate] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  const load = useCallback(async () => {
+    const { data, error: err } = await supabase.from('tasks').select('*').eq(parentField, parentId).order('due_date', { ascending: true, nullsFirst: false })
+    if (err) { setError(err.message); return }
+    setTasks(data || [])
+  }, [parentField, parentId])
+
+  useEffect(() => { load() }, [load])
+
+  async function addTask() {
+    if (!title.trim()) return
+    setSaving(true)
+    setError('')
+    try {
+      const { error: err } = await supabase.from('tasks').insert({
+        [parentField]: parentId, title: title.trim(), due_date: dueDate || null, profile_id: user.id,
+      })
+      if (err) throw err
+      setTitle('')
+      setDueDate('')
+      await load()
+    } catch (err) {
+      setError(err.message || 'Could not save this task.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function toggleComplete(task) {
+    setError('')
+    const nextCompletedAt = task.completed_at ? null : new Date().toISOString()
+    setTasks((prev) => prev.map((t) => (t.id === task.id ? { ...t, completed_at: nextCompletedAt } : t)))
+    const { error: err } = await supabase.from('tasks').update({ completed_at: nextCompletedAt }).eq('id', task.id)
+    if (err) {
+      setError(err.message)
+      setTasks((prev) => prev.map((t) => (t.id === task.id ? { ...t, completed_at: task.completed_at } : t)))
+    }
+  }
+
+  const openTasks = (tasks || []).filter((t) => !t.completed_at)
+  const doneTasks = (tasks || []).filter((t) => t.completed_at)
+
+  return (
+    <div className={styles.notesPanel}>
+      <div className={styles.notesHeader}><ListTodo size={13} /> Tasks</div>
+      {error && <div className="alert alert-error" style={{ marginBottom: 'var(--sp-2)' }}>{error}</div>}
+      {tasks === null ? ( <p className={styles.fieldHintSmall}>Loading…</p> )
+      : tasks.length === 0 ? ( <p className={styles.fieldHintSmall}>No tasks yet.</p> )
+      : (
+        <ul className={styles.notesList}>
+          {[...openTasks, ...doneTasks].map((t) => {
+            const overdue = !t.completed_at && t.due_date && t.due_date < new Date().toISOString().slice(0, 10)
+            return (
+              <li key={t.id} className={styles.taskItem}>
+                <button type="button" className={styles.taskCheckBtn} onClick={() => toggleComplete(t)} title={t.completed_at ? 'Mark not done' : 'Mark done'}>
+                  {t.completed_at ? <CheckSquare size={15} /> : <Square size={15} />}
+                </button>
+                <div className={styles.taskBody}>
+                  <span className={t.completed_at ? styles.taskTitleDone : styles.taskTitle}>{t.title}</span>
+                  {t.due_date && (
+                    <span className={overdue ? styles.taskDueOverdue : styles.taskDue}>
+                      <Calendar size={11} /> {new Date(`${t.due_date}T00:00:00`).toLocaleDateString()}
+                    </span>
+                  )}
+                </div>
+              </li>
+            )
+          })}
+        </ul>
+      )}
+      <div className={styles.noteComposer}>
+        <input className="input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Add a task…" style={{ width: '100%' }} />
+        <div style={{ display: 'flex', gap: 'var(--sp-2)', alignItems: 'center', width: '100%' }}>
+          <input className="input" type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} style={{ maxWidth: 160 }} />
+          <button className="btn btn-ghost" disabled={saving || !title.trim()} onClick={addTask}>
+            {saving ? 'Saving…' : 'Add Task'}
+          </button>
+        </div>
       </div>
     </div>
   )
@@ -941,10 +1045,112 @@ function DealDetailModal({ dealId, stages, onClose, onStageChange }) {
               </div>
             )}
 
+            <TasksPanel parentField="deal_id" parentId={dealId} />
             <NotesPanel parentField="deal_id" parentId={dealId} />
           </>
         )}
       </div>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------
+// Tasks tab — every open task across companies, contacts, and deals in
+// one reminders view, soonest due date first. TasksPanel above is
+// per-record; this is the "what do I need to do" surface the sharing
+// decisions this phase settled on (in-app visual only, no email/cron).
+// ---------------------------------------------------------------------
+function TasksTab() {
+  const { user } = useAuth()
+  const [tasks, setTasks] = useState(null)
+  const [error, setError] = useState('')
+
+  useEffect(() => { load() }, [])
+
+  async function load() {
+    setError('')
+    try {
+      const { data: rows, error: err } = await supabase
+        .from('tasks')
+        .select('*')
+        .eq('profile_id', user.id)
+        .is('completed_at', null)
+        .order('due_date', { ascending: true, nullsFirst: false })
+      if (err) throw err
+
+      const companyIds = [...new Set((rows || []).map((t) => t.company_id).filter(Boolean))]
+      const contactIds = [...new Set((rows || []).map((t) => t.contact_id).filter(Boolean))]
+      const dealIds = [...new Set((rows || []).map((t) => t.deal_id).filter(Boolean))]
+      const [{ data: companies }, { data: contacts }, { data: deals }] = await Promise.all([
+        companyIds.length ? supabase.from('companies').select('id, name').in('id', companyIds) : Promise.resolve({ data: [] }),
+        contactIds.length ? supabase.from('contacts').select('id, name').in('id', contactIds) : Promise.resolve({ data: [] }),
+        dealIds.length ? supabase.from('deals').select('id, title').in('id', dealIds) : Promise.resolve({ data: [] }),
+      ])
+      const companyById = Object.fromEntries((companies || []).map((c) => [c.id, c.name]))
+      const contactById = Object.fromEntries((contacts || []).map((c) => [c.id, c.name]))
+      const dealById = Object.fromEntries((deals || []).map((d) => [d.id, d.title]))
+
+      setTasks((rows || []).map((t) => ({
+        ...t,
+        entityType: t.company_id ? 'Company' : t.contact_id ? 'Contact' : 'Deal',
+        entityName: t.company_id ? companyById[t.company_id] : t.contact_id ? contactById[t.contact_id] : dealById[t.deal_id],
+      })))
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+
+  async function complete(task) {
+    setTasks((prev) => prev.filter((t) => t.id !== task.id))
+    const { error: err } = await supabase.from('tasks').update({ completed_at: new Date().toISOString() }).eq('id', task.id)
+    if (err) {
+      setError(err.message)
+      load()
+    }
+  }
+
+  const todayStr = new Date().toISOString().slice(0, 10)
+
+  return (
+    <div className={styles.tabPanel}>
+      <div className={styles.panelToolbar}>
+        <span className={styles.count}>{tasks === null ? '…' : `${tasks.length} open`}</span>
+      </div>
+
+      {error && <div className="alert alert-error">{error}</div>}
+
+      {tasks === null ? (
+        <p className={styles.fieldHintSmall}>Loading…</p>
+      ) : tasks.length === 0 ? (
+        <div className={styles.emptyState}>No open tasks. Add one from a company, contact, or deal.</div>
+      ) : (
+        <ul className={styles.list} style={{ gap: 'var(--sp-2)' }}>
+          {tasks.map((t) => {
+            const overdue = t.due_date && t.due_date < todayStr
+            return (
+              <li key={t.id} className={styles.listRow}>
+                <button type="button" className={styles.taskCheckBtn} onClick={() => complete(t)} title="Mark done">
+                  <Square size={16} />
+                </button>
+                <div className={styles.taskBody}>
+                  <span className={styles.taskTitle}>{t.title}</span>
+                  <span className={styles.rowMeta}>
+                    {t.entityType}: {t.entityName || 'unknown'}
+                    {t.due_date && (
+                      <>
+                        {' · '}
+                        <span className={overdue ? styles.taskDueOverdue : styles.taskDue} style={{ display: 'inline-flex' }}>
+                          <Calendar size={11} /> {new Date(`${t.due_date}T00:00:00`).toLocaleDateString()}
+                        </span>
+                      </>
+                    )}
+                  </span>
+                </div>
+              </li>
+            )
+          })}
+        </ul>
+      )}
     </div>
   )
 }
