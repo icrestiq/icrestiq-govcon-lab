@@ -7,7 +7,7 @@ React (Vite) SPA for govconlab.com — membership, community, and tooling platfo
 ## Current Repository State
 
 - **Branch:** `main`, confirmed in sync with `origin/main` this session.
-- **Latest commit:** `a499b79` — "Raise Founding-tier Suggested Bid price from $1 to $2" — pushed 2026-08-24. A second commit lands in this same session adding the `api/stripe/webhook.js` price-map fix and this handoff update (see `git log` for its hash).
+- **Latest commit:** `0ff27e7` — "Add Sourcing Pipeline CRM: Phase 0 (companies, contacts, stages)" — pushed 2026-08-24. Preceded by `744199b` (webhook price-map fix) and `a499b79` (Founding pricing), both same day.
 - **Uncommitted working-tree state:** only `.claude/`, untracked, not touched this session.
 
 ## Current Architecture
@@ -22,7 +22,7 @@ React (Vite) SPA for govconlab.com — membership, community, and tooling platfo
 
 ## Implemented in Current Code
 
-Membership/auth (Login, Register, Password Reset, email-confirmation flow, Turnstile bot protection) · Community chat · Blog (Supabase-backed, bot-visible Edge Middleware, dynamic sitemap) · Store + Stripe Checkout + Proposal Builder (PDF and Word/.docx export) · Matched Opportunities (SAM.gov ingestion, tier-gated; as of 2026-08-23 new-match creation is capped to opportunities posted in the last 5 days — see Decisions below) · Suggested Bid (paid AI research add-on, **$2/opportunity for both Lab Member and Founding as of 2026-08-24** — Founding's differentiator is now search depth, 8 vs. 5, not price; RFQ email drafts use the opportunity's real delivery destination when SAM.gov provides one, as of the same date) · `/go` lead-qualification quiz · Dashboard learning-path quiz · Admin panel with Site Analytics tab · Weekly digest signup with double opt-in, bot protections, and automated reminder waves · Notion Sync (OAuth connect, database picker, sync primitive — **confirmed 2026-08-23 to push only 8 basic listing fields, never the paid Suggested Bid research content**; see Partially Implemented) · Stale-quote follow-up alert (single-tenant).
+Membership/auth (Login, Register, Password Reset, email-confirmation flow, Turnstile bot protection) · Community chat · Blog (Supabase-backed, bot-visible Edge Middleware, dynamic sitemap) · Store + Stripe Checkout + Proposal Builder (PDF and Word/.docx export) · Matched Opportunities (SAM.gov ingestion, tier-gated; as of 2026-08-23 new-match creation is capped to opportunities posted in the last 5 days — see Decisions below) · Suggested Bid (paid AI research add-on, **$2/opportunity for both Lab Member and Founding as of 2026-08-24** — Founding's differentiator is now search depth, 8 vs. 5, not price; RFQ email drafts use the opportunity's real delivery destination when SAM.gov provides one, as of the same date) · `/go` lead-qualification quiz · Dashboard learning-path quiz · Admin panel with Site Analytics tab · Weekly digest signup with double opt-in, bot protections, and automated reminder waves · **Sourcing Pipeline CRM, Phase 0 only** (`/pipeline`, shipped 2026-08-24) — shared Companies/Contacts directory across all paid members, private per-profile Pipeline Stages (customizable from day one), private notes (sharing/flagging/moderation UI not yet built — schema is ready, see Session below). No Kanban board or purchase automation yet. · Notion Sync tab now shows a retirement notice only — Connect/Reconnect actions removed as of 2026-08-24; the sync primitive itself (OAuth, `sync_opportunities_to_notion`, `generate_suggested_bid`'s `syncToNotion` calls) is untouched code-wise, just no longer reachable from new UI (see Partially Implemented) · Stale-quote follow-up alert (single-tenant).
 
 ## Production Verified
 
@@ -56,7 +56,7 @@ Point-in-time verification, not an ongoing or auto-refreshed status.
 - Browser extensions (SAM Copilot, DIBBS Helper) — no code exists in this repository for either.
 - A weekly solicitation-intelligence pipeline and blog/social auto-publish tooling — no code found in this repository.
 - **HubSpot integration** — scoped only (see 2026-08-23 session below), zero code written. Would give members a "push my paid opportunities to my own HubSpot" feature; also intended for Keith's own GovCon business use.
-- **Native CRM ("Sourcing Pipeline")** — scoping complete, zero code written, **build begins next session**. Replacement for the Notion/HubSpot hybrid: contacts (vendors/suppliers/contracting officers), a Kanban deal pipeline, and notes, auto-seeded from `bid_requests` the moment a Suggested Bid purchase completes. Scope narrowed against HubSpot's full feature set on 2026-08-24 (Quotes and lightweight email logging pulled into the near-term roadmap; Marketing Hub, Live Chat, Service Hub, scheduling/calling, lead scoring, and generic Custom Objects explicitly excluded). Scoping artifact: "Sourcing Pipeline" (published and updated this session, not linked in git). First step next session: resolve single-tenant vs. member-facing (Open Decision 01 in the artifact) before writing any schema.
+- **Native CRM ("Sourcing Pipeline")** — Phase 0 shipped 2026-08-24 (see Implemented in Current Code and the Session entry below). Phases 1–5 remain unbuilt: Phase 1 (auto-create a Deal from a completed `bid_requests` row), Phase 2 (Kanban board + Quotes into Proposal Builder), Phase 3 (activity/tasks + the note-sharing/flagging/moderation UI), Phase 4 (reporting), Phase 5 (HubSpot-parity stretch + adding Keith's other business entities to the shared directory). Scoping artifact: "Sourcing Pipeline" (kept in sync with the actual build this session, not linked in git).
 
 ## Current Risks and Technical Debt
 
@@ -129,7 +129,50 @@ Point-in-time verification, not an ongoing or auto-refreshed status.
 - Everything already listed as unresolved as of 2026-08-23 below — untouched this session.
 - Native CRM ("Sourcing Pipeline") — scope narrowed, but the same five open decisions from 2026-08-23 (single-tenant vs. member-facing, foremost) still block schema work.
 
-**Next recommended action:** Begin the CRM build next session, starting with Open Decision 01 (single-tenant vs. member-facing) — every table's RLS design depends on the answer.
+**Next recommended action (superseded — see below):** ~~Begin the CRM build next session, starting with Open Decision 01~~ — the user chose to resolve the open decisions and start the build in this same session instead. See the continuation immediately below.
+
+---
+
+### Later the same session — Sourcing Pipeline Phase 0 build
+
+**Goal:** Resolve the five open decisions blocking the CRM schema, then build Phase 0 (companies, contacts, pipeline stages, private notes) on top of them.
+
+**Work completed:**
+- User resolved all five open decisions from the scoping artifact: (1) paid feature, shared vendor directory across every paid member — added a full pros/cons writeup to the artifact; (2) Notion sync fully retired immediately, connect UI to be suspended in this build; (3) start empty, no data migration; (4) pipeline stages customizable per profile from day one; (5) launch scoped to iCrestiQ Sourcing only, Keith's other businesses added after the build is running. User also specified a full note-sharing/moderation design (checkbox to share, reversible, survives the author leaving the platform, admin-only removal for derogatory content, member flagging) — folded into the schema and the artifact.
+- Updated the Sourcing Pipeline scoping artifact to reflect all five decisions, the note-moderation design, and the resulting schema change (7 tables instead of 6 — added `note_flags`; `companies`/`contacts` shared instead of profile-owned).
+- Wrote and applied a Supabase migration creating all 7 Phase 0 tables (`companies`, `contacts`, `deal_stages`, `deals`, `deal_contacts`, `notes`, `note_flags`), a reusable `is_paid_member()` RLS helper, shared-directory RLS on companies/contacts (paid-tier gated, no member-facing delete), standard `profile_id`-owned RLS on the rest, and a `protect_note_removal_fields` trigger that blocks non-service-role updates to the note-moderation columns regardless of what the client sends.
+- Ran Supabase's security advisor against the new schema and fixed two real findings in the new migration: a missing `search_path` pin on `set_updated_at()`, and `protect_note_removal_fields()` (a trigger-only function) being exposed as a callable REST RPC endpoint. Both fixed in a follow-up migration.
+- Built the `/pipeline` route (nav-gated the same way Matched Opportunities is): Companies tab, Contacts tab, and Pipeline Stages tab, each with working add/edit and (for companies/contacts) an expandable notes panel. Notes ship private-only in this phase — no share toggle, flag, or admin-removal UI yet (that's Phase 3), though the schema already supports it.
+- Suspended the Notion Connect/Reconnect UI in `Profile.jsx`, replacing it with a retirement notice; removed the now-dead database-picker code path (state, effect, two functions) that only existed to support the removed buttons.
+- Self-review pass after the initial build found and fixed one real gap: duplicate pipeline-stage names produced a raw Postgres error instead of a plain-English message — added a shared `friendlyStageError()` helper used consistently across add/rename/delete.
+- Verified via `npm run build` — clean, both before and after the self-review fix, confirming every import resolves and the new route bundles correctly.
+
+**Files and database objects changed:**
+- Supabase migration `phase0_sourcing_pipeline_schema`: 7 new tables, RLS policies, `is_paid_member()` and `set_updated_at()` helper functions, `protect_note_removal_fields()` trigger. Applied.
+- Supabase migration `phase0_harden_functions`: pinned `search_path` on `set_updated_at()`, revoked RPC execute on `protect_note_removal_fields()`. Applied.
+- `src/pages/Pipeline.jsx` (new), `src/pages/Pipeline.module.css` (new): the Phase 0 UI.
+- `src/App.jsx`: added the `/pipeline` route. `src/components/layout/Layout.jsx`: added the nav link.
+- `src/pages/Profile.jsx`: Notion Connect/Reconnect UI replaced with a retirement notice; dead database-picker code removed.
+- All of the above committed and pushed as `0ff27e7` ("Add Sourcing Pipeline CRM: Phase 0").
+
+**Decisions and reasons:**
+- Shared vendor directory chosen as an explicitly paid feature over a private-per-member one, accepting the one-way-door migration risk (unwinding shared data later is much harder than the reverse) in exchange for compounding directory value and a real retention argument — user's call, made after reviewing the tradeoff table now in the artifact.
+- Note removal enforced via a database trigger rather than relying on RLS or the frontend alone — removal is an admin action, and the trigger makes that true regardless of what any future client code does, not just today's.
+- Built the full 7-table schema now, including the Phase-3-only moderation columns and `note_flags`, rather than splitting it across two migrations, since the shape was already fully specified in the artifact.
+
+**Tests and results:** No automated test suite. Verification was `npm run build` only — confirms compile correctness, not runtime/UI correctness. **The in-app browser was explicitly ruled out mid-session** ("do not use internal browser, it crashes Claude") — confirms the existing CLAUDE.md instruction is a hard rule for this project, not a soft preference. Live RLS behavior (shared-directory access under different membership tiers, the moderation trigger under real auth context) has not been exercised against real sessions, and neither has the UI itself been clicked through by a human yet.
+
+**Deployment and verification status:** Two Supabase migrations applied and confirmed via schema/advisor queries. One git commit (`0ff27e7`) pushed to `origin/main`; Vercel deploys automatically from `main` but the deploy itself was not independently confirmed to finish.
+
+**Problems and lessons:**
+- A user question about "cards coming down vertically" initially looked like it might be a UI bug report but turned out to be about the not-yet-built Kanban board — the user had mistaken the already-built Pipeline Stages settings tab for it. Worth confirming which screen a screenshot actually shows before assuming what needs to change.
+
+**Unresolved issues:**
+- No live/authenticated testing of `/pipeline` has been done — not yet confirmed to work as expected in a real browser.
+- Phase 1 (purchase automation: auto-create a Deal + Contacts from a completed `bid_requests` row) is scoped in the artifact but not started.
+- Everything already listed as unresolved earlier in this same session (attachment parsing, `SAM_GOV_API_KEY` confirmation) and as of 2026-08-23 — still untouched.
+
+**Next recommended action:** Exercise `/pipeline` directly (add a company, a contact, edit pipeline stages) to confirm Phase 0 actually works before Phase 1 (purchase automation) starts building on top of it. This is a recommendation, not an approved priority.
 
 ## Session — 2026-08-23
 
