@@ -75,6 +75,13 @@ export default function Pipeline() {
   // see them disappear on the very next render.
   const [tab, setTab] = useState(() => (searchParams.get('tab') === 'deals' ? 'deals' : 'companies'))
   const [initialDealId] = useState(() => searchParams.get('deal'))
+  // Set by the Tasks tab's "jump to this task's record" links. Kept as
+  // plain state (not the URL) since this is in-page tab switching, not
+  // real navigation — DealsTab/CompaniesTab/ContactsTab each pick these up
+  // in an effect and open the matching record the moment they're mounted.
+  const [jumpDealId, setJumpDealId] = useState(null)
+  const [jumpCompanyId, setJumpCompanyId] = useState(null)
+  const [jumpContactId, setJumpContactId] = useState(null)
 
   useEffect(() => {
     if (searchParams.get('tab') || searchParams.get('deal')) {
@@ -82,6 +89,12 @@ export default function Pipeline() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  function jumpToEntity(entityType, id) {
+    if (entityType === 'Deal') { setJumpDealId(id); setTab('deals') }
+    else if (entityType === 'Company') { setJumpCompanyId(id); setTab('companies') }
+    else if (entityType === 'Contact') { setJumpContactId(id); setTab('contacts') }
+  }
 
   return (
     <div className={styles.page}>
@@ -111,11 +124,11 @@ export default function Pipeline() {
         </button>
       </div>
 
-      {tab === 'companies' && <CompaniesTab />}
-      {tab === 'contacts' && <ContactsTab />}
+      {tab === 'companies' && <CompaniesTab openCompanyId={jumpCompanyId} />}
+      {tab === 'contacts' && <ContactsTab openContactId={jumpContactId} />}
       {tab === 'stages' && <StagesTab />}
-      {tab === 'deals' && <DealsTab initialDealId={initialDealId} />}
-      {tab === 'tasks' && <TasksTab />}
+      {tab === 'deals' && <DealsTab initialDealId={initialDealId} openDealId={jumpDealId} />}
+      {tab === 'tasks' && <TasksTab onJump={jumpToEntity} />}
     </div>
   )
 }
@@ -123,11 +136,13 @@ export default function Pipeline() {
 // ---------------------------------------------------------------------
 // Companies
 // ---------------------------------------------------------------------
-function CompaniesTab() {
+function CompaniesTab({ openCompanyId }) {
   const { user } = useAuth()
   const [companies, setCompanies] = useState(null)
   const [error, setError] = useState('')
   const [expandedId, setExpandedId] = useState(null)
+
+  useEffect(() => { if (openCompanyId) setExpandedId(openCompanyId) }, [openCompanyId])
   const [formOpen, setFormOpen] = useState(false)
   const [editingId, setEditingId] = useState(null)
   const [form, setForm] = useState({ name: '', company_type: 'vendor', website: '', address: '' })
@@ -272,12 +287,14 @@ function CompanyContacts({ companyId }) {
 // ---------------------------------------------------------------------
 // Contacts
 // ---------------------------------------------------------------------
-function ContactsTab() {
+function ContactsTab({ openContactId }) {
   const { user } = useAuth()
   const [contacts, setContacts] = useState(null)
   const [companies, setCompanies] = useState([])
   const [error, setError] = useState('')
   const [expandedId, setExpandedId] = useState(null)
+
+  useEffect(() => { if (openContactId) setExpandedId(openContactId) }, [openContactId])
   const [formOpen, setFormOpen] = useState(false)
   const [editingId, setEditingId] = useState(null)
   const [form, setForm] = useState({ name: '', role_tag: 'vendor', company_id: '', email: '', phone: '' })
@@ -791,13 +808,15 @@ function StagesTab() {
 // (written by the automation since Phase 1, invisible until now) finally
 // become visible.
 // ---------------------------------------------------------------------
-function DealsTab({ initialDealId }) {
+function DealsTab({ initialDealId, openDealId }) {
   const { user } = useAuth()
   const [deals, setDeals] = useState(null)
   const [stages, setStages] = useState([])
   const [error, setError] = useState('')
   const [selectedDealId, setSelectedDealId] = useState(initialDealId || null)
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
+
+  useEffect(() => { if (openDealId) setSelectedDealId(openDealId) }, [openDealId])
 
   const load = useCallback(async () => {
     const [{ data: stageRows, error: stageErr }, { data: dealRows, error: dealErr }] = await Promise.all([
@@ -1060,7 +1079,7 @@ function DealDetailModal({ dealId, stages, onClose, onStageChange }) {
 // per-record; this is the "what do I need to do" surface the sharing
 // decisions this phase settled on (in-app visual only, no email/cron).
 // ---------------------------------------------------------------------
-function TasksTab() {
+function TasksTab({ onJump }) {
   const { user } = useAuth()
   const [tasks, setTasks] = useState(null)
   const [error, setError] = useState('')
@@ -1093,6 +1112,7 @@ function TasksTab() {
       setTasks((rows || []).map((t) => ({
         ...t,
         entityType: t.company_id ? 'Company' : t.contact_id ? 'Contact' : 'Deal',
+        entityId: t.company_id || t.contact_id || t.deal_id,
         entityName: t.company_id ? companyById[t.company_id] : t.contact_id ? contactById[t.contact_id] : dealById[t.deal_id],
       })))
     } catch (err) {
@@ -1135,7 +1155,14 @@ function TasksTab() {
                 <div className={styles.taskBody}>
                   <span className={styles.taskTitle}>{t.title}</span>
                   <span className={styles.rowMeta}>
-                    {t.entityType}: {t.entityName || 'unknown'}
+                    {t.entityType}:{' '}
+                    {t.entityId ? (
+                      <button type="button" className={styles.entityLinkBtn} onClick={() => onJump(t.entityType, t.entityId)}>
+                        {t.entityName || 'unknown'}
+                      </button>
+                    ) : (
+                      t.entityName || 'unknown'
+                    )}
                     {t.due_date && (
                       <>
                         {' · '}

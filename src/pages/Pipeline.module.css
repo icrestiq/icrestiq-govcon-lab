@@ -267,6 +267,20 @@
   cursor: not-allowed;
 }
 
+.entityLinkBtn {
+  font-family: inherit;
+  font-size: inherit;
+  color: var(--navy);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+  font-weight: 600;
+}
+
+.entityLinkBtn:hover { color: var(--gold); }
+
 /* ── Tasks ── */
 .taskItem {
   display: flex;
