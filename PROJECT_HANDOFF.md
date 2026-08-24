@@ -7,7 +7,7 @@ React (Vite) SPA for govconlab.com — membership, community, and tooling platfo
 ## Current Repository State
 
 - **Branch:** `main`, confirmed in sync with `origin/main` this session.
-- **Latest commit:** `0ff27e7` — "Add Sourcing Pipeline CRM: Phase 0 (companies, contacts, stages)" — pushed 2026-08-24. Preceded by `744199b` (webhook price-map fix) and `a499b79` (Founding pricing), both same day.
+- **Latest commit:** `4c782fe` — "Add read-only Deals tab: Sourcing Pipeline Phase 1" — pushed 2026-08-24. Preceded the same day by `2405d1a` (handoff), `0ff27e7` (CRM Phase 0), `744199b` (webhook price-map fix), and `a499b79` (Founding pricing).
 - **Uncommitted working-tree state:** only `.claude/`, untracked, not touched this session.
 
 ## Current Architecture
@@ -22,7 +22,7 @@ React (Vite) SPA for govconlab.com — membership, community, and tooling platfo
 
 ## Implemented in Current Code
 
-Membership/auth (Login, Register, Password Reset, email-confirmation flow, Turnstile bot protection) · Community chat · Blog (Supabase-backed, bot-visible Edge Middleware, dynamic sitemap) · Store + Stripe Checkout + Proposal Builder (PDF and Word/.docx export) · Matched Opportunities (SAM.gov ingestion, tier-gated; as of 2026-08-23 new-match creation is capped to opportunities posted in the last 5 days — see Decisions below) · Suggested Bid (paid AI research add-on, **$2/opportunity for both Lab Member and Founding as of 2026-08-24** — Founding's differentiator is now search depth, 8 vs. 5, not price; RFQ email drafts use the opportunity's real delivery destination when SAM.gov provides one, as of the same date) · `/go` lead-qualification quiz · Dashboard learning-path quiz · Admin panel with Site Analytics tab · Weekly digest signup with double opt-in, bot protections, and automated reminder waves · **Sourcing Pipeline CRM, Phase 0 only** (`/pipeline`, shipped 2026-08-24) — shared Companies/Contacts directory across all paid members, private per-profile Pipeline Stages (customizable from day one), private notes (sharing/flagging/moderation UI not yet built — schema is ready, see Session below). No Kanban board or purchase automation yet. · Notion Sync tab now shows a retirement notice only — Connect/Reconnect actions removed as of 2026-08-24; the sync primitive itself (OAuth, `sync_opportunities_to_notion`, `generate_suggested_bid`'s `syncToNotion` calls) is untouched code-wise, just no longer reachable from new UI (see Partially Implemented) · Stale-quote follow-up alert (single-tenant).
+Membership/auth (Login, Register, Password Reset, email-confirmation flow, Turnstile bot protection) · Community chat · Blog (Supabase-backed, bot-visible Edge Middleware, dynamic sitemap) · Store + Stripe Checkout + Proposal Builder (PDF and Word/.docx export) · Matched Opportunities (SAM.gov ingestion, tier-gated; as of 2026-08-23 new-match creation is capped to opportunities posted in the last 5 days — see Decisions below) · Suggested Bid (paid AI research add-on, **$2/opportunity for both Lab Member and Founding as of 2026-08-24** — Founding's differentiator is now search depth, 8 vs. 5, not price; RFQ email drafts use the opportunity's real delivery destination when SAM.gov provides one, as of the same date) · `/go` lead-qualification quiz · Dashboard learning-path quiz · Admin panel with Site Analytics tab · Weekly digest signup with double opt-in, bot protections, and automated reminder waves · **Sourcing Pipeline CRM, Phases 0–1** (`/pipeline`, shipped 2026-08-24, **live-verified with a real purchase**) — shared Companies/Contacts directory across all paid members, private per-profile Pipeline Stages (customizable from day one), private notes (sharing/flagging/moderation UI not yet built — schema is ready, see Session below). As of Phase 1, `generate_suggested_bid` auto-creates a Deal (linked to whatever companies its research found, via the new `deal_companies` table) the moment a Suggested Bid purchase completes; a read-only Deals tab shows the result. Deal-level notes (AI summary + RFQ drafts) are written by the automation but have no viewing UI yet — Companies' notes are visible today, Deals' are not, until the Phase 2 deal detail page. No Kanban board or manual deal creation yet. · Notion Sync tab now shows a retirement notice only — Connect/Reconnect actions removed as of 2026-08-24; the sync primitive itself (OAuth, `sync_opportunities_to_notion`, `generate_suggested_bid`'s `syncToNotion` calls) is untouched code-wise, just no longer reachable from new UI (see Partially Implemented) · Stale-quote follow-up alert (single-tenant).
 
 ## Production Verified
 
@@ -40,6 +40,8 @@ Point-in-time verification, not an ongoing or auto-refreshed status.
 - Notion sync: not malfunctioning — throttled by design (50 new pages/profile/run). Exactly 2 runs since the single existing connection was made (2026-08-21 16:48 UTC), producing exactly 100 synced pages, consistent with the cap.
 - Deployed `match_opportunities` version 10 (2026-08-23 04:54 UTC) and pulled the live source back down afterward to confirm byte-for-byte it matched the intended diff — see Deployment below.
 
+**2026-08-24 (Sourcing Pipeline Phase 1):** User bought a real Suggested Bid on a live opportunity after v13 deployed. Confirmed end-to-end: a Deal was created in the correct starting stage with a sensible value estimate, and 10 companies (5 suppliers, 5 packer/shippers) were correctly created and linked with the right `role_on_deal`. This is the only Sourcing Pipeline behavior verified against a real purchase so far — Phase 0's CRUD tabs and the rest of Phase 1's write paths (idempotency on a retried purchase, the deal-level notes, the stage-auto-seed path for a member who's never opened `/pipeline`) remain code-reviewed only, not live-tested.
+
 **No independently-available production-test evidence exists for any other feature** (bot protections, digest email delivery, NAICS selector, Word/PDF export correctness, auth-confirmation flow, stale-quote alert delivery, etc.) — code-confirmed only.
 
 ## Partially Implemented
@@ -56,7 +58,7 @@ Point-in-time verification, not an ongoing or auto-refreshed status.
 - Browser extensions (SAM Copilot, DIBBS Helper) — no code exists in this repository for either.
 - A weekly solicitation-intelligence pipeline and blog/social auto-publish tooling — no code found in this repository.
 - **HubSpot integration** — scoped only (see 2026-08-23 session below), zero code written. Would give members a "push my paid opportunities to my own HubSpot" feature; also intended for Keith's own GovCon business use.
-- **Native CRM ("Sourcing Pipeline")** — Phase 0 shipped 2026-08-24 (see Implemented in Current Code and the Session entry below). Phases 1–5 remain unbuilt: Phase 1 (auto-create a Deal from a completed `bid_requests` row), Phase 2 (Kanban board + Quotes into Proposal Builder), Phase 3 (activity/tasks + the note-sharing/flagging/moderation UI), Phase 4 (reporting), Phase 5 (HubSpot-parity stretch + adding Keith's other business entities to the shared directory). Scoping artifact: "Sourcing Pipeline" (kept in sync with the actual build this session, not linked in git).
+- **Native CRM ("Sourcing Pipeline")** — Phases 0 and 1 shipped and live-verified 2026-08-24 (see Implemented in Current Code and the Session entries below). Phases 2–5 remain unbuilt: Phase 2 (Kanban drag-drop board, deal detail page — where the already-written deal-level notes become visible — + Quotes into Proposal Builder), Phase 3 (activity/tasks + the note-sharing/flagging/moderation UI), Phase 4 (reporting), Phase 5 (HubSpot-parity stretch + adding Keith's other business entities to the shared directory). Scoping artifact: "Sourcing Pipeline" (kept in sync with the actual build this session, not linked in git).
 
 ## Current Risks and Technical Debt
 
@@ -70,6 +72,7 @@ Point-in-time verification, not an ongoing or auto-refreshed status.
 - Stale `DEPLOY.md` and incomplete checked-in schema documentation — `supabase-schema.sql` does not reflect several tables/columns known from code to exist in the live database.
 - **Historical purchase-protection gap in `match_opportunities` (found and partially remediated 2026-08-23):** before the "never prune a match with a purchase against it" protection existed (added in version 9, 2026-08-21), the function's stale-match cleanup could delete `opportunity_matches` rows tied to a real, paid Suggested Bid purchase if a member's NAICS/PSC codes changed. 4 such orphaned purchases were found and manually restored for one profile (`404be639-e000-493d-a998-f7a60c289902`) this session. **Other profiles have not been audited for the same historical gap** — the protection now prevents new occurrences but does not retroactively find or fix old ones elsewhere.
 - **AI fit-scoring (`score_opportunity_matches`) still unscheduled.** Function is complete and would fill in `recommendation`/`match_score` for matches with no rule-based bid-criteria verdict (currently ~318 `opportunity_matches` rows profile-wide have null recommendation). Needs: confirmation that `ANTHROPIC_API_KEY` is set as a project secret, and a decision on cron frequency/batch size, before scheduling. Draft cron SQL was prepared but **not executed**.
+- ~~**`protect_note_removal_fields()` publicly callable despite an earlier "fix"**~~ — **actually fixed 2026-08-24.** The Phase 0 hardening migration revoked `EXECUTE` from the `anon` and `authenticated` roles directly, but the real grant Postgres created was on the `PUBLIC` pseudo-role, which both roles inherit independently of a per-role revoke — so that fix never took effect. Caught by re-running Supabase's security advisor after the Phase 1 deploy and confirming directly against `information_schema.routine_privileges` rather than trusting the advisor's cache. Now genuinely fixed (`revoke ... from public`). Real risk was low (a trigger-only function that errors outside trigger context), but the access control itself was wrong, not just theoretically — worth remembering `PUBLIC` vs. named roles as a distinct grantee for any future `revoke`.
 - **HubSpot portal data-integrity bug (external to this repo, found 2026-08-23):** in Keith's own connected HubSpot account, the custom deal stages "Quote Requested" and "Quote Received" are mapped onto HubSpot's internal `closedwon`/`closedlost` stage IDs, so HubSpot is silently counting deals reaching those stages as won/lost regardless of actual outcome. Not fixed — flagged only, read-only recon. Also found: the account appears to already be at or near HubSpot Free's 10-custom-property-per-object cap (10 custom Deal properties already in use), which constrains any future integration's field design.
 
 ## External Configuration Requiring Verification
@@ -172,7 +175,51 @@ Point-in-time verification, not an ongoing or auto-refreshed status.
 - Phase 1 (purchase automation: auto-create a Deal + Contacts from a completed `bid_requests` row) is scoped in the artifact but not started.
 - Everything already listed as unresolved earlier in this same session (attachment parsing, `SAM_GOV_API_KEY` confirmation) and as of 2026-08-23 — still untouched.
 
-**Next recommended action:** Exercise `/pipeline` directly (add a company, a contact, edit pipeline stages) to confirm Phase 0 actually works before Phase 1 (purchase automation) starts building on top of it. This is a recommendation, not an approved priority.
+**Next recommended action (superseded — see below):** ~~Exercise `/pipeline` directly... before Phase 1 starts~~ — the user went straight to authorizing Phase 1 in this same session instead of testing Phase 0 standalone first; Phase 0 ended up getting exercised as a side effect of testing Phase 1 with a real purchase. See the continuation immediately below.
+
+---
+
+### Later the same session — Sourcing Pipeline Phase 1 build (purchase automation)
+
+**Goal:** Auto-create a Deal (linked to whatever companies the AI research found) the moment a Suggested Bid purchase completes, and confirm it actually works with a real purchase.
+
+**Work completed:**
+- Discovered while implementing that `supplier_research` (the AI's output) is company-level data only — `{name, note, source_url}`, no person name/email/phone — so the artifact's original diagram ("→ Contact") was a simplification that didn't hold up under actual implementation. A deal needs to link directly to companies, not through a fabricated placeholder contact standing in for one.
+- Added a `deal_companies` join table (mirroring `deal_contacts`'s RLS pattern) and a `unique (bid_request_id)` constraint on `deals` — the latter a DB-level backstop making the automation's idempotency check (below) hold even if the application logic ever has a bug, same defense-in-depth approach as the Phase 0 note-removal trigger.
+- Extended `generate_suggested_bid` (v12 → v13) with a `createCrmDeal(...)` call, wrapped in the same non-blocking try/catch contract the Notion sync already uses — a bug in the CRM automation can never fail a paid purchase. On a completed purchase it now: checks for an existing deal on that `bid_request_id` first (idempotent on retries); seeds default pipeline stages if the member has never opened `/pipeline` (a real gap that would otherwise crash the automation, since the frontend only seeds stages on visit); creates the deal in the member's first stage with `value_estimate` set to the AI's suggested price-range midpoint; writes two private deal-level notes (AI summary; RFQ drafts); and for each supplier/shipper lead, finds-or-creates a company (case-insensitive name match, escaping literal `%`/`_` so a name like "100% Vendor" can't be misread as a wildcard) and links it via `deal_companies`.
+- Added a read-only Deals tab to `/pipeline` (title, stage, value estimate, linked companies) — deliberately list-only, no drag-drop, no deal detail page, no manual creation, all per the user's confirmed choice to add just enough UI to see the automation's output.
+- Re-ran Supabase's security advisor after deploying and caught that the Phase 0 hardening fix for `protect_note_removal_fields()` had never actually taken effect (see Current Risks) — fixed it properly this time and verified directly against `information_schema.routine_privileges`.
+- **User bought a real Suggested Bid and confirmed the automation worked**: a Deal landed in the correct stage with a sensible value estimate, and all 10 AI-found companies (5 suppliers, 5 packer/shippers) were created and linked with the correct roles.
+
+**Files and database objects changed:**
+- Supabase migration `phase1_deal_companies_schema`: `deal_companies` table + RLS, `deals.bid_request_id` unique constraint. Applied.
+- Supabase migration `phase1_fix_protect_note_removal_grant`: corrected the `PUBLIC`-grant bug above. Applied.
+- Supabase Edge Function `generate_suggested_bid`: v12 → v13 (CRM automation). Deployed.
+- `src/pages/Pipeline.jsx`: added the Deals tab. Committed and pushed (`4c782fe`).
+- No `opportunities`/`bid_requests`/`profiles` row data was read or modified beyond what the automation itself wrote as a result of the user's real purchase (one deal, notes, and company/deal_companies rows for that purchase).
+
+**Decisions and reasons:**
+- Added `deal_companies` rather than routing through a placeholder contact — a fabricated "contact" standing in for a company would have polluted the shared contacts directory with non-person entries, working against the CRM's own data-quality goals. Small, discovered-during-build schema addition, not scope creep.
+- Kept the Deals tab strictly read-only per the user's explicit choice — enough to verify the automation, nothing that pulls Phase 2 forward.
+- Verified the `PUBLIC`-grant fix against `information_schema.routine_privileges` directly rather than re-trusting the advisor, since the advisor's own cache was exactly what made the original bug invisible.
+
+**Tests and results:** One real, user-initiated Suggested Bid purchase — the first genuine end-to-end test of any part of the Sourcing Pipeline CRM. Passed. Everything else (idempotency on a retry, the stage-auto-seed path, the deal-level notes actually being correct) is code-reviewed only.
+
+**Deployment and verification status:** Two Supabase migrations applied. `generate_suggested_bid` v13 `ACTIVE`, `verify_jwt: false` unchanged. One git commit (`4c782fe`) pushed to `origin/main`.
+
+**External dashboard changes not represented in git:** the two migrations and the v13 deploy exist only in Supabase. The real purchase's resulting rows (one deal, ~10 companies, several notes) exist only in the live database.
+
+**Problems and lessons:**
+- The `PUBLIC` vs. named-role grantee distinction is a real Postgres gotcha worth remembering: revoking `EXECUTE` from `anon`/`authenticated` explicitly does nothing if the actual grant was made to `PUBLIC` — always check `information_schema.routine_privileges` for the real grantee before considering an access-control fix verified, not just the advisor's summary.
+- Real implementation surfaced a real gap in the original scoping artifact (`supplier_research` being company-level, not contact-level) that scoping alone hadn't caught — a reminder that scoping documents are a starting hypothesis, not a guarantee, and building tends to find what planning misses.
+
+**Unresolved issues:**
+- Deal-level notes (AI summary, RFQ drafts) have no viewing UI — written correctly per the live test's evidence (the automation clearly ran), but not visually confirmed, since there's nowhere to see them until Phase 2.
+- Idempotency (a retried/re-completed purchase not creating a duplicate deal) has not been tested against a real retry — code-reviewed and DB-constraint-backed only.
+- The stage-auto-seed path (a member buying Suggested Bid before ever opening `/pipeline`) was not exercised by this test, since the purchasing member had already visited `/pipeline` and had stages seeded.
+- Everything already listed as unresolved earlier this session and as of 2026-08-23 — still untouched.
+
+**Next recommended action:** Phase 2 (Kanban drag-drop board + deal detail page, which is also where the currently-invisible deal-level notes finally become visible) is the natural next step, but this is a recommendation, not an approved priority.
 
 ## Session — 2026-08-23
 
