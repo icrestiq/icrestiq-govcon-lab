@@ -20,7 +20,7 @@ const supabase = createClient(
 // to it (any account still on 'pro' got there before retirement and
 // is grandfathered, not re-derived from this table).
 const PRICE_TO_TIER = {
-  'price_1Tq8oWBhEghNkTanlBCEKH0E': 'member',
+  'price_1U6srTBhEghNkTanoZpn8Hu6': 'member',
   'price_1Tq8qBBhEghNkTanqKQ4VJyj': 'founding',
 }
 

@@ -6,9 +6,9 @@ React (Vite) SPA for govconlab.com — membership, community, and tooling platfo
 
 ## Current Repository State
 
-- **Branch:** `main`. Local/origin sync was not reverified this session — last confirmed in sync as of the 2026-08-22 reconciliation.
-- **Latest commit:** `d69ed0530d0ffa732028a3ddb9b9504baa8d5810` — "docs: add Claude project handoff instructions" — committed 2026-08-22 23:47 EDT.
-- **Uncommitted working-tree state as of 2026-08-23:** `CLAUDE.md` has local, uncommitted edits (bullet-style reformatting plus a new "Permission Rules" section codifying one-time-approval rules for pushes/deploys/data changes) — not made by this session, origin unknown, not staged or committed. `.claude/` remains untracked. Neither was touched this session.
+- **Branch:** `main`, confirmed in sync with `origin/main` this session.
+- **Latest commit:** `a499b79` — "Raise Founding-tier Suggested Bid price from $1 to $2" — pushed 2026-08-24. A second commit lands in this same session adding the `api/stripe/webhook.js` price-map fix and this handoff update (see `git log` for its hash).
+- **Uncommitted working-tree state:** only `.claude/`, untracked, not touched this session.
 
 ## Current Architecture
 
@@ -22,7 +22,7 @@ React (Vite) SPA for govconlab.com — membership, community, and tooling platfo
 
 ## Implemented in Current Code
 
-Membership/auth (Login, Register, Password Reset, email-confirmation flow, Turnstile bot protection) · Community chat · Blog (Supabase-backed, bot-visible Edge Middleware, dynamic sitemap) · Store + Stripe Checkout + Proposal Builder (PDF and Word/.docx export) · Matched Opportunities (SAM.gov ingestion, tier-gated; as of 2026-08-23 new-match creation is capped to opportunities posted in the last 5 days — see Decisions below) · Suggested Bid (paid AI research add-on, $2/opportunity Lab Member / $1 Founding) · `/go` lead-qualification quiz · Dashboard learning-path quiz · Admin panel with Site Analytics tab · Weekly digest signup with double opt-in, bot protections, and automated reminder waves · Notion Sync (OAuth connect, database picker, sync primitive — **confirmed this session to push only 8 basic listing fields, never the paid Suggested Bid research content**; see Partially Implemented) · Stale-quote follow-up alert (single-tenant).
+Membership/auth (Login, Register, Password Reset, email-confirmation flow, Turnstile bot protection) · Community chat · Blog (Supabase-backed, bot-visible Edge Middleware, dynamic sitemap) · Store + Stripe Checkout + Proposal Builder (PDF and Word/.docx export) · Matched Opportunities (SAM.gov ingestion, tier-gated; as of 2026-08-23 new-match creation is capped to opportunities posted in the last 5 days — see Decisions below) · Suggested Bid (paid AI research add-on, **$2/opportunity for both Lab Member and Founding as of 2026-08-24** — Founding's differentiator is now search depth, 8 vs. 5, not price; RFQ email drafts use the opportunity's real delivery destination when SAM.gov provides one, as of the same date) · `/go` lead-qualification quiz · Dashboard learning-path quiz · Admin panel with Site Analytics tab · Weekly digest signup with double opt-in, bot protections, and automated reminder waves · Notion Sync (OAuth connect, database picker, sync primitive — **confirmed 2026-08-23 to push only 8 basic listing fields, never the paid Suggested Bid research content**; see Partially Implemented) · Stale-quote follow-up alert (single-tenant).
 
 ## Production Verified
 
@@ -56,10 +56,11 @@ Point-in-time verification, not an ongoing or auto-refreshed status.
 - Browser extensions (SAM Copilot, DIBBS Helper) — no code exists in this repository for either.
 - A weekly solicitation-intelligence pipeline and blog/social auto-publish tooling — no code found in this repository.
 - **HubSpot integration** — scoped only (see 2026-08-23 session below), zero code written. Would give members a "push my paid opportunities to my own HubSpot" feature; also intended for Keith's own GovCon business use.
+- **Native CRM ("Sourcing Pipeline")** — scoping complete, zero code written, **build begins next session**. Replacement for the Notion/HubSpot hybrid: contacts (vendors/suppliers/contracting officers), a Kanban deal pipeline, and notes, auto-seeded from `bid_requests` the moment a Suggested Bid purchase completes. Scope narrowed against HubSpot's full feature set on 2026-08-24 (Quotes and lightweight email logging pulled into the near-term roadmap; Marketing Hub, Live Chat, Service Hub, scheduling/calling, lead scoring, and generic Custom Objects explicitly excluded). Scoping artifact: "Sourcing Pipeline" (published and updated this session, not linked in git). First step next session: resolve single-tenant vs. member-facing (Open Decision 01 in the artifact) before writing any schema.
 
 ## Current Risks and Technical Debt
 
-- **Stale Stripe tier/price mapping:** `api/stripe/webhook.js`'s price→tier map hardcodes a Lab Member price ID that is inactive in Stripe; the active price uses a different ID not present in the map. A fallback default currently keeps new subscriptions tagged correctly, but the map itself needs updating. *(Not touched this session — still open.)*
+- ~~**Stale Stripe tier/price mapping**~~ — **fixed 2026-08-24.** `api/stripe/webhook.js`'s `PRICE_TO_TIER['member']` pointed at a price ID that matched neither the live Stripe price nor the (separately stale, unused) one in `src/lib/stripe.js`'s dead `STRIPE_PRICES` map. Corrected to the value read directly from the `products` table (the real source of truth the live checkout endpoint uses), verified via an authorized read-only query. The `|| 'member'` fallback had been masking the bug in production — no user-facing impact, but the map itself was wrong.
 - **Dead Lab Pro pricing entry:** `src/lib/stripe.js`'s price map still contains a `'lab-pro-monthly'` entry for the retired Lab Pro tier.
 - **Manual tier-list duplication:** `api/notion/authorize.js` hardcodes an eligible-tiers list that must be kept manually in sync with `isMemberOrFounding()` in `src/lib/tier.js`.
 - **Unused pagination code:** `src/lib/pagination.js` and its test file are no longer imported anywhere in `ProposalBuilder.jsx` — confirmed dead code.
@@ -81,6 +82,55 @@ Point-in-time verification, not an ongoing or auto-refreshed status.
 - Exact remaining custom-property headroom in Keith's live HubSpot portal (Settings → Properties) before any HubSpot build proceeds.
 - Whether HubSpot's OAuth app review process applies to the scopes a future member-facing integration would need.
 
+## Session — 2026-08-24
+
+**Goal:** Fix a known Stripe pricing bug, make Suggested Bid's RFQ email drafts opportunity-specific instead of generic, scope and cost out a further "read the attachments" tier, add real AI-cost telemetry, reprice Founding tier accordingly, and narrow the native CRM's scope.
+
+**Work completed:**
+- Diagnosed and fixed `api/stripe/webhook.js`'s stale `PRICE_TO_TIER['member']` price ID. Confirmed via an authorized read-only `products` table query that neither the previously hardcoded ID nor a third, separately stale ID in `src/lib/stripe.js`'s unused `STRIPE_PRICES` map matched the live price — corrected the map to the real value. The `|| 'member'` fallback had masked this in production; no user-facing impact, but the map itself was wrong.
+- Diagnosed why Suggested Bid's RFQ email drafts were generic (bracket placeholders like `[DESTINATION]`): pulled the live `generate_suggested_bid` Edge Function source and found it never reads `opportunities.raw_payload`, even though `sam_gov_ingest` already captures SAM.gov's `placeOfPerformance` (51% of 3,409 opportunities) and `resourceLinks`/attachments (39%) — the AI was never shown data that already exists.
+- Implemented and deployed the fix: wired `raw_payload.placeOfPerformance` into the bid-draft prompt (`generate_suggested_bid` v10 → v11). Verified via a post-deploy source pull.
+- Estimated the cost of a further "attachment parsing" tier (a 3rd Claude call reading SAM.gov's actual solicitation documents) using verified live pricing (Sonnet 5 at $2/$10 per 1M intro through 2026-08-31, then $3/$15; web search at $0.01/search flat) and Anthropic's documented PDF token cost (~2,300 tokens/page). Found Founding tier's margin was already thin — Stripe's flat $0.30 fee alone takes ~33% of a $1 charge — and that Founding actually costs more to fulfill than Member (8 web searches vs. 5) despite charging less.
+- Added real per-purchase AI usage logging ahead of any further pricing decision: new `bid_requests.ai_usage` jsonb column, populated by `generate_suggested_bid` v11 → v12 with `usage.input_tokens`/`output_tokens`/`server_tool_use.web_search_requests` from both Claude calls.
+- Raised Founding-tier Suggested Bid price from $1 to $2 (now matches Member; deeper search remains Founding's differentiator). Fixed two other places found displaying the old price independently of that config — `src/lib/stripe.js`'s display label and a hardcoded string in `MatchedOpportunities.jsx`'s pitch card, neither of which was wired to the actual pricing source.
+- Narrowed the "Sourcing Pipeline" native CRM's scope by filtering HubSpot's full feature set against what the purchase → sourced → quoted flow actually needs. Pulled Quotes (into the existing Proposal Builder) and lightweight email-sent logging into the near-term roadmap; explicitly excluded Marketing Hub, Live Chat, Service Hub, meeting/calling tools, lead scoring, and HubSpot's generic Custom Objects engine. Updated the published scoping artifact to match.
+
+**Files and database objects changed:**
+- `api/stripe/webhook.js`: `PRICE_TO_TIER['member']` corrected — committed this session.
+- `api/stripe/suggested-bid-checkout.js`: Founding `amountCents` 100 → 200 — committed and pushed (`a499b79`).
+- `src/lib/stripe.js`: `SUGGESTED_BID_PRICING.founding.label` '$1' → '$2' — committed and pushed.
+- `src/pages/MatchedOpportunities.jsx`: hardcoded pitch-card price string corrected — committed and pushed.
+- `src/data/changelog.js`: new v2.5 entry — committed and pushed.
+- Supabase Edge Function `generate_suggested_bid`: v10 → v11 (placeOfPerformance) → v12 (ai_usage logging). Both deployed, both verified via post-deploy source pull.
+- Supabase migration `add_ai_usage_to_bid_requests`: added `bid_requests.ai_usage` jsonb column. Applied.
+- No `opportunities`/`bid_requests` row data was read or modified beyond schema introspection (column lists, one sample row's `raw_payload` keys, and aggregate counts of how many opportunities have `placeOfPerformance`/`resourceLinks` populated).
+
+**Decisions and reasons:**
+- Fixed the Stripe price-map bug against the value read from the live `products` table — the actual source of truth the real checkout endpoint uses — rather than either stale candidate already sitting in code, per explicit user authorization to check.
+- Shipped the `placeOfPerformance` fix but not attachment parsing: the former reused already-ingested data with no new secret or infra; the latter needs a page/file cap and a pricing decision made first.
+- Raised Founding price to $2, the upper end of the $1.50–2 range offered — user's choice.
+- Added `ai_usage` logging before any further pricing decision, so the next one can use real numbers instead of estimates.
+
+**Tests and results:** No automated test suite. Verification was direct — post-deploy source pulls for both Edge Function versions (byte-for-byte match confirmed against the intended diff), a schema query confirming the new `ai_usage` column exists, and `git status`/`git diff` review before each commit.
+
+**Deployment and verification status:**
+- Supabase: `generate_suggested_bid` v11 and v12, both `ACTIVE`, `verify_jwt: false` unchanged. Migration `add_ai_usage_to_bid_requests` applied. Neither version was invoked end-to-end (would spend a real Suggested Bid credit) — first live test is the next real purchase.
+- Git/Vercel: commit `a499b79` pushed to `origin/main` (pricing files). A second commit in this session adds the webhook fix and this handoff update. Vercel deploys from `main` automatically on push — not independently confirmed to have finished building.
+
+**External dashboard changes not represented in git:** the three Supabase Edge Function deploys and the `ai_usage` column exist only in Supabase.
+
+**Problems and lessons:**
+- The RFQ placeholder issue traced back to a straightforward gap, not a prompting bug — `generate_suggested_bid` was never given data (`raw_payload`) that ingestion already captures. Worth checking "is the data actually in the prompt" before assuming an AI-output problem is a prompting problem.
+- Cost estimates for AI-heavy features are only as good as their assumptions (attachment page counts, search-result token size). The `ai_usage` logging added this session exists specifically to replace estimation with real data before the next pricing decision.
+
+**Unresolved issues:**
+- Attachment parsing (reading SAM.gov's actual solicitation documents) — not built. Needs a page/file cap decided before implementation.
+- Whether `SAM_GOV_API_KEY` is actually configured was never confirmed — no tool available to check Supabase secret existence without reading the value. If unset, the synopsis-fetch path in `generate_suggested_bid` has been silently returning nothing on every generation.
+- Everything already listed as unresolved as of 2026-08-23 below — untouched this session.
+- Native CRM ("Sourcing Pipeline") — scope narrowed, but the same five open decisions from 2026-08-23 (single-tenant vs. member-facing, foremost) still block schema work.
+
+**Next recommended action:** Begin the CRM build next session, starting with Open Decision 01 (single-tenant vs. member-facing) — every table's RLS design depends on the answer.
+
 ## Session — 2026-08-23
 
 **Goal:** Verify the health of the SAM.gov → matching → Notion pipeline ("soak test" follow-up), resolve issues found along the way, and scope a possible HubSpot integration.
@@ -95,6 +145,7 @@ Point-in-time verification, not an ongoing or auto-refreshed status.
 - Read Keith's live HubSpot portal (pipeline stages, custom Deal properties, account limits) read-only, to ground a HubSpot-integration proposal in real data rather than assumptions.
 - Produced and published a scoping artifact ("GovCon Deal Sync") covering the proposed HubSpot record shape, sync architecture, phased build plan, and monetization rationale, for both Keith's own business use and a potential paid GovCon Lab member feature. No code written.
 - Researched (web search, not live-account-verified) free-tier CRM alternatives (Zoho, Bitrix24, Airtable, Odoo) and HubSpot's free-tier email-sending limits, at the user's request, while comparing options.
+- At the user's follow-up request, scoped a **native in-house CRM** ("Sourcing Pipeline") as an alternative to both Notion and HubSpot: contacts/companies (vendors, suppliers, contracting officers, packers/shippers), a Kanban deal pipeline, and notes, with deals auto-created from `bid_requests` (`suggested_bid` + `supplier_research` JSON) the moment a Suggested Bid purchase completes. Grounded directly in `api/stripe/webhook.js`, `api/stripe/suggested-bid-checkout.js`, and the `bid_requests`/`opportunities` field shapes read from `MatchedOpportunities.jsx` — confirmed the same gap driving the HubSpot scoping also applies here: `sync_opportunities_to_notion` never carries paid research, so neither does the current Notion path. Proposed a 6-table schema (companies, contacts, deal_stages, deals, deal_contacts, notes), a phased roadmap (Phase 0 contacts/notes → Phase 5 HubSpot-parity stretch), and a cost assessment (no new subscription; infra delta negligible at current scale; engineering time sized by relative phase effort, not a dollar figure). No code written, no schema created.
 
 **Files and database objects changed:**
 - Supabase Edge Function `match_opportunities`: version 9 → version 10 (production deploy, explicitly authorized, scoped to this one function only).
@@ -124,10 +175,11 @@ Point-in-time verification, not an ongoing or auto-refreshed status.
 - Other member profiles were not checked for the same historical orphaned-purchase gap found and fixed for one profile.
 - HubSpot's closed-won/closed-lost stage mislabeling in Keith's live portal — flagged, not fixed.
 - HubSpot integration itself — scoped only, no build started; open questions listed in the scoping artifact (property headroom, OAuth app review, Make.com's role if any, pricing shape).
+- Native CRM ("Sourcing Pipeline") — scoped only, no build started. Five open decisions block schema work, the biggest being single-tenant (Keith's own businesses) vs. eventually member-facing (real RLS fork) — see the scoping artifact for the full list (Notion sync's fate, migration, pipeline-stage flexibility, whether Keith's multiple businesses are first-class `companies` rows).
 - `CLAUDE.md`'s uncommitted local changes (see Current Repository State) — origin and intent unclear, not investigated or acted on this session.
 
 **Next recommended action:** Confirm whether other member profiles have the same orphaned-purchase gap found for profile `404be639...` this session, since that's a direct data-integrity issue affecting real paid purchases. This is a recommendation, not an approved priority.
 
 ## Last Handoff Update
 
-2026-08-23, America/New_York.
+2026-08-24, America/New_York.
