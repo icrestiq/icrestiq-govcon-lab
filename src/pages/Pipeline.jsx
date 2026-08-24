@@ -1,18 +1,20 @@
 // src/pages/Pipeline.jsx
-// Phase 0 of the native "Sourcing Pipeline" CRM (see the published scoping
-// artifact). Companies and Contacts are a shared directory across every
-// paid member (RLS gates on membership_tier, not profile_id — see the
-// phase0_sourcing_pipeline_schema migration); Deal Stages are private per
-// profile. No Kanban board or purchase automation yet — those are Phase 1
-// and Phase 2. Notes attach to a company or a contact here; deal-attached
-// notes arrive with the Kanban board once deals exist in the UI.
+// Phase 0 + Phase 1 of the native "Sourcing Pipeline" CRM (see the
+// published scoping artifact). Companies and Contacts are a shared
+// directory across every paid member (RLS gates on membership_tier, not
+// profile_id — see the phase0_sourcing_pipeline_schema migration); Deal
+// Stages are private per profile. As of Phase 1, generate_suggested_bid
+// auto-creates a Deal (linked to whatever companies its research found)
+// the moment a Suggested Bid purchase completes — the Deals tab below is
+// a read-only list to see that automation's output, not a Kanban board.
+// Drag-drop, a deal detail page, and manual deal creation are Phase 2.
 
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../lib/AuthContext'
 import { supabase } from '../lib/supabase'
 import {
   Building2, Users, Columns3, Plus, Pencil, Trash2, X, ChevronUp, ChevronDown,
-  MessageSquare, ChevronDown as ChevronDownIcon, ChevronRight,
+  MessageSquare, ChevronDown as ChevronDownIcon, ChevronRight, Briefcase,
 } from 'lucide-react'
 import styles from './Pipeline.module.css'
 
@@ -82,11 +84,15 @@ export default function Pipeline() {
         <button className={`${styles.tab} ${tab === 'stages' ? styles.tabActive : ''}`} onClick={() => setTab('stages')}>
           <Columns3 size={15} /> Pipeline Stages
         </button>
+        <button className={`${styles.tab} ${tab === 'deals' ? styles.tabActive : ''}`} onClick={() => setTab('deals')}>
+          <Briefcase size={15} /> Deals
+        </button>
       </div>
 
       {tab === 'companies' && <CompaniesTab />}
       {tab === 'contacts' && <ContactsTab />}
       {tab === 'stages' && <StagesTab />}
+      {tab === 'deals' && <DealsTab />}
     </div>
   )
 }
@@ -593,6 +599,69 @@ function StagesTab() {
           onKeyDown={(e) => e.key === 'Enter' && addStage()}
         />
         <button className="btn btn-ghost" disabled={busy || !newName.trim()} onClick={addStage}><Plus size={14} /> Add Stage</button>
+      </div>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------
+// Deals — read-only list. Deals are created only by the Suggested Bid
+// purchase automation in this phase (generate_suggested_bid), not by
+// hand — this tab exists to see that automation's output, not to manage
+// deals. Drag-drop between stages, a deal detail page, and manual deal
+// creation are Phase 2.
+// ---------------------------------------------------------------------
+function DealsTab() {
+  const { user } = useAuth()
+  const [deals, setDeals] = useState(null)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    supabase
+      .from('deals')
+      .select('id, title, value_estimate, created_at, deal_stages(name), deal_companies(role_on_deal, companies(name, company_type))')
+      .eq('profile_id', user.id)
+      .order('created_at', { ascending: false })
+      .then(({ data, error: err }) => {
+        if (err) { setError(err.message); return }
+        setDeals(data || [])
+      })
+  }, [user.id])
+
+  if (deals === null) return <div className="spinner" />
+
+  return (
+    <div className={styles.tabPanel}>
+      <p className={styles.count}>
+        {deals.length} {deals.length === 1 ? 'deal' : 'deals'} — created automatically when a Suggested Bid purchase completes.
+      </p>
+      {error && <div className="alert alert-error">{error}</div>}
+
+      {deals.length === 0 && (
+        <p className={styles.emptyState}>
+          No deals yet — buy a Suggested Bid on a matched opportunity and it'll show up here automatically.
+        </p>
+      )}
+
+      <div className={styles.list}>
+        {deals.map((d) => (
+          <div key={d.id} className={styles.listRow}>
+            <div className={styles.rowMain}>
+              <span className={styles.rowTitle}>{d.title}</span>
+              <span className="badge badge-navy">{d.deal_stages?.name || 'No stage'}</span>
+              {typeof d.value_estimate === 'number' && (
+                <span className={styles.rowMeta}>${Math.round(d.value_estimate).toLocaleString()} est.</span>
+              )}
+            </div>
+            {d.deal_companies?.length > 0 && (
+              <div className={styles.chipRow} style={{ width: '100%', paddingLeft: 'var(--sp-2)' }}>
+                {d.deal_companies.map((dc, i) => (
+                  <span key={i} className={roleBadgeClass(dc.role_on_deal)}>{dc.companies?.name}</span>
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
       </div>
     </div>
   )
