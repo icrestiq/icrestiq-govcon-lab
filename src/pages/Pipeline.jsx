@@ -643,7 +643,12 @@ function DealsTab({ initialDealId }) {
       supabase.from('deal_stages').select('id, name, sort_order').eq('profile_id', user.id).order('sort_order'),
       supabase
         .from('deals')
-        .select('id, title, value_estimate, stage_id, created_at, deal_companies(role_on_deal, companies(name, company_type))')
+        .select(`
+          id, title, value_estimate, stage_id, created_at,
+          deal_companies(role_on_deal, companies(name, company_type)),
+          opportunities(solicitation_number),
+          bid_requests(suggested_bid)
+        `)
         .eq('profile_id', user.id)
         .order('created_at', { ascending: false }),
     ])
@@ -728,6 +733,20 @@ function DealsTab({ initialDealId }) {
   )
 }
 
+// Solicitation # comes from the linked opportunities row; NSN/P-N
+// identifiers come from bid_requests.suggested_bid.identifiers — already
+// pre-labeled strings (e.g. "NSN 5340-01-592-1509") extracted by
+// generate_suggested_bid, not re-parsed here. Either can be missing
+// (a manually created deal down the line would have neither), so this
+// returns null rather than an empty string when there's nothing to show.
+function dealIdentifierLine(deal) {
+  const parts = []
+  if (deal.opportunities?.solicitation_number) parts.push(`Sol# ${deal.opportunities.solicitation_number}`)
+  const identifiers = deal.bid_requests?.suggested_bid?.identifiers
+  if (Array.isArray(identifiers) && identifiers.length > 0) parts.push(identifiers.join(', '))
+  return parts.length > 0 ? parts.join(' · ') : null
+}
+
 function StageDropZone({ stageId, children }) {
   const { setNodeRef, isOver } = useDroppable({ id: stageId })
   return (
@@ -741,6 +760,7 @@ function DealCard({ deal, onClick }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: deal.id })
   const style = transform ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` } : undefined
   const companyCount = deal.deal_companies?.length || 0
+  const identifierLine = dealIdentifierLine(deal)
 
   return (
     <div
@@ -752,6 +772,7 @@ function DealCard({ deal, onClick }) {
       onClick={onClick}
     >
       <span className={styles.dealCardTitle}>{deal.title}</span>
+      {identifierLine && <span className={styles.dealCardIdentifiers}>{identifierLine}</span>}
       {typeof deal.value_estimate === 'number' && (
         <span className={styles.dealCardMeta}>${Math.round(deal.value_estimate).toLocaleString()} est.</span>
       )}
@@ -772,7 +793,12 @@ function DealDetailModal({ dealId, stages, onClose, onStageChange }) {
   const load = useCallback(async () => {
     const { data, error: err } = await supabase
       .from('deals')
-      .select('id, title, value_estimate, stage_id, opportunity_id, deal_companies(role_on_deal, companies(id, name, company_type))')
+      .select(`
+        id, title, value_estimate, stage_id, opportunity_id,
+        deal_companies(id, role_on_deal, companies(id, name, company_type)),
+        opportunities(solicitation_number),
+        bid_requests(suggested_bid)
+      `)
       .eq('id', dealId)
       .single()
     if (err) { setError(err.message); return }
@@ -793,11 +819,31 @@ function DealDetailModal({ dealId, stages, onClose, onStageChange }) {
     onStageChange?.(dealId, newStageId)
   }
 
+  // Unlinks a company from just this deal — doesn't touch the company
+  // record itself, which stays in the shared directory (still relevant to
+  // other deals/members even if it doesn't carry the NSN this deal needs).
+  // deal_companies already grants delete via RLS scoped through the
+  // parent deal, so nothing new needed on the database side.
+  async function removeCompany(dealCompanyId) {
+    const prevCompanies = deal.deal_companies
+    setDeal((d) => ({ ...d, deal_companies: d.deal_companies.filter((dc) => dc.id !== dealCompanyId) }))
+    const { error: err } = await supabase.from('deal_companies').delete().eq('id', dealCompanyId)
+    if (err) {
+      setError(err.message)
+      setDeal((d) => ({ ...d, deal_companies: prevCompanies }))
+    }
+  }
+
   return (
     <div className={styles.modalOverlay} onClick={onClose}>
       <div className={styles.modalCard} onClick={(e) => e.stopPropagation()}>
         <div className={styles.modalHeader}>
-          <h2 className={styles.modalTitle}>{deal?.title || 'Loading…'}</h2>
+          <div>
+            <h2 className={styles.modalTitle}>{deal?.title || 'Loading…'}</h2>
+            {deal && dealIdentifierLine(deal) && (
+              <p className={styles.modalIdentifiers}>{dealIdentifierLine(deal)}</p>
+            )}
+          </div>
           <button className={styles.iconBtn} onClick={onClose}><X size={18} /></button>
         </div>
 
@@ -819,9 +865,20 @@ function DealDetailModal({ dealId, stages, onClose, onStageChange }) {
             {deal.deal_companies?.length > 0 && (
               <div>
                 <label className="label">Linked companies</label>
+                <p className={styles.fieldHintSmall}>Remove one if research shows it doesn't actually carry what this deal needs — the company itself stays in the shared directory.</p>
                 <div className={styles.chipRow} style={{ marginTop: 'var(--sp-2)' }}>
-                  {deal.deal_companies.map((dc, i) => (
-                    <span key={i} className={roleBadgeClass(dc.role_on_deal)}>{dc.companies?.name}</span>
+                  {deal.deal_companies.map((dc) => (
+                    <span key={dc.id} className={`${roleBadgeClass(dc.role_on_deal)} ${styles.removableChip}`}>
+                      {dc.companies?.name}
+                      <button
+                        type="button"
+                        className={styles.chipRemoveBtn}
+                        onClick={() => removeCompany(dc.id)}
+                        title="Remove from this deal"
+                      >
+                        <X size={11} />
+                      </button>
+                    </span>
                   ))}
                 </div>
               </div>

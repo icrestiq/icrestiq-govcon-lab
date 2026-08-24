@@ -991,7 +991,7 @@ function linkifyText(text) {
   const parts = String(text).split(URL_PATTERN)
   return parts.map((part, i) =>
     part.startsWith('http://') || part.startsWith('https://')
-      ? <a key={i} href={part} target="_blank" rel="noopener noreferrer">{part}</a>
+      ? <a key={i} href={part} target="_blank" rel="noopener noreferrer" className={styles.bulletLink}>{part}</a>
       : <span key={i}>{part}</span>
   )
 }

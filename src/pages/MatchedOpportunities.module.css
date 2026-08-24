@@ -416,6 +416,20 @@
   text-decoration: underline;
 }
 
+/* Inline links inside AI-generated bullet text (e.g. a risk-note pointing
+   at a store product) — the global default link color is the same navy
+   as body text, so a plain <a> in the middle of a sentence reads as
+   unstyled prose. This makes it unmistakably a link. */
+.bulletLink {
+  color: var(--gold-dim);
+  text-decoration: underline;
+  font-weight: 600;
+}
+
+.bulletLink:hover {
+  color: var(--gold);
+}
+
 .cardActions {
   display: flex;
   flex-wrap: wrap;
