@@ -13,14 +13,14 @@
 // phase).
 
 import { useState, useEffect, useCallback } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams, useNavigate } from 'react-router-dom'
 import { DndContext, useDraggable, useDroppable, useSensor, useSensors, PointerSensor } from '@dnd-kit/core'
 import { useAuth } from '../lib/AuthContext'
 import { supabase } from '../lib/supabase'
 import {
   Building2, Users, Columns3, Plus, Pencil, Trash2, X, ChevronUp, ChevronDown,
   MessageSquare, ChevronDown as ChevronDownIcon, ChevronRight, Briefcase,
-  ListTodo, Square, CheckSquare, Calendar, Search, BarChart3,
+  ListTodo, Square, CheckSquare, Calendar, Search, BarChart3, FileText,
 } from 'lucide-react'
 import styles from './Pipeline.module.css'
 
@@ -1082,6 +1082,7 @@ function DealCard({ deal, onClick }) {
 // writing since Phase 1 (AI summary, RFQ drafts) — this modal is the
 // first place any of that becomes visible to a member.
 function DealDetailModal({ dealId, stages, onClose, onStageChange }) {
+  const navigate = useNavigate()
   const [deal, setDeal] = useState(null)
   const [error, setError] = useState('')
 
@@ -1155,6 +1156,13 @@ function DealDetailModal({ dealId, stages, onClose, onStageChange }) {
               {typeof deal.value_estimate === 'number' && (
                 <span className="badge badge-navy">${Math.round(deal.value_estimate).toLocaleString()} est.</span>
               )}
+              <button
+                type="button" className="btn btn-ghost"
+                onClick={() => navigate(`/tools/proposal-builder?deal=${dealId}`)}
+                title="Opens Proposal Builder pre-filled with this deal's solicitation, technical approach, and risk notes"
+              >
+                <FileText size={14} /> Generate Proposal
+              </button>
             </div>
 
             {deal.deal_companies?.length > 0 && (

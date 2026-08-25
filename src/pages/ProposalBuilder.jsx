@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../lib/AuthContext";
 import { isPaidMember } from "../lib/tier";
@@ -18,10 +19,23 @@ import { assertProposalTotalsMatch } from "../lib/validateProposal";
 
  *
  * REQUIRES (Supabase SQL already provided separately):
- *   1. Table `proposal_drafts` (id, user_id, data jsonb, logo_url, updated_at)
+ *   1. Table `proposal_drafts` (id, user_id, data jsonb, logo_url, updated_at,
+ *      deal_id — nullable, added for the Sourcing Pipeline CRM's "Generate
+ *      Proposal" button; unique per deal, see the Quotes-into-Proposal-
+ *      Builder migration)
  *   2. Storage bucket `proposal-logos` (public read, user-scoped write) —
  *      also holds signature images now, at {userId}/signature.{ext};
  *      same bucket, same folder-scoped policy, just a different filename.
+ *
+ * Arriving via ?deal=<id> (from a Deal's "Generate Proposal" button in
+ * src/pages/Pipeline.jsx) makes this deal-scoped: it loads/creates the one
+ * proposal_drafts row tied to that deal instead of "your single most-recent
+ * draft," and seeds a brand-new one with facts already known from the
+ * deal's AI research (solicitation title/number, agency, technical
+ * approach, risk notes, NSN/PN identifiers) — pricing stays manual, since
+ * the AI's price_range is a rough estimate, not itemized CLIN pricing.
+ * Visiting the route directly (no ?deal=) is entirely unaffected — same
+ * single-draft behavior as before, scoped to deal_id IS NULL.
  */
 
 const NAVY = "#1F3864";
@@ -324,6 +338,91 @@ function NaicsSelector({ selected, onChange }) {
 }
 
 // ---------------------------------------------------------------------
+// Deal -> Proposal Builder seed (Quotes into Proposal Builder)
+// Facts only, per the scoping decision: pricing/CLINs are left for the
+// member to fill in themselves rather than seeded from the AI's rough
+// price_range estimate.
+// ---------------------------------------------------------------------
+async function buildDealSeed(dealId) {
+  const { data: deal, error } = await supabase
+    .from("deals")
+    .select(`
+      title,
+      opportunities ( solicitation_number, agency ),
+      bid_requests ( suggested_bid )
+    `)
+    .eq("id", dealId)
+    .maybeSingle();
+  if (error || !deal) return null;
+
+  const suggestedBid = deal.bid_requests?.suggested_bid || {};
+  const identifiers = Array.isArray(suggestedBid.identifiers) ? suggestedBid.identifiers : [];
+  const technicalApproach = Array.isArray(suggestedBid.technical_approach) ? suggestedBid.technical_approach : [];
+  const riskNotes = Array.isArray(suggestedBid.risk_notes) ? suggestedBid.risk_notes : [];
+  const priceRange = suggestedBid.price_range;
+
+  return {
+    solicitationTitle: deal.title || "",
+    solicitationNumber: deal.opportunities?.solicitation_number || "",
+    agencyName: deal.opportunities?.agency || "",
+    requirementSummary: identifiers.length > 0 ? `Item(s): ${identifiers.join(", ")}` : "",
+    methodology: technicalApproach.join("\n\n"),
+    riskManagement: { intro: "", items: riskNotes, closing: "" },
+    basisOfEstimate: (typeof priceRange?.low === "number" && typeof priceRange?.high === "number")
+      ? `AI-suggested price range from Suggested Bid research: $${priceRange.low.toLocaleString()} – $${priceRange.high.toLocaleString()}. Confirm actual pricing before submission.`
+      : "",
+  };
+}
+
+// ---------------------------------------------------------------------
+// Pure migration of a stored proposal_drafts.data blob into the current
+// initialState shape — factored out of the mount-time load effect so the
+// draft switcher (multiple deal-linked drafts, Quotes into Proposal
+// Builder) can reuse the exact same NAICS/prose-list migrations without
+// duplicating them.
+// ---------------------------------------------------------------------
+function migrateDraftData(rawData) {
+  const merged = { ...initialState, ...rawData };
+
+  // Migration: pre-selector drafts stored free-text NAICS in `naics`, one
+  // entry per line (often "CODE – hand-typed title"). If this draft
+  // predates the selector, try to salvage any line that starts with a
+  // real code — using the official title, not whatever text followed it,
+  // since a mismatched hand-typed title next to a real code is exactly
+  // the bug this migration exists to fix. Anything that doesn't resolve
+  // gets flagged, never silently kept or silently dropped.
+  if (rawData.naics && (!rawData.naicsCodes || rawData.naicsCodes.length === 0)) {
+    const lines = String(rawData.naics).split("\n").map(s => s.trim()).filter(Boolean);
+    const migratedCodes = [];
+    const unverified = [];
+    for (const line of lines) {
+      const match = line.match(/^(\d{2,6})\b/);
+      if (match && isValidNaicsCode(match[1])) {
+        if (!migratedCodes.includes(match[1])) migratedCodes.push(match[1]);
+      } else {
+        unverified.push(line);
+      }
+    }
+    merged.naicsCodes = migratedCodes.slice(0, MAX_NAICS_SELECTIONS);
+    merged.legacyNaicsText = rawData.naics;
+    merged.unverifiedNaicsEntries = unverified;
+  }
+
+  // Migration: pre-restructure drafts stored Quality Control Plan and Risk
+  // Management as a single free-text field. Convert to the new
+  // { intro, items, closing } shape on load; the next autosave persists
+  // the migrated shape back to Supabase.
+  if (isLegacyProseListValue(rawData.qualityControl)) {
+    merged.qualityControl = migrateProseList(rawData.qualityControl);
+  }
+  if (isLegacyProseListValue(rawData.riskManagement)) {
+    merged.riskManagement = migrateProseList(rawData.riskManagement);
+  }
+
+  return merged;
+}
+
+// ---------------------------------------------------------------------
 // Upgrade prompt for free-tier members
 // ---------------------------------------------------------------------
 function UpgradePrompt() {
@@ -347,6 +446,20 @@ function UpgradePrompt() {
 // ---------------------------------------------------------------------
 export default function ProposalBuilder() {
   const { profile, isAdmin } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+  // Seeded once from the URL (same lazy-init pattern as Pipeline.jsx's own
+  // ?deal=<id> handling — cleared right after mount so a refresh doesn't
+  // keep re-seeding/re-looking-up the same deal) but mutable afterward:
+  // the draft switcher below reassigns it when the user picks a different
+  // deal's draft, or "General Draft", from the dropdown.
+  const [dealId, setDealId] = useState(() => searchParams.get("deal"));
+  useEffect(() => {
+    if (searchParams.get("deal")) setSearchParams({}, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  // Every proposal_drafts row this user has (General + one per deal), for
+  // the switcher dropdown — null until the first load resolves.
+  const [draftList, setDraftList] = useState(null);
   // Tracks whether the user has made any edit yet. This exists because
   // the draft-load effect below is async (two sequential Supabase round
   // trips: getUser(), then the proposal_drafts SELECT) and, once it
@@ -373,19 +486,32 @@ export default function ProposalBuilder() {
   const [saveStatus, setSaveStatus] = useState(""); // "", "saving", "saved", "error"
   const saveTimer = useRef(null);
 
-  // Load user + existing draft on mount
+  // Every proposal_drafts row this user has, for the switcher dropdown —
+  // re-fetched after any load/switch/clear so it stays current.
+  const loadDraftRows = useCallback(async (uid) => {
+    const { data: rows } = await supabase
+      .from("proposal_drafts")
+      .select("id, deal_id, updated_at, deals(title)")
+      .eq("user_id", uid)
+      .order("updated_at", { ascending: false });
+    setDraftList(rows || []);
+  }, []);
+
+  // Load user + existing draft on mount. Deal-scoped (?deal=<id>) looks up
+  // the one draft tied to that deal instead of "most recent" — and if none
+  // exists yet, seeds a fresh one from the deal's own data rather than
+  // falling back to a blank form.
   useEffect(() => {
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       setUserId(user.id);
+      loadDraftRows(user.id);
 
-      const { data: drafts, error } = await supabase
-        .from("proposal_drafts")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("updated_at", { ascending: false })
-        .limit(1);
+      const query = supabase.from("proposal_drafts").select("*").eq("user_id", user.id);
+      const { data: drafts, error } = dealId
+        ? await query.eq("deal_id", dealId).limit(1)
+        : await query.is("deal_id", null).order("updated_at", { ascending: false }).limit(1);
 
       if (!error && drafts && drafts.length > 0) {
         const draft = drafts[0];
@@ -401,49 +527,21 @@ export default function ProposalBuilder() {
           return;
         }
 
-        const merged = { ...initialState, ...draft.data };
-
-        // Migration: pre-selector drafts stored free-text NAICS in `naics`,
-        // one entry per line (often "CODE – hand-typed title"). If this
-        // draft predates the selector, try to salvage any line that starts
-        // with a real code — using the official title, not whatever text
-        // followed it, since a mismatched hand-typed title next to a real
-        // code is exactly the bug this migration exists to fix. Anything
-        // that doesn't resolve gets flagged, never silently kept or
-        // silently dropped.
-        if (draft.data.naics && (!draft.data.naicsCodes || draft.data.naicsCodes.length === 0)) {
-          const lines = String(draft.data.naics).split("\n").map(s => s.trim()).filter(Boolean);
-          const migratedCodes = [];
-          const unverified = [];
-          for (const line of lines) {
-            const match = line.match(/^(\d{2,6})\b/);
-            if (match && isValidNaicsCode(match[1])) {
-              if (!migratedCodes.includes(match[1])) migratedCodes.push(match[1]);
-            } else {
-              unverified.push(line);
-            }
-          }
-          merged.naicsCodes = migratedCodes.slice(0, MAX_NAICS_SELECTIONS);
-          merged.legacyNaicsText = draft.data.naics;
-          merged.unverifiedNaicsEntries = unverified;
-        }
-
-        // Migration: pre-restructure drafts stored Quality Control Plan and
-        // Risk Management as a single free-text field (one line per
-        // "item" under the old convention, but really a mix of prose and
-        // real items — see migrateProseList's own comment for the
-        // classification rule). Convert to the new
-        // { intro, items, closing } shape on load; the next autosave
-        // persists the migrated shape back to Supabase.
-        if (isLegacyProseListValue(draft.data.qualityControl)) {
-          merged.qualityControl = migrateProseList(draft.data.qualityControl);
-        }
-        if (isLegacyProseListValue(draft.data.riskManagement)) {
-          merged.riskManagement = migrateProseList(draft.data.riskManagement);
-        }
-
-        setData(merged);
+        setData(migrateDraftData(draft.data));
         if (draft.logo_url) setLogoUrl(draft.logo_url);
+        return;
+      }
+
+      // No draft tied to this deal yet — seed a fresh one from its own
+      // data instead of showing a blank form. Guarded by hasUserEditedRef
+      // for the same race the normal draft load protects against above:
+      // buildDealSeed is a second async round trip, and the user could
+      // already be typing by the time it resolves.
+      if (dealId && !hasUserEditedRef.current) {
+        const seed = await buildDealSeed(dealId);
+        if (seed && !hasUserEditedRef.current) {
+          setData((prev) => ({ ...prev, ...seed }));
+        }
       }
     })();
   }, []);
@@ -453,7 +551,10 @@ export default function ProposalBuilder() {
     if (!userId) return;
     setSaveStatus("saving");
     try {
-      const payload = { user_id: userId, data: nextData, logo_url: nextLogoUrl, updated_at: new Date().toISOString() };
+      const payload = {
+        user_id: userId, data: nextData, logo_url: nextLogoUrl, updated_at: new Date().toISOString(),
+        ...(dealId ? { deal_id: dealId } : {}),
+      };
       if (draftId) {
         const { error } = await supabase.from("proposal_drafts").update(payload).eq("id", draftId);
         if (error) throw error;
@@ -467,7 +568,47 @@ export default function ProposalBuilder() {
       console.error(e);
       setSaveStatus("error");
     }
-  }, [userId, draftId]);
+  }, [userId, draftId, dealId]);
+
+  // Draft switcher (multiple deal-linked drafts). Flushes any pending
+  // autosave first so a fast switch can never lose an edit that was still
+  // sitting in the debounce window, then loads (or seeds) the target.
+  const switchingRef = useRef(false);
+  const switchToDraft = useCallback(async (targetDealId) => {
+    if (targetDealId === dealId || switchingRef.current) return;
+    switchingRef.current = true;
+    try {
+      clearTimeout(saveTimer.current);
+      await saveDraft(data, logoUrl);
+
+      setDealId(targetDealId);
+      setSearchParams(targetDealId ? { deal: targetDealId } : {}, { replace: true });
+
+      const query = supabase.from("proposal_drafts").select("*").eq("user_id", userId);
+      const { data: rows, error } = targetDealId
+        ? await query.eq("deal_id", targetDealId).limit(1)
+        : await query.is("deal_id", null).order("updated_at", { ascending: false }).limit(1);
+
+      if (!error && rows && rows.length > 0) {
+        const row = rows[0];
+        setDraftId(row.id);
+        setData(migrateDraftData(row.data));
+        setLogoUrl(row.logo_url || null);
+      } else if (targetDealId) {
+        const seed = await buildDealSeed(targetDealId);
+        setDraftId(null);
+        setData({ ...initialState, ...(seed || {}) });
+        setLogoUrl(null);
+      } else {
+        setDraftId(null);
+        setData(initialState);
+        setLogoUrl(null);
+      }
+      loadDraftRows(userId);
+    } finally {
+      switchingRef.current = false;
+    }
+  }, [dealId, data, logoUrl, userId, saveDraft, setSearchParams, loadDraftRows]);
 
   useEffect(() => {
     if (!userId) return;
@@ -513,6 +654,7 @@ export default function ProposalBuilder() {
         if (error) throw error;
         setDraftId(null);
         setSaveStatus("saved");
+        loadDraftRows(userId);
       } catch (e) {
         console.error(e);
         setSaveStatus("error");
@@ -545,6 +687,19 @@ export default function ProposalBuilder() {
         </div>
         {userId && (
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            {draftList && draftList.length > 0 && (
+              <select
+                value={dealId || ""}
+                onChange={(e) => switchToDraft(e.target.value || null)}
+                title="Switch between your General Draft and any deal-linked proposals"
+                style={{ ...inputStyle, width: "auto", maxWidth: 220, fontSize: 12, padding: "6px 8px" }}
+              >
+                <option value="">General Draft</option>
+                {draftList.filter((r) => r.deal_id).map((r) => (
+                  <option key={r.id} value={r.deal_id}>{r.deals?.title || "Untitled deal"}</option>
+                ))}
+              </select>
+            )}
             <div style={{ fontSize: 12, color: saveStatus === "error" ? "#c44" : "#888" }}>
               {saveStatus === "saving" && "Saving…"}
               {saveStatus === "saved" && "Draft saved"}
