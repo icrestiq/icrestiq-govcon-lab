@@ -121,6 +121,27 @@
 .iconBtn:hover { color: var(--navy); border-color: var(--border-lit); }
 .iconBtn:disabled { opacity: 0.4; cursor: not-allowed; }
 
+.searchRow {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: #FFFFFF;
+  color: var(--text-muted);
+  max-width: 420px;
+}
+
+.searchRow input {
+  border: none;
+  outline: none;
+  flex: 1;
+  font-size: 0.875rem;
+  background: none;
+  color: var(--text-primary);
+}
+
 /* ── List rows (companies / contacts) ── */
 .list {
   display: flex;

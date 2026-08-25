@@ -20,7 +20,7 @@ import { supabase } from '../lib/supabase'
 import {
   Building2, Users, Columns3, Plus, Pencil, Trash2, X, ChevronUp, ChevronDown,
   MessageSquare, ChevronDown as ChevronDownIcon, ChevronRight, Briefcase,
-  ListTodo, Square, CheckSquare, Calendar,
+  ListTodo, Square, CheckSquare, Calendar, Search, BarChart3,
 } from 'lucide-react'
 import styles from './Pipeline.module.css'
 
@@ -39,7 +39,30 @@ const ROLE_TAGS = [
   { value: 'other', label: 'Other' },
 ]
 
-const DEFAULT_STAGES = ['Sourcing', 'Quoting', 'Quote Sent', 'Awarded', 'Lost']
+const DEFAULT_STAGES = [
+  { name: 'Sourcing', stage_type: 'active' },
+  { name: 'Quoting', stage_type: 'active' },
+  { name: 'Quote Sent', stage_type: 'active' },
+  { name: 'Awarded', stage_type: 'won' },
+  { name: 'Lost', stage_type: 'lost' },
+  { name: 'Declined', stage_type: 'declined' },
+]
+
+const STAGE_TYPES = [
+  { value: 'active', label: 'Active' },
+  { value: 'won', label: 'Won' },
+  { value: 'lost', label: 'Lost' },
+  { value: 'declined', label: 'Declined' },
+]
+
+function stageTypeBadgeClass(stageType) {
+  switch (stageType) {
+    case 'won': return 'badge badge-green'
+    case 'lost': return 'badge badge-red'
+    case 'declined': return 'badge badge-amber'
+    default: return null
+  }
+}
 
 // deal_stages has a unique (profile_id, name) constraint — translates that
 // violation into plain English, same treatment as the stage_id foreign-key
@@ -122,6 +145,9 @@ export default function Pipeline() {
         <button className={`${styles.tab} ${tab === 'tasks' ? styles.tabActive : ''}`} onClick={() => setTab('tasks')}>
           <ListTodo size={15} /> Tasks
         </button>
+        <button className={`${styles.tab} ${tab === 'reports' ? styles.tabActive : ''}`} onClick={() => setTab('reports')}>
+          <BarChart3 size={15} /> Reports
+        </button>
       </div>
 
       {tab === 'companies' && <CompaniesTab openCompanyId={jumpCompanyId} />}
@@ -129,6 +155,7 @@ export default function Pipeline() {
       {tab === 'stages' && <StagesTab />}
       {tab === 'deals' && <DealsTab initialDealId={initialDealId} openDealId={jumpDealId} />}
       {tab === 'tasks' && <TasksTab onJump={jumpToEntity} />}
+      {tab === 'reports' && <ReportsTab />}
     </div>
   )
 }
@@ -136,35 +163,56 @@ export default function Pipeline() {
 // ---------------------------------------------------------------------
 // Companies
 // ---------------------------------------------------------------------
+// Loosens an NSN/CAGE search term to just its alphanumerics so "5340-01-
+// 592-1509" matches a search for "534001592" and vice versa — members
+// shouldn't have to match punctuation exactly to find a part.
+function normalizeSearchTerm(value) {
+  return (value || '').toLowerCase().replace(/[^a-z0-9]/g, '')
+}
+
 function CompaniesTab({ openCompanyId }) {
   const { user } = useAuth()
   const [companies, setCompanies] = useState(null)
+  const [nsnsByCompany, setNsnsByCompany] = useState({})
   const [error, setError] = useState('')
   const [expandedId, setExpandedId] = useState(null)
+  const [search, setSearch] = useState('')
 
   useEffect(() => { if (openCompanyId) setExpandedId(openCompanyId) }, [openCompanyId])
   const [formOpen, setFormOpen] = useState(false)
   const [editingId, setEditingId] = useState(null)
-  const [form, setForm] = useState({ name: '', company_type: 'vendor', website: '', address: '' })
+  const [form, setForm] = useState({ name: '', company_type: 'vendor', website: '', address: '', cage_code: '' })
   const [saving, setSaving] = useState(false)
 
   const load = useCallback(async () => {
-    const { data, error: err } = await supabase.from('companies').select('*').order('name')
+    const [{ data: companyRows, error: err }, { data: nsnRows }] = await Promise.all([
+      supabase.from('companies').select('*').order('name'),
+      supabase.from('company_nsns').select('id, company_id, nsn'),
+    ])
     if (err) { setError(err.message); return }
-    setCompanies(data || [])
+    setCompanies(companyRows || [])
+    const byCompany = {}
+    for (const row of nsnRows || []) {
+      if (!byCompany[row.company_id]) byCompany[row.company_id] = []
+      byCompany[row.company_id].push(row)
+    }
+    setNsnsByCompany(byCompany)
   }, [])
 
   useEffect(() => { load() }, [load])
 
   function openCreate() {
     setEditingId(null)
-    setForm({ name: '', company_type: 'vendor', website: '', address: '' })
+    setForm({ name: '', company_type: 'vendor', website: '', address: '', cage_code: '' })
     setFormOpen(true)
   }
 
   function openEdit(company) {
     setEditingId(company.id)
-    setForm({ name: company.name, company_type: company.company_type, website: company.website || '', address: company.address || '' })
+    setForm({
+      name: company.name, company_type: company.company_type, website: company.website || '',
+      address: company.address || '', cage_code: company.cage_code || '',
+    })
     setFormOpen(true)
   }
 
@@ -173,16 +221,15 @@ function CompaniesTab({ openCompanyId }) {
     setSaving(true)
     setError('')
     try {
+      const payload = {
+        name: form.name.trim(), company_type: form.company_type, website: form.website.trim() || null,
+        address: form.address.trim() || null, cage_code: form.cage_code.trim() || null,
+      }
       if (editingId) {
-        const { error: err } = await supabase.from('companies').update({
-          name: form.name.trim(), company_type: form.company_type, website: form.website.trim() || null, address: form.address.trim() || null,
-        }).eq('id', editingId)
+        const { error: err } = await supabase.from('companies').update(payload).eq('id', editingId)
         if (err) throw err
       } else {
-        const { error: err } = await supabase.from('companies').insert({
-          name: form.name.trim(), company_type: form.company_type, website: form.website.trim() || null, address: form.address.trim() || null,
-          created_by_profile_id: user.id,
-        })
+        const { error: err } = await supabase.from('companies').insert({ ...payload, created_by_profile_id: user.id })
         if (err) throw err
       }
       setFormOpen(false)
@@ -194,13 +241,39 @@ function CompaniesTab({ openCompanyId }) {
     }
   }
 
+  async function unlinkNsn(nsnRowId, companyId) {
+    if (!window.confirm('Unlink this NSN from this company? This only removes the tag — it doesn\'t touch any deal history.')) return
+    const prev = nsnsByCompany[companyId] || []
+    setNsnsByCompany((m) => ({ ...m, [companyId]: prev.filter((n) => n.id !== nsnRowId) }))
+    const { error: err } = await supabase.from('company_nsns').delete().eq('id', nsnRowId)
+    if (err) {
+      setError(err.message)
+      setNsnsByCompany((m) => ({ ...m, [companyId]: prev }))
+    }
+  }
+
   if (companies === null) return <div className="spinner" />
+
+  const searchTerm = normalizeSearchTerm(search)
+  const filtered = !searchTerm ? companies : companies.filter((c) => {
+    if (normalizeSearchTerm(c.name).includes(searchTerm)) return true
+    if (c.cage_code && normalizeSearchTerm(c.cage_code).includes(searchTerm)) return true
+    return (nsnsByCompany[c.id] || []).some((n) => normalizeSearchTerm(n.nsn).includes(searchTerm))
+  })
 
   return (
     <div className={styles.tabPanel}>
       <div className={styles.panelToolbar}>
-        <p className={styles.count}>{companies.length} {companies.length === 1 ? 'company' : 'companies'} in the shared directory</p>
+        <p className={styles.count}>{filtered.length} of {companies.length} {companies.length === 1 ? 'company' : 'companies'} in the shared directory</p>
         <button className="btn btn-primary" onClick={openCreate}><Plus size={14} /> Add Company</button>
+      </div>
+
+      <div className={styles.searchRow}>
+        <Search size={14} />
+        <input
+          value={search} onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search by name, CAGE code, or NSN…"
+        />
       </div>
 
       {error && <div className="alert alert-error">{error}</div>}
@@ -230,6 +303,10 @@ function CompaniesTab({ openCompanyId }) {
               <label className="label">Address</label>
               <input className="input" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="City, State" />
             </div>
+            <div>
+              <label className="label">CAGE Code</label>
+              <input className="input" value={form.cage_code} onChange={(e) => setForm({ ...form, cage_code: e.target.value })} placeholder="1A2B3" />
+            </div>
           </div>
           <button className="btn btn-primary" disabled={saving} onClick={save}>{saving ? 'Saving…' : 'Save Company'}</button>
         </div>
@@ -238,27 +315,46 @@ function CompaniesTab({ openCompanyId }) {
       {companies.length === 0 && !formOpen && (
         <p className={styles.emptyState}>No companies yet — add the first vendor, supplier, or packer/shipper you're tracking.</p>
       )}
+      {companies.length > 0 && filtered.length === 0 && (
+        <p className={styles.emptyState}>No companies match "{search}".</p>
+      )}
 
       <div className={styles.list}>
-        {companies.map((c) => (
+        {filtered.map((c) => {
+          const nsns = nsnsByCompany[c.id] || []
+          return (
           <div key={c.id} className={styles.listRow}>
             <button className={styles.rowMain} onClick={() => setExpandedId(expandedId === c.id ? null : c.id)}>
               {expandedId === c.id ? <ChevronDownIcon size={16} /> : <ChevronRight size={16} />}
               <span className={styles.rowTitle}>{c.name}</span>
               <span className={roleBadgeClass(c.company_type)}>{labelFor(COMPANY_TYPES, c.company_type)}</span>
+              {c.cage_code && <span className={styles.rowMeta}>CAGE {c.cage_code}</span>}
               {c.website && <span className={styles.rowMeta}>{c.website}</span>}
             </button>
             <button className={styles.iconBtn} onClick={() => openEdit(c)}><Pencil size={14} /></button>
             {expandedId === c.id && (
               <div className={styles.expandedPanel}>
                 {c.address && <p className={styles.detailLine}>{c.address}</p>}
+                {nsns.length > 0 && (
+                  <div className={styles.chipRow}>
+                    {nsns.map((n) => (
+                      <span key={n.id} className="badge badge-navy" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, paddingRight: 4 }}>
+                        {n.nsn}
+                        <button type="button" className={styles.chipRemoveBtn} onClick={() => unlinkNsn(n.id, c.id)} title="Unlink this NSN">
+                          <X size={11} />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
                 <CompanyContacts companyId={c.id} />
                 <TasksPanel parentField="company_id" parentId={c.id} />
                 <NotesPanel parentField="company_id" parentId={c.id} allowSharing />
               </div>
             )}
           </div>
-        ))}
+          )
+        })}
       </div>
     </div>
   )
@@ -664,6 +760,7 @@ function StagesTab() {
   const [stages, setStages] = useState(null)
   const [error, setError] = useState('')
   const [newName, setNewName] = useState('')
+  const [newStageType, setNewStageType] = useState('active')
   const [renamingId, setRenamingId] = useState(null)
   const [renameValue, setRenameValue] = useState('')
   const [busy, setBusy] = useState(false)
@@ -675,7 +772,7 @@ function StagesTab() {
     if ((data || []).length === 0) {
       // First visit — seed a starter pipeline rather than showing an empty
       // screen with no obvious next step. Still fully editable afterward.
-      const seedRows = DEFAULT_STAGES.map((name, i) => ({ profile_id: user.id, name, sort_order: i }))
+      const seedRows = DEFAULT_STAGES.map((s, i) => ({ profile_id: user.id, name: s.name, stage_type: s.stage_type, sort_order: i }))
       const { data: seeded, error: seedErr } = await supabase.from('deal_stages').insert(seedRows).select('*')
       if (seedErr) { setError(seedErr.message); return }
       setStages((seeded || []).sort((a, b) => a.sort_order - b.sort_order))
@@ -692,15 +789,22 @@ function StagesTab() {
     setError('')
     try {
       const nextOrder = stages.length > 0 ? Math.max(...stages.map((s) => s.sort_order)) + 1 : 0
-      const { error: err } = await supabase.from('deal_stages').insert({ profile_id: user.id, name: newName.trim(), sort_order: nextOrder })
+      const { error: err } = await supabase.from('deal_stages').insert({ profile_id: user.id, name: newName.trim(), stage_type: newStageType, sort_order: nextOrder })
       if (err) throw err
       setNewName('')
+      setNewStageType('active')
       await load()
     } catch (err) {
       setError(friendlyStageError(err))
     } finally {
       setBusy(false)
     }
+  }
+
+  async function changeStageType(id, stageType) {
+    setStages((prev) => prev.map((s) => (s.id === id ? { ...s, stage_type: stageType } : s)))
+    const { error: err } = await supabase.from('deal_stages').update({ stage_type: stageType }).eq('id', id)
+    if (err) { setError(err.message); await load() }
   }
 
   async function renameStage(id) {
@@ -780,6 +884,13 @@ function StagesTab() {
             ) : (
               <span className={styles.stageName}>{s.name}</span>
             )}
+            <select
+              className="input" style={{ maxWidth: 130 }} value={s.stage_type || 'active'}
+              onChange={(e) => changeStageType(s.id, e.target.value)}
+              title="What this stage counts as in Reports"
+            >
+              {STAGE_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+            </select>
             <button className={styles.iconBtn} disabled={busy} onClick={() => { setRenamingId(s.id); setRenameValue(s.name) }}><Pencil size={14} /></button>
             <button className={styles.iconBtn} disabled={busy} onClick={() => deleteStage(s.id)}><Trash2 size={14} /></button>
           </div>
@@ -794,8 +905,12 @@ function StagesTab() {
           onChange={(e) => setNewName(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && addStage()}
         />
+        <select className="input" style={{ maxWidth: 130 }} value={newStageType} onChange={(e) => setNewStageType(e.target.value)}>
+          {STAGE_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+        </select>
         <button className="btn btn-ghost" disabled={busy || !newName.trim()} onClick={addStage}><Plus size={14} /> Add Stage</button>
       </div>
+      <p className={styles.fieldHintSmall}>Stage type controls what shows up in Reports — mark the stages that mean a deal was won, lost, or declined (by you, before an outcome).</p>
     </div>
   )
 }
@@ -1178,6 +1293,101 @@ function TasksTab({ onJump }) {
           })}
         </ul>
       )}
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------
+// Reports tab (Phase 4) — active pipeline value/counts by stage, plus
+// won/lost/declined outcome rates. Outcome semantics come entirely from
+// deal_stages.stage_type, tagged per-stage in the Stages tab — a stage
+// literally named "Awarded" only counts as a win if it's tagged that way,
+// since stage names are freely renameable per member.
+// ---------------------------------------------------------------------
+function ReportsTab() {
+  const [deals, setDeals] = useState(null)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    supabase
+      .from('deals')
+      .select('id, value_estimate, deal_stages(name, stage_type)')
+      .then(({ data, error: err }) => {
+        if (err) { setError(err.message); return }
+        setDeals(data || [])
+      })
+  }, [])
+
+  if (deals === null) return <div className="spinner" />
+  if (error) return <div className="alert alert-error">{error}</div>
+
+  const activeByStage = {}
+  let wonCount = 0, lostCount = 0, declinedCount = 0
+  for (const d of deals) {
+    const stageType = d.deal_stages?.stage_type || 'active'
+    const stageName = d.deal_stages?.name || 'No stage'
+    if (stageType === 'won') wonCount += 1
+    else if (stageType === 'lost') lostCount += 1
+    else if (stageType === 'declined') declinedCount += 1
+    else {
+      if (!activeByStage[stageName]) activeByStage[stageName] = { count: 0, value: 0 }
+      activeByStage[stageName].count += 1
+      activeByStage[stageName].value += Number(d.value_estimate) || 0
+    }
+  }
+  const activeRows = Object.entries(activeByStage).map(([name, v]) => ({ name, ...v }))
+  const activeTotal = activeRows.reduce((sum, r) => sum + r.value, 0)
+  const activeCount = activeRows.reduce((sum, r) => sum + r.count, 0)
+  const closedTotal = wonCount + lostCount + declinedCount
+  const pct = (n) => (closedTotal > 0 ? Math.round((n / closedTotal) * 100) : 0)
+
+  return (
+    <div className={styles.tabPanel}>
+      <div className={styles.panelToolbar}>
+        <p className={styles.count}>{deals.length} total {deals.length === 1 ? 'deal' : 'deals'}</p>
+      </div>
+
+      <div className={styles.formCard}>
+        <h3 style={{ marginBottom: 'var(--sp-2)' }}>Active pipeline</h3>
+        <p className={styles.fieldHintSmall}>{activeCount} open {activeCount === 1 ? 'deal' : 'deals'}, ${Math.round(activeTotal).toLocaleString()} total value estimate.</p>
+        {activeRows.length === 0 ? (
+          <p className={styles.emptyState}>No open deals right now.</p>
+        ) : (
+          <div className={styles.list} style={{ marginTop: 'var(--sp-3)' }}>
+            {activeRows.map((r) => (
+              <div key={r.name} className={styles.listRow} style={{ justifyContent: 'space-between' }}>
+                <span className={styles.stageName}>{r.name}</span>
+                <span className={styles.rowMeta}>{r.count} {r.count === 1 ? 'deal' : 'deals'} · ${Math.round(r.value).toLocaleString()}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className={styles.formCard}>
+        <h3 style={{ marginBottom: 'var(--sp-2)' }}>Outcomes</h3>
+        {closedTotal === 0 ? (
+          <p className={styles.emptyState}>No deals have reached a Won/Lost/Declined stage yet.</p>
+        ) : (
+          <div className={styles.list}>
+            <div className={styles.listRow} style={{ justifyContent: 'space-between' }}>
+              <span className="badge badge-green">Won</span>
+              <span className={styles.rowMeta}>{wonCount} ({pct(wonCount)}%)</span>
+            </div>
+            <div className={styles.listRow} style={{ justifyContent: 'space-between' }}>
+              <span className="badge badge-red">Lost</span>
+              <span className={styles.rowMeta}>{lostCount} ({pct(lostCount)}%)</span>
+            </div>
+            <div className={styles.listRow} style={{ justifyContent: 'space-between' }}>
+              <span className="badge badge-amber">Declined</span>
+              <span className={styles.rowMeta}>{declinedCount} ({pct(declinedCount)}%)</span>
+            </div>
+          </div>
+        )}
+        <p className={styles.fieldHintSmall} style={{ marginTop: 'var(--sp-3)' }}>
+          A stage only counts here once it's tagged Won, Lost, or Declined in Pipeline Stages — retag a stage there if this doesn't match what you expect.
+        </p>
+      </div>
     </div>
   )
 }
