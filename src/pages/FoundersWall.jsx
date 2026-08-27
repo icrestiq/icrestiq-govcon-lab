@@ -4,10 +4,12 @@ import { Crown } from 'lucide-react'
 import FounderBadge from '../components/FounderBadge'
 import Avatar from '../components/Avatar'
 import styles from './FoundersWall.module.css'
+import useDocumentTitle from '../hooks/useDocumentTitle'
 
 const WALL_SIZE = 25
 
 export default function FoundersWall() {
+  useDocumentTitle('Founders Wall — GovCon Lab')
   const [founders, setFounders] = useState([])
   const [loading, setLoading] = useState(true)
 

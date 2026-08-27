@@ -493,6 +493,10 @@
   to { transform: rotate(360deg); }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .spin { animation: none; }
+}
+
 .bidResults {
   margin-top: var(--sp-3);
   padding: var(--sp-4);

@@ -5,7 +5,7 @@ import { useState } from 'react'
 // one. Used anywhere a member enters a short free-text list (PSC codes,
 // agency allow/deny lists) with no fixed reference dataset to validate
 // against, unlike the NAICS selector which always looks up real codes.
-export default function TagInput({ value = [], onChange, placeholder, transform = (s) => s.trim(), maxItems }) {
+export default function TagInput({ value = [], onChange, placeholder, transform = (s) => s.trim(), maxItems, id, ariaLabel }) {
   const [text, setText] = useState('')
   const atLimit = maxItems != null && value.length >= maxItems
 
@@ -54,12 +54,14 @@ export default function TagInput({ value = [], onChange, placeholder, transform 
       )}
       {!atLimit ? (
         <input
+          id={id}
           className="input"
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={handleKeyDown}
           onBlur={commit}
           placeholder={placeholder}
+          aria-label={ariaLabel}
         />
       ) : (
         <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0 }}>

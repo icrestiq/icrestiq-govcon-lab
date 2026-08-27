@@ -6,6 +6,8 @@ import { Send, Hash, Users, MessageCircle, X, Lock, SmilePlus, Trash2, Flag, Pin
 import { formatDistanceToNow } from 'date-fns'
 import EmojiPicker from '../components/EmojiPicker'
 import FounderBadge from '../components/FounderBadge'
+import useDialogA11y from '../hooks/useDialogA11y'
+import useDocumentTitle from '../hooks/useDocumentTitle'
 import styles from './Chat.module.css'
 
 // Turns a URL in a message into a real clickable link — including a
@@ -203,6 +205,9 @@ const CHAT_RULES_SECTIONS = [
 const CHAT_RULES_CLOSING = 'By participating in GovCon Lab chat, you agree to follow these community rules.'
 
 function ChatRulesModal({ onClose }) {
+  const dialogRef = useRef(null)
+  useDialogA11y({ isOpen: true, onClose, containerRef: dialogRef })
+
   return (
     <div
       style={{
@@ -213,6 +218,10 @@ function ChatRulesModal({ onClose }) {
       onClick={onClose}
     >
       <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="chat-rules-title"
         style={{
           background: '#fff', borderRadius: 10, maxWidth: 620, width: '100%',
           maxHeight: '85vh', display: 'flex', flexDirection: 'column',
@@ -224,9 +233,9 @@ function ChatRulesModal({ onClose }) {
           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
           padding: '20px 28px', borderBottom: '1px solid #eee', flexShrink: 0,
         }}>
-          <h2 style={{ margin: 0, fontSize: 18, color: '#1F3864' }}>GovCon Lab Community Chat Rules</h2>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#888', flexShrink: 0 }}>
-            <X size={20} />
+          <h2 id="chat-rules-title" style={{ margin: 0, fontSize: 18, color: '#1F3864' }}>GovCon Lab Community Chat Rules</h2>
+          <button onClick={onClose} aria-label="Close" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#888', flexShrink: 0 }}>
+            <X size={20} aria-hidden="true" />
           </button>
         </div>
 
@@ -654,6 +663,7 @@ export default function Chat() {
   }
 
   const currentRoom = DEFAULT_ROOMS.find(r => r.id === activeRoom) || DEFAULT_ROOMS[0]
+  useDocumentTitle(`#${currentRoom.name} — Community — GovCon Lab`)
 
   // Pinned posts float to the top (most recently pinned first), then
   // everything else falls back to normal chronological order.
@@ -691,8 +701,8 @@ export default function Chat() {
         <div className={styles.messageBubble}>
           <div className={styles.messageMeta}>
             {isPinned && (
-              <span title="Pinned" style={{ display: 'inline-flex', alignItems: 'center', color: '#C9A84C' }}>
-                <Pin size={12} fill="#C9A84C" />
+              <span aria-label="Pinned" style={{ display: 'inline-flex', alignItems: 'center', color: '#C9A84C' }}>
+                <Pin size={12} fill="#C9A84C" aria-hidden="true" />
               </span>
             )}
             <span className={styles.messageUser}>{msg.username || 'Member'}</span>
@@ -712,9 +722,11 @@ export default function Chat() {
                   key={emoji}
                   className={`${styles.reactionPill} ${info.reactedByMe ? styles.reactionPillActive : ''}`}
                   onClick={() => toggleReaction(msg, emoji)}
+                  aria-pressed={info.reactedByMe}
+                  aria-label={`${emoji} reaction, ${info.count} ${info.count === 1 ? 'person' : 'people'}${info.reactedByMe ? ', including you — click to remove' : ' — click to react'}`}
                 >
-                  <span>{emoji}</span>
-                  <span>{info.count}</span>
+                  <span aria-hidden="true">{emoji}</span>
+                  <span aria-hidden="true">{info.count}</span>
                 </button>
               ))}
             </div>
@@ -722,7 +734,8 @@ export default function Chat() {
 
           <div className={styles.messageActions}>
             <EmojiPicker
-              trigger={<SmilePlus size={14} />}
+              trigger={<SmilePlus size={14} aria-hidden="true" />}
+              label="React with emoji"
               onSelect={emoji => toggleReaction(msg, emoji)}
             />
             {!isReply && gate.canComment && (
@@ -734,7 +747,7 @@ export default function Chat() {
 
             {!isReply && isAdmin && (
               <button className={styles.actionBtn} onClick={() => togglePin(msg)} title={msg.pinned_at ? 'Unpin this post' : 'Pin this post to the top of the room'}>
-                {msg.pinned_at ? <PinOff size={13} /> : <Pin size={13} />}
+                {msg.pinned_at ? <PinOff size={13} aria-hidden="true" /> : <Pin size={13} aria-hidden="true" />}
                 {msg.pinned_at ? 'Unpin' : 'Pin'}
               </button>
             )}
@@ -746,14 +759,21 @@ export default function Chat() {
                   disabled={alreadyReported}
                   onClick={() => setReportMenuFor(reportMenuFor === msg.id ? null : msg.id)}
                   title={alreadyReported ? 'You already reported this' : 'Report this post'}
+                  aria-haspopup="true"
+                  aria-expanded={reportMenuFor === msg.id}
                 >
-                  <Flag size={13} fill={alreadyReported ? 'currentColor' : 'none'} />
+                  <Flag size={13} fill={alreadyReported ? 'currentColor' : 'none'} aria-hidden="true" />
                   {alreadyReported ? 'Reported' : 'Report'}
                 </button>
                 {reportMenuFor === msg.id && (
-                  <div className={styles.reportMenu}>
+                  <div
+                    className={styles.reportMenu}
+                    role="menu"
+                    aria-label="Report reason"
+                    onKeyDown={(e) => { if (e.key === 'Escape') setReportMenuFor(null) }}
+                  >
                     {REPORT_REASONS.map(r => (
-                      <button key={r.id} onClick={() => submitReport(msg, r.id)}>
+                      <button key={r.id} role="menuitem" onClick={() => submitReport(msg, r.id)}>
                         {r.label}
                       </button>
                     ))}
@@ -763,8 +783,8 @@ export default function Chat() {
             )}
 
             {canDelete && (
-              <button className={`${styles.actionBtn} ${styles.deleteBtn}`} onClick={() => deleteMessage(msg)}>
-                <Trash2 size={13} />
+              <button className={`${styles.actionBtn} ${styles.deleteBtn}`} onClick={() => deleteMessage(msg)} aria-label="Delete message">
+                <Trash2 size={13} aria-hidden="true" />
               </button>
             )}
           </div>
@@ -786,7 +806,7 @@ export default function Chat() {
             textAlign: 'center',
           }}
         >
-          <ScrollText size={15} />
+          <ScrollText size={15} aria-hidden="true" />
           Read the Community Chat Rules
         </button>
 
@@ -840,17 +860,17 @@ export default function Chat() {
         <div className={styles.chatHeader}>
           <div className={styles.chatHeaderLeft}>
             {currentRoom.foundingOnly ? (
-              <Lock size={18} style={{ color: 'var(--green)' }} />
+              <Lock size={18} style={{ color: 'var(--green)' }} aria-hidden="true" />
             ) : (
-              <Hash size={18} style={{ color: 'var(--green)' }} />
+              <Hash size={18} style={{ color: 'var(--green)' }} aria-hidden="true" />
             )}
             <div>
-              <div className={styles.chatRoomName}>{currentRoom.name}</div>
+              <h1 className={styles.chatRoomName}>{currentRoom.name}</h1>
               <div className={styles.chatRoomDesc}>{currentRoom.desc}</div>
             </div>
           </div>
           <div className={styles.onlineIndicator}>
-            <Users size={14} />
+            <Users size={14} aria-hidden="true" />
             <span>{onlineCount} online</span>
           </div>
         </div>
@@ -894,19 +914,19 @@ export default function Chat() {
         {replyingTo && (
           <div className={styles.replyBanner}>
             <span>Replying to <strong>{replyingTo.username}</strong>: {replyingTo.content.slice(0, 60)}{replyingTo.content.length > 60 ? '…' : ''}</span>
-            <button onClick={() => setReplyingTo(null)}><X size={14} /></button>
+            <button onClick={() => setReplyingTo(null)} aria-label="Cancel reply"><X size={14} aria-hidden="true" /></button>
           </div>
         )}
 
         {sendError && (
-          <div className={styles.replyBanner} style={{ color: '#c44' }}>
+          <div className={styles.replyBanner} style={{ color: '#c44' }} role="alert">
             <span>⚠️ {sendError}</span>
-            <button onClick={() => setSendError('')}><X size={14} /></button>
+            <button onClick={() => setSendError('')} aria-label="Dismiss error"><X size={14} aria-hidden="true" /></button>
           </div>
         )}
 
         <form className={styles.inputArea} onSubmit={sendMessage}>
-          <EmojiPicker trigger={<SmilePlus size={18} />} onSelect={insertEmojiIntoComposer} />
+          <EmojiPicker trigger={<SmilePlus size={18} aria-hidden="true" />} label="Insert emoji" onSelect={insertEmojiIntoComposer} />
           <textarea
             ref={inputRef}
             className={`input ${styles.chatInput}`}
@@ -938,8 +958,9 @@ export default function Chat() {
             type="submit"
             className={`btn btn-primary ${styles.sendBtn}`}
             disabled={!newMsg.trim() || sending || !gate.canComment || (!replyingTo && !gate.canPost)}
+            aria-label="Send message"
           >
-            <Send size={16} />
+            <Send size={16} aria-hidden="true" />
           </button>
         </form>
       </div>

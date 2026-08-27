@@ -12,7 +12,7 @@
 // built yet (the latter deferred as its own follow-up, not part of this
 // phase).
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { DndContext, useDraggable, useDroppable, useSensor, useSensors, PointerSensor } from '@dnd-kit/core'
 import { useAuth } from '../lib/AuthContext'
@@ -22,6 +22,8 @@ import {
   MessageSquare, ChevronDown as ChevronDownIcon, ChevronRight, Briefcase,
   ListTodo, Square, CheckSquare, Calendar, Search, BarChart3, FileText,
 } from 'lucide-react'
+import useDialogA11y from '../hooks/useDialogA11y'
+import useDocumentTitle from '../hooks/useDocumentTitle'
 import styles from './Pipeline.module.css'
 
 const COMPANY_TYPES = [
@@ -91,6 +93,7 @@ function labelFor(options, value) {
 }
 
 export default function Pipeline() {
+  useDocumentTitle('Sourcing Pipeline — GovCon Lab')
   const [searchParams, setSearchParams] = useSearchParams()
   // Captured once via lazy init, not read reactively — the clearing effect
   // below wipes these query params right after mount so a page refresh
@@ -282,7 +285,7 @@ function CompaniesTab({ openCompanyId }) {
         <div className={styles.formCard}>
           <div className={styles.formHeader}>
             <h3>{editingId ? 'Edit Company' : 'Add Company'}</h3>
-            <button className={styles.iconBtn} onClick={() => setFormOpen(false)}><X size={16} /></button>
+            <button className={styles.iconBtn} onClick={() => setFormOpen(false)} aria-label="Cancel"><X size={16} aria-hidden="true" /></button>
           </div>
           <div className={styles.formGrid}>
             <div>
@@ -331,7 +334,7 @@ function CompaniesTab({ openCompanyId }) {
               {c.cage_code && <span className={styles.rowMeta}>CAGE {c.cage_code}</span>}
               {c.website && <span className={styles.rowMeta}>{c.website}</span>}
             </button>
-            <button className={styles.iconBtn} onClick={() => openEdit(c)}><Pencil size={14} /></button>
+            <button className={styles.iconBtn} onClick={() => openEdit(c)} aria-label="Edit company"><Pencil size={14} aria-hidden="true" /></button>
             {expandedId === c.id && (
               <div className={styles.expandedPanel}>
                 {c.address && <p className={styles.detailLine}>{c.address}</p>}
@@ -340,8 +343,8 @@ function CompaniesTab({ openCompanyId }) {
                     {nsns.map((n) => (
                       <span key={n.id} className="badge badge-navy" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, paddingRight: 4 }}>
                         {n.nsn}
-                        <button type="button" className={styles.chipRemoveBtn} onClick={() => unlinkNsn(n.id, c.id)} title="Unlink this NSN">
-                          <X size={11} />
+                        <button type="button" className={styles.chipRemoveBtn} onClick={() => unlinkNsn(n.id, c.id)} aria-label={`Unlink NSN ${n.nsn}`}>
+                          <X size={11} aria-hidden="true" />
                         </button>
                       </span>
                     ))}
@@ -460,7 +463,7 @@ function ContactsTab({ openContactId }) {
         <div className={styles.formCard}>
           <div className={styles.formHeader}>
             <h3>{editingId ? 'Edit Contact' : 'Add Contact'}</h3>
-            <button className={styles.iconBtn} onClick={() => setFormOpen(false)}><X size={16} /></button>
+            <button className={styles.iconBtn} onClick={() => setFormOpen(false)} aria-label="Cancel"><X size={16} aria-hidden="true" /></button>
           </div>
           <div className={styles.formGrid}>
             <div>
@@ -506,7 +509,7 @@ function ContactsTab({ openContactId }) {
               <span className={roleBadgeClass(ct.role_tag)}>{labelFor(ROLE_TAGS, ct.role_tag)}</span>
               {ct.companies?.name && <span className={styles.rowMeta}>{ct.companies.name}</span>}
             </button>
-            <button className={styles.iconBtn} onClick={() => openEdit(ct)}><Pencil size={14} /></button>
+            <button className={styles.iconBtn} onClick={() => openEdit(ct)} aria-label="Edit contact"><Pencil size={14} aria-hidden="true" /></button>
             {expandedId === ct.id && (
               <div className={styles.expandedPanel}>
                 {(ct.email || ct.phone) && (
@@ -591,14 +594,14 @@ function TasksPanel({ parentField, parentId }) {
             const overdue = !t.completed_at && t.due_date && t.due_date < new Date().toISOString().slice(0, 10)
             return (
               <li key={t.id} className={styles.taskItem}>
-                <button type="button" className={styles.taskCheckBtn} onClick={() => toggleComplete(t)} title={t.completed_at ? 'Mark not done' : 'Mark done'}>
-                  {t.completed_at ? <CheckSquare size={15} /> : <Square size={15} />}
+                <button type="button" className={styles.taskCheckBtn} onClick={() => toggleComplete(t)} aria-label={t.completed_at ? `Mark "${t.title}" not done` : `Mark "${t.title}" done`}>
+                  {t.completed_at ? <CheckSquare size={15} aria-hidden="true" /> : <Square size={15} aria-hidden="true" />}
                 </button>
                 <div className={styles.taskBody}>
                   <span className={t.completed_at ? styles.taskTitleDone : styles.taskTitle}>{t.title}</span>
                   {t.due_date && (
                     <span className={overdue ? styles.taskDueOverdue : styles.taskDue}>
-                      <Calendar size={11} /> {new Date(`${t.due_date}T00:00:00`).toLocaleDateString()}
+                      <Calendar size={11} aria-hidden="true" /> {new Date(`${t.due_date}T00:00:00`).toLocaleDateString()}
                     </span>
                   )}
                 </div>
@@ -869,13 +872,14 @@ function StagesTab() {
         {stages.map((s, i) => (
           <div key={s.id} className={styles.stageRow}>
             <div className={styles.stageOrderBtns}>
-              <button className={styles.iconBtn} disabled={busy || i === 0} onClick={() => moveStage(i, -1)}><ChevronUp size={14} /></button>
-              <button className={styles.iconBtn} disabled={busy || i === stages.length - 1} onClick={() => moveStage(i, 1)}><ChevronDown size={14} /></button>
+              <button className={styles.iconBtn} disabled={busy || i === 0} onClick={() => moveStage(i, -1)} aria-label={`Move "${s.name}" up`}><ChevronUp size={14} aria-hidden="true" /></button>
+              <button className={styles.iconBtn} disabled={busy || i === stages.length - 1} onClick={() => moveStage(i, 1)} aria-label={`Move "${s.name}" down`}><ChevronDown size={14} aria-hidden="true" /></button>
             </div>
             {renamingId === s.id ? (
               <input
                 className="input"
                 autoFocus
+                aria-label={`Rename stage "${s.name}"`}
                 value={renameValue}
                 onChange={(e) => setRenameValue(e.target.value)}
                 onBlur={() => renameStage(s.id)}
@@ -887,12 +891,12 @@ function StagesTab() {
             <select
               className="input" style={{ maxWidth: 130 }} value={s.stage_type || 'active'}
               onChange={(e) => changeStageType(s.id, e.target.value)}
-              title="What this stage counts as in Reports"
+              aria-label={`What "${s.name}" counts as in Reports`}
             >
               {STAGE_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
             </select>
-            <button className={styles.iconBtn} disabled={busy} onClick={() => { setRenamingId(s.id); setRenameValue(s.name) }}><Pencil size={14} /></button>
-            <button className={styles.iconBtn} disabled={busy} onClick={() => deleteStage(s.id)}><Trash2 size={14} /></button>
+            <button className={styles.iconBtn} disabled={busy} onClick={() => { setRenamingId(s.id); setRenameValue(s.name) }} aria-label={`Rename "${s.name}"`}><Pencil size={14} aria-hidden="true" /></button>
+            <button className={styles.iconBtn} disabled={busy} onClick={() => deleteStage(s.id)} aria-label={`Delete "${s.name}"`}><Trash2 size={14} aria-hidden="true" /></button>
           </div>
         ))}
       </div>
@@ -1057,6 +1061,19 @@ function DealCard({ deal, onClick }) {
   const companyCount = deal.deal_companies?.length || 0
   const identifierLine = dealIdentifierLine(deal)
 
+  // useDraggable's own `attributes` already supplies role="button" and
+  // tabIndex={0} (dnd-kit does this regardless of which sensors are
+  // configured), but keyboard *activation* of a div with an ARIA button
+  // role isn't automatic the way it is for a real <button> — only
+  // dragging was wired up (PointerSensor only, no KeyboardSensor), so
+  // without this a keyboard user could tab to the card but never open it.
+  function handleKeyDown(e) {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault()
+      onClick?.(e)
+    }
+  }
+
   return (
     <div
       ref={setNodeRef}
@@ -1065,6 +1082,7 @@ function DealCard({ deal, onClick }) {
       {...attributes}
       className={`${styles.dealCard} ${isDragging ? styles.dealCardDragging : ''}`}
       onClick={onClick}
+      onKeyDown={handleKeyDown}
     >
       <span className={styles.dealCardTitle}>{deal.title}</span>
       {identifierLine && <span className={styles.dealCardIdentifiers}>{identifierLine}</span>}
@@ -1085,6 +1103,8 @@ function DealDetailModal({ dealId, stages, onClose, onStageChange }) {
   const navigate = useNavigate()
   const [deal, setDeal] = useState(null)
   const [error, setError] = useState('')
+  const dialogRef = useRef(null)
+  useDialogA11y({ isOpen: true, onClose, containerRef: dialogRef })
 
   const load = useCallback(async () => {
     const { data, error: err } = await supabase
@@ -1132,25 +1152,32 @@ function DealDetailModal({ dealId, stages, onClose, onStageChange }) {
 
   return (
     <div className={styles.modalOverlay} onClick={onClose}>
-      <div className={styles.modalCard} onClick={(e) => e.stopPropagation()}>
+      <div
+        ref={dialogRef}
+        className={styles.modalCard}
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="deal-modal-title"
+      >
         <div className={styles.modalHeader}>
           <div>
-            <h2 className={styles.modalTitle}>{deal?.title || 'Loading…'}</h2>
+            <h2 id="deal-modal-title" className={styles.modalTitle}>{deal?.title || 'Loading…'}</h2>
             {deal && dealIdentifierLine(deal) && (
               <p className={styles.modalIdentifiers}>{dealIdentifierLine(deal)}</p>
             )}
           </div>
-          <button className={styles.iconBtn} onClick={onClose}><X size={18} /></button>
+          <button className={styles.iconBtn} onClick={onClose} aria-label="Close"><X size={18} aria-hidden="true" /></button>
         </div>
 
-        {error && <div className="alert alert-error">{error}</div>}
+        {error && <div className="alert alert-error" role="alert">{error}</div>}
 
         {!deal ? (
           <div className="spinner" />
         ) : (
           <>
             <div className={styles.modalMetaRow}>
-              <select className="input" style={{ maxWidth: 220 }} value={deal.stage_id} onChange={(e) => changeStage(e.target.value)}>
+              <select className="input" style={{ maxWidth: 220 }} value={deal.stage_id} onChange={(e) => changeStage(e.target.value)} aria-label="Deal stage">
                 {stages.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
               </select>
               {typeof deal.value_estimate === 'number' && (
@@ -1161,7 +1188,7 @@ function DealDetailModal({ dealId, stages, onClose, onStageChange }) {
                 onClick={() => navigate(`/tools/proposal-builder?deal=${dealId}`)}
                 title="Opens Proposal Builder pre-filled with this deal's solicitation, technical approach, and risk notes"
               >
-                <FileText size={14} /> Generate Proposal
+                <FileText size={14} aria-hidden="true" /> Generate Proposal
               </button>
             </div>
 
@@ -1177,9 +1204,9 @@ function DealDetailModal({ dealId, stages, onClose, onStageChange }) {
                         type="button"
                         className={styles.chipRemoveBtn}
                         onClick={() => removeCompany(dc.id)}
-                        title="Remove from this deal"
+                        aria-label={`Remove ${dc.companies?.name} from this deal`}
                       >
-                        <X size={11} />
+                        <X size={11} aria-hidden="true" />
                       </button>
                     </span>
                   ))}
@@ -1272,8 +1299,8 @@ function TasksTab({ onJump }) {
             const overdue = t.due_date && t.due_date < todayStr
             return (
               <li key={t.id} className={styles.listRow}>
-                <button type="button" className={styles.taskCheckBtn} onClick={() => complete(t)} title="Mark done">
-                  <Square size={16} />
+                <button type="button" className={styles.taskCheckBtn} onClick={() => complete(t)} aria-label={`Mark "${t.title}" done`}>
+                  <Square size={16} aria-hidden="true" />
                 </button>
                 <div className={styles.taskBody}>
                   <span className={styles.taskTitle}>{t.title}</span>

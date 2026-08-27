@@ -62,10 +62,12 @@ export default function ActivityHeatmap({ data, weeks = 26 }) {
                   key={di}
                   className={styles.cell}
                   data-level={levelFor(day.count)}
+                  role="img"
+                  aria-label={`${day.count} ${day.count === 1 ? 'activity' : 'activities'} on ${day.date}`}
                   title={`${day.count} ${day.count === 1 ? 'activity' : 'activities'} on ${day.date}`}
                 />
               ) : (
-                <div key={di} className={styles.cellBlank} />
+                <div key={di} className={styles.cellBlank} aria-hidden="true" />
               )
             ))}
           </div>
@@ -74,7 +76,7 @@ export default function ActivityHeatmap({ data, weeks = 26 }) {
       <div className={styles.legend}>
         <span>Less</span>
         {[0, 1, 2, 3, 4].map(l => (
-          <div key={l} className={styles.cell} data-level={l} />
+          <div key={l} className={styles.cell} data-level={l} role="img" aria-label={`Activity level ${l} of 4`} />
         ))}
         <span>More</span>
       </div>

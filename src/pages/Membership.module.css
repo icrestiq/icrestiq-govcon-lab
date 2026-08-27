@@ -38,6 +38,11 @@
   box-shadow: 0 1px 4px rgba(27,42,74,0.06);
 }
 
+.discountBox:focus-within {
+  border-color: var(--navy);
+  box-shadow: 0 0 0 3px rgba(27, 42, 74, 0.25);
+}
+
 .discountInput {
   flex: 1;
   border: none;

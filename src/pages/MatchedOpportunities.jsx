@@ -4,6 +4,8 @@ import { useAuth } from '../lib/AuthContext'
 import { createSuggestedBidCheckout, SUGGESTED_BID_PRICING } from '../lib/stripe'
 import { Radar, ExternalLink, Settings, ChevronDown, ChevronUp, Sparkles, Loader, RefreshCw, Copy, Check, FileText, Users, Truck, DollarSign, Database, Eye, EyeOff, Maximize2, X } from 'lucide-react'
 import { Link, useSearchParams } from 'react-router-dom'
+import useDialogA11y from '../hooks/useDialogA11y'
+import useDocumentTitle from '../hooks/useDocumentTitle'
 import styles from './MatchedOpportunities.module.css'
 
 const RECOMMENDATION_BADGE = {
@@ -62,6 +64,7 @@ function matchesDeadlineBucket(m, bucket) {
 }
 
 export default function MatchedOpportunities() {
+  useDocumentTitle('Matched Opportunities — GovCon Lab')
   const { user, profile, isAdmin } = useAuth()
   const [searchParams] = useSearchParams()
   const [matches, setMatches] = useState([])
@@ -489,6 +492,15 @@ export default function MatchedOpportunities() {
                   className={styles.cardTop}
                   style={{ cursor: 'pointer' }}
                   onClick={() => toggleExpanded(m.id)}
+                  role="button"
+                  tabIndex={0}
+                  aria-expanded={isExpanded}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      toggleExpanded(m.id)
+                    }
+                  }}
                 >
                   <h3 className={styles.oppTitle}>{opp.title}</h3>
                   <div className={styles.badgeGroup}>
@@ -733,6 +745,8 @@ function SampleBidContent() {
 // paying for one, without needing to scroll a full example inline.
 function SampleBidPreview() {
   const [open, setOpen] = useState(false)
+  const dialogRef = useRef(null)
+  useDialogA11y({ isOpen: open, onClose: () => setOpen(false), containerRef: dialogRef })
 
   return (
     <>
@@ -756,15 +770,22 @@ function SampleBidPreview() {
 
       {open && (
         <div className={styles.sampleModalOverlay} onClick={() => setOpen(false)}>
-          <div className={styles.sampleModal} onClick={(e) => e.stopPropagation()}>
+          <div
+            ref={dialogRef}
+            className={styles.sampleModal}
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="sample-bid-title"
+          >
             <div className={styles.sampleModalHeader}>
               <div>
                 <span className={styles.sampleBadge}>Sample — Example Only</span>
-                <h3>{SAMPLE_BID.oppTitle}</h3>
+                <h3 id="sample-bid-title">{SAMPLE_BID.oppTitle}</h3>
                 <p className={styles.sampleModalMeta}>{SAMPLE_BID.agency} · Sol. #{SAMPLE_BID.solicitation}</p>
               </div>
               <button type="button" className="btn btn-ghost" onClick={() => setOpen(false)}>
-                <X size={16} /> Close
+                <X size={16} aria-hidden="true" /> Close
               </button>
             </div>
             <div className={styles.sampleModalBody}>

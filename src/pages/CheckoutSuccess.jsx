@@ -3,6 +3,7 @@ import { useSearchParams, Link } from 'react-router-dom'
 import { CheckCircle, ArrowRight, Download, MessageSquare, Loader } from 'lucide-react'
 import { useAuth } from '../lib/AuthContext'
 import styles from './CheckoutResult.module.css'
+import useDocumentTitle from '../hooks/useDocumentTitle'
 
 const PRODUCT_CONTENT = {
   'hw-fasteners':    { name: 'Hardware & Fasteners Niche Playbook',   type: 'digital' },
@@ -15,6 +16,7 @@ const PRODUCT_CONTENT = {
 }
 
 export default function CheckoutSuccess() {
+  useDocumentTitle('Order Complete — GovCon Lab')
   const [params] = useSearchParams()
   const productId = params.get('product')
   const sessionId = params.get('session_id')
@@ -52,7 +54,7 @@ export default function CheckoutSuccess() {
     <div className={styles.page}>
       <div className={styles.card}>
         <div className={styles.iconWrap}>
-          <CheckCircle size={48} strokeWidth={1.5} />
+          <CheckCircle size={48} strokeWidth={1.5} aria-hidden="true" />
         </div>
 
         <div className={styles.badge}>
@@ -79,7 +81,7 @@ export default function CheckoutSuccess() {
         {product.type === 'digital' && (
           <div style={{ margin: 'var(--sp-5) 0' }}>
             {downloadError && (
-              <p style={{ color: 'var(--red)', fontSize: '0.875rem', marginBottom: 'var(--sp-3)' }}>
+              <p role="alert" style={{ color: 'var(--red)', fontSize: '0.875rem', marginBottom: 'var(--sp-3)' }}>
                 {downloadError}
               </p>
             )}
@@ -90,8 +92,8 @@ export default function CheckoutSuccess() {
               disabled={downloadLoading}
             >
               {downloadLoading
-                ? <><Loader size={16} className={styles.spin} /> Generating download link...</>
-                : <><Download size={16} /> Download Your File Now</>
+                ? <><Loader size={16} className={styles.spin} aria-hidden="true" /> Generating download link...</>
+                : <><Download size={16} aria-hidden="true" /> Download Your File Now</>
               }
             </button>
             <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textAlign: 'center', marginTop: 'var(--sp-2)' }}>
@@ -108,39 +110,39 @@ export default function CheckoutSuccess() {
           {product.type === 'membership' ? (
             <>
               <Link to="/chat" className={styles.nextItem}>
-                <MessageSquare size={18} style={{ color: 'var(--green)' }} />
+                <MessageSquare size={18} style={{ color: 'var(--green)' }} aria-hidden="true" />
                 <div>
                   <div className={styles.nextTitle}>Join the Community Rooms</div>
                   <div className={styles.nextSub}>Introduce yourself in #general</div>
                 </div>
-                <ArrowRight size={16} className={styles.nextArrow} />
+                <ArrowRight size={16} className={styles.nextArrow} aria-hidden="true" />
               </Link>
               <Link to="/store" className={styles.nextItem}>
-                <Download size={18} style={{ color: 'var(--green)' }} />
+                <Download size={18} style={{ color: 'var(--green)' }} aria-hidden="true" />
                 <div>
                   <div className={styles.nextTitle}>Explore the Store</div>
                   <div className={styles.nextSub}>Members get first access to new drops</div>
                 </div>
-                <ArrowRight size={16} className={styles.nextArrow} />
+                <ArrowRight size={16} className={styles.nextArrow} aria-hidden="true" />
               </Link>
             </>
           ) : (
             <>
               <Link to="/dashboard" className={styles.nextItem}>
-                <Download size={18} style={{ color: 'var(--green)' }} />
+                <Download size={18} style={{ color: 'var(--green)' }} aria-hidden="true" />
                 <div>
                   <div className={styles.nextTitle}>Access Your Purchase</div>
                   <div className={styles.nextSub}>Available in your dashboard under My Purchases</div>
                 </div>
-                <ArrowRight size={16} className={styles.nextArrow} />
+                <ArrowRight size={16} className={styles.nextArrow} aria-hidden="true" />
               </Link>
               <Link to="/chat" className={styles.nextItem}>
-                <MessageSquare size={18} style={{ color: 'var(--green)' }} />
+                <MessageSquare size={18} style={{ color: 'var(--green)' }} aria-hidden="true" />
                 <div>
                   <div className={styles.nextTitle}>Jump into the Community</div>
                   <div className={styles.nextSub}>Share questions in #rfq-help or #general</div>
                 </div>
-                <ArrowRight size={16} className={styles.nextArrow} />
+                <ArrowRight size={16} className={styles.nextArrow} aria-hidden="true" />
               </Link>
             </>
           )}

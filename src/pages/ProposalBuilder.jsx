@@ -309,6 +309,7 @@ function NaicsSelector({ selected, onChange }) {
         <>
           <input
             style={inputStyle}
+            aria-label="Search NAICS codes"
             placeholder="Search by code (e.g. 315210) or keyword (e.g. apparel)"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -316,15 +317,16 @@ function NaicsSelector({ selected, onChange }) {
           {results.length > 0 && (
             <div style={{ border: "1px solid #d4d4d4", borderRadius: 4, marginTop: 4, maxHeight: 220, overflowY: "auto" }}>
               {results.map((r) => (
-                <div
+                <button
                   key={r.code}
+                  type="button"
                   onClick={() => addCode(r.code)}
-                  style={{ padding: "8px 10px", cursor: "pointer", borderBottom: "1px solid #eee", fontSize: 13 }}
+                  style={{ display: "block", width: "100%", textAlign: "left", background: "none", border: "none", padding: "8px 10px", cursor: "pointer", borderBottom: "1px solid #eee", fontSize: 13, fontFamily: "inherit", color: "inherit" }}
                   onMouseEnter={(e) => (e.currentTarget.style.background = "#f7f7f5")}
                   onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
                 >
                   <strong>{r.code}</strong> — {r.title}
-                </div>
+                </button>
               ))}
             </div>
           )}

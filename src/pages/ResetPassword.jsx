@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { KeyRound } from 'lucide-react'
+import useDocumentTitle from '../hooks/useDocumentTitle'
 import styles from './Auth.module.css'
 
 const MIN_PASSWORD_LENGTH = 8 // matches the minimum already enforced on Register
@@ -21,6 +22,16 @@ export default function ResetPassword() {
   const [confirm, setConfirm] = useState('')
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const headingRef = useRef(null)
+
+  const STATUS_TITLES = {
+    checking: 'Verifying your link…',
+    invalid: 'Link expired or invalid',
+    success: 'Password updated',
+    ready: 'Set a new password',
+  }
+  useDocumentTitle(`${STATUS_TITLES[status]} — iCrestiQ GovCon Lab`)
+  useEffect(() => { headingRef.current?.focus() }, [status])
 
   useEffect(() => {
     let settled = false
@@ -124,7 +135,7 @@ export default function ResetPassword() {
               <div className={styles.logoMark}>iQ</div>
               <span className={styles.logoText}>iCrestiQ GovCon Lab</span>
             </Link>
-            <h1 className={styles.title}>Verifying your link…</h1>
+            <h1 ref={headingRef} tabIndex={-1} className={styles.title}>Verifying your link…</h1>
           </div>
           <div style={{ display: 'flex', justifyContent: 'center', padding: 'var(--sp-6) 0' }}>
             <div className="spinner" />
@@ -143,7 +154,7 @@ export default function ResetPassword() {
               <div className={styles.logoMark}>iQ</div>
               <span className={styles.logoText}>iCrestiQ GovCon Lab</span>
             </Link>
-            <h1 className={styles.title}>Link expired or invalid</h1>
+            <h1 ref={headingRef} tabIndex={-1} className={styles.title}>Link expired or invalid</h1>
             <p className={styles.sub}>
               This password reset link is no longer valid — it may have expired or already been
               used.
@@ -167,7 +178,7 @@ export default function ResetPassword() {
               <div className={styles.logoMark}>iQ</div>
               <span className={styles.logoText}>iCrestiQ GovCon Lab</span>
             </Link>
-            <h1 className={styles.title}>Password updated</h1>
+            <h1 ref={headingRef} tabIndex={-1} className={styles.title}>Password updated</h1>
             <p className={styles.sub}>Taking you to your dashboard…</p>
           </div>
           <div style={{ display: 'flex', justifyContent: 'center', padding: 'var(--sp-4) 0' }}>
@@ -187,30 +198,34 @@ export default function ResetPassword() {
             <div className={styles.logoMark}>iQ</div>
             <span className={styles.logoText}>iCrestiQ GovCon Lab</span>
           </Link>
-          <h1 className={styles.title}>Set a new password</h1>
+          <h1 ref={headingRef} tabIndex={-1} className={styles.title}>Set a new password</h1>
           <p className={styles.sub}>Choose a new password for your account.</p>
         </div>
 
-        {error && <div className="alert alert-error">{error}</div>}
+        {error && <div className="alert alert-error" role="alert">{error}</div>}
 
         <form onSubmit={handleSubmit}>
           <div className="field">
-            <label className="label">New Password</label>
+            <label className="label" htmlFor="reset-password">New Password <span aria-hidden="true">*</span></label>
             <input
+              id="reset-password"
               type="password"
               className="input"
               placeholder={`Min. ${MIN_PASSWORD_LENGTH} characters`}
+              autoComplete="new-password"
               value={password}
               onChange={e => setPassword(e.target.value)}
               required
             />
           </div>
           <div className="field">
-            <label className="label">Confirm Password</label>
+            <label className="label" htmlFor="reset-confirm">Confirm Password <span aria-hidden="true">*</span></label>
             <input
+              id="reset-confirm"
               type="password"
               className="input"
               placeholder="Repeat your new password"
+              autoComplete="new-password"
               value={confirm}
               onChange={e => setConfirm(e.target.value)}
               required
@@ -222,7 +237,7 @@ export default function ResetPassword() {
             disabled={submitting}
             style={{ justifyContent: 'center', marginTop: 'var(--sp-2)' }}
           >
-            {submitting ? <div className="spinner" /> : <><KeyRound size={16} /> Update Password</>}
+            {submitting ? <div className="spinner" /> : <><KeyRound size={16} aria-hidden="true" /> Update Password</>}
           </button>
         </form>
       </div>

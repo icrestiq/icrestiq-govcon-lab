@@ -8,6 +8,7 @@ import Avatar from '../components/Avatar'
 import TagInput from '../components/TagInput'
 import { isFoundingMember, isMemberOrFounding } from '../lib/tier'
 import { searchNaics, getNaicsTitle } from '../lib/naics'
+import useDocumentTitle from '../hooks/useDocumentTitle'
 import styles from './Profile.module.css'
 
 // Matching preferences allow more codes than the Proposal Builder's NAICS
@@ -29,6 +30,7 @@ const USERNAME_HELP = 'Letters, numbers, underscores, and dashes only — no spa
 const BIO_MAX_LEN = 600
 
 export default function Profile() {
+  useDocumentTitle('Profile — GovCon Lab')
   const { user, profile, updateProfile, isAdmin } = useAuth()
   const notionEligible = isMemberOrFounding(profile, isAdmin)
   const [tab, setTab] = useState('overview')
@@ -346,9 +348,9 @@ export default function Profile() {
             className={styles.avatarEditBtn}
             onClick={() => avatarInputRef.current?.click()}
             disabled={avatarUploading}
-            title="Change photo"
+            aria-label="Change profile photo"
           >
-            <Camera size={13} />
+            <Camera size={13} aria-hidden="true" />
           </button>
           <input
             ref={avatarInputRef}
@@ -425,7 +427,7 @@ export default function Profile() {
                 </button>
               </div>
 
-              {saveError && <div className="alert alert-error" style={{ marginBottom: 'var(--sp-4)' }}>{saveError}</div>}
+              {saveError && <div className="alert alert-error" role="alert" style={{ marginBottom: 'var(--sp-4)' }}>{saveError}</div>}
 
               <div className={styles.editRow}>
                 <div>
@@ -449,10 +451,11 @@ export default function Profile() {
               </div>
 
               <div style={{ marginTop: 'var(--sp-4)' }}>
-                <label className="label" htmlFor="username">Username</label>
+                <label className="label" htmlFor="username">Username <span aria-hidden="true">*</span></label>
                 <input
                   id="username"
                   className="input"
+                  autoComplete="username"
                   value={form.username}
                   onChange={(e) => setForm((f) => ({ ...f, username: e.target.value }))}
                   pattern="[a-zA-Z0-9_-]+"
@@ -541,11 +544,11 @@ export default function Profile() {
             opportunities. Pro and Founding members see matches under "Matched Opportunities" in the nav.
           </p>
 
-          {matchError && <div className="alert alert-error" style={{ marginBottom: 'var(--sp-4)' }}>{matchError}</div>}
-          {matchSaved && <div className="alert" style={{ marginBottom: 'var(--sp-4)', background: 'rgba(72,187,120,0.08)', borderColor: '#48BB78', color: '#276749' }}>Matching preferences saved.</div>}
-          {pullStatus === 'pulling' && <p className={styles.fieldHint} style={{ marginBottom: 'var(--sp-4)' }}>Fetching current opportunities for your new codes — check "Matched Opportunities" in a minute.</p>}
-          {pullStatus === 'done' && <p className={styles.fieldHint} style={{ marginBottom: 'var(--sp-4)' }}>New opportunities fetched — check "Matched Opportunities" for fresh matches.</p>}
-          {pullStatus === 'error' && <p className={styles.fieldHint} style={{ marginBottom: 'var(--sp-4)' }}>Couldn't fetch new opportunities right now — they'll still show up after tomorrow's automatic pull.</p>}
+          {matchError && <div className="alert alert-error" role="alert" style={{ marginBottom: 'var(--sp-4)' }}>{matchError}</div>}
+          {matchSaved && <div className="alert" role="status" style={{ marginBottom: 'var(--sp-4)', background: 'rgba(72,187,120,0.08)', borderColor: '#48BB78', color: '#276749' }}>Matching preferences saved.</div>}
+          {pullStatus === 'pulling' && <p className={styles.fieldHint} role="status" style={{ marginBottom: 'var(--sp-4)' }}>Fetching current opportunities for your new codes — check "Matched Opportunities" in a minute.</p>}
+          {pullStatus === 'done' && <p className={styles.fieldHint} role="status" style={{ marginBottom: 'var(--sp-4)' }}>New opportunities fetched — check "Matched Opportunities" for fresh matches.</p>}
+          {pullStatus === 'error' && <p className={styles.fieldHint} role="alert" style={{ marginBottom: 'var(--sp-4)' }}>Couldn't fetch new opportunities right now — they'll still show up after tomorrow's automatic pull.</p>}
 
           <label style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-2)', marginBottom: 'var(--sp-5)', cursor: 'pointer' }}>
             <input
@@ -565,8 +568,9 @@ export default function Profile() {
           </div>
 
           <div style={{ marginBottom: 'var(--sp-5)' }}>
-            <label className="label">PSC Codes</label>
+            <label className="label" htmlFor="profile-psc-codes">PSC Codes</label>
             <TagInput
+              id="profile-psc-codes"
               value={matchForm.psc_codes}
               onChange={(codes) => setMatchForm((f) => ({ ...f, psc_codes: codes }))}
               placeholder="Type a PSC code and press Enter (e.g. R425)"
@@ -659,8 +663,9 @@ export default function Profile() {
 
           <div className={styles.editRow} style={{ marginBottom: 'var(--sp-4)' }}>
             <div>
-              <label className="label">Preferred Agencies</label>
+              <label className="label" htmlFor="profile-agency-allow">Preferred Agencies</label>
               <TagInput
+                id="profile-agency-allow"
                 value={matchForm.bid_criteria.agency_allow || []}
                 onChange={(list) => setCriteria({ agency_allow: list })}
                 placeholder="Type an agency name and press Enter"
@@ -669,8 +674,9 @@ export default function Profile() {
               <p className={styles.fieldHint}>If set, only these agencies will pass.</p>
             </div>
             <div>
-              <label className="label">Excluded Agencies</label>
+              <label className="label" htmlFor="profile-agency-deny">Excluded Agencies</label>
               <TagInput
+                id="profile-agency-deny"
                 value={matchForm.bid_criteria.agency_deny || []}
                 onChange={(list) => setCriteria({ agency_deny: list })}
                 placeholder="Type an agency name and press Enter"
@@ -766,6 +772,7 @@ function NaicsMultiSelect({ selected, onChange }) {
         <>
           <input
             className="input"
+            aria-label="Search NAICS codes"
             placeholder="Search by code (e.g. 541511) or keyword (e.g. software)"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -773,13 +780,14 @@ function NaicsMultiSelect({ selected, onChange }) {
           {results.length > 0 && (
             <div style={{ border: '1px solid var(--border)', borderRadius: 4, marginTop: 4, maxHeight: 220, overflowY: 'auto' }}>
               {results.map((r) => (
-                <div
+                <button
                   key={r.code}
+                  type="button"
                   onClick={() => addCode(r.code)}
-                  style={{ padding: '8px 10px', cursor: 'pointer', borderBottom: '1px solid var(--border)', fontSize: 13 }}
+                  style={{ display: 'block', width: '100%', textAlign: 'left', background: 'none', border: 'none', padding: '8px 10px', cursor: 'pointer', borderBottom: '1px solid var(--border)', fontSize: 13, fontFamily: 'inherit', color: 'inherit' }}
                 >
                   <strong>{r.code}</strong> — {r.title}
-                </div>
+                </button>
               ))}
             </div>
           )}

@@ -1,13 +1,15 @@
 import { Link } from 'react-router-dom'
 import { XCircle, ArrowLeft, ShoppingBag } from 'lucide-react'
+import useDocumentTitle from '../hooks/useDocumentTitle'
 import styles from './CheckoutResult.module.css'
 
 export default function CheckoutCancel() {
+  useDocumentTitle('Checkout Cancelled — GovCon Lab')
   return (
     <div className={styles.page}>
       <div className={styles.card}>
         <div className={styles.iconWrapCancel}>
-          <XCircle size={48} strokeWidth={1.5} />
+          <XCircle size={48} strokeWidth={1.5} aria-hidden="true" />
         </div>
 
         <h1 className={styles.title}>Checkout cancelled</h1>
@@ -19,11 +21,11 @@ export default function CheckoutCancel() {
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-3)', marginTop: 'var(--sp-2)' }}>
           <Link to="/store" className="btn btn-primary w-full" style={{ justifyContent: 'center' }}>
-            <ShoppingBag size={16} />
+            <ShoppingBag size={16} aria-hidden="true" />
             Return to Store
           </Link>
           <Link to="/dashboard" className="btn btn-ghost w-full" style={{ justifyContent: 'center' }}>
-            <ArrowLeft size={16} />
+            <ArrowLeft size={16} aria-hidden="true" />
             Back to Dashboard
           </Link>
         </div>

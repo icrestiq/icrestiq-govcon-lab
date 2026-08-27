@@ -13,6 +13,9 @@ import Layout from './components/layout/Layout'
 // static import since it's the shared shell for nearly every route.
 const Landing = lazy(() => import('./pages/Landing'))
 const About = lazy(() => import('./pages/About'))
+const Accessibility = lazy(() => import('./pages/Accessibility'))
+const PolicyPage = lazy(() => import('./pages/PolicyPage'))
+const PoliciesIndex = lazy(() => import('./pages/PoliciesIndex'))
 const Login = lazy(() => import('./pages/Login'))
 const Register = lazy(() => import('./pages/Register'))
 const ForgotPassword = lazy(() => import('./pages/ForgotPassword'))
@@ -101,6 +104,9 @@ export default function App() {
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/about" element={<About />} />
+      <Route path="/accessibility" element={<Accessibility />} />
+      <Route path="/policies" element={<PoliciesIndex />} />
+      <Route path="/policies/:slug" element={<PolicyPage />} />
 
       {/* Stripe checkout result pages - public so Stripe can redirect */}
       <Route path="/checkout/success" element={<CheckoutSuccess />} />

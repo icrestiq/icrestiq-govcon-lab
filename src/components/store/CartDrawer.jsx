@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { X, ShoppingCart, Trash2, CreditCard, Loader } from 'lucide-react'
 import { useAuth } from '../../lib/AuthContext'
 import { createCheckoutSession } from '../../lib/stripe'
 import { useNavigate } from 'react-router-dom'
+import useDialogA11y from '../../hooks/useDialogA11y'
 import styles from './CartDrawer.module.css'
 
 export default function CartDrawer({ open, onClose, cart, onRemove, clearCart }) {
@@ -11,6 +12,16 @@ export default function CartDrawer({ open, onClose, cart, onRemove, clearCart })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const total = cart.reduce((sum, item) => sum + item.price * item.qty, 0)
+  const drawerRef = useRef(null)
+
+  useDialogA11y({ isOpen: open, onClose, containerRef: drawerRef })
+
+  // The drawer stays mounted (slid off-screen) even when closed, for the
+  // slide-in transition — without this, its buttons would stay in the tab
+  // order while invisible.
+  useEffect(() => {
+    if (drawerRef.current) drawerRef.current.inert = !open
+  }, [open])
 
   // Cart checkout: if single item, go straight to Stripe.
   // If multiple items, checkout first item (Stripe handles one price per session).
@@ -42,22 +53,28 @@ export default function CartDrawer({ open, onClose, cart, onRemove, clearCart })
   return (
     <>
       {open && <div className={styles.overlay} onClick={onClose} />}
-      <div className={`${styles.drawer} ${open ? styles.open : ''}`}>
+      <div
+        ref={drawerRef}
+        className={`${styles.drawer} ${open ? styles.open : ''}`}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="cart-drawer-title"
+      >
         <div className={styles.header}>
-          <div className={styles.title}>
-            <ShoppingCart size={18} />
+          <div className={styles.title} id="cart-drawer-title">
+            <ShoppingCart size={18} aria-hidden="true" />
             <span>Your Cart</span>
             <span className={styles.count}>{cart.length}</span>
           </div>
-          <button className={styles.closeBtn} onClick={onClose}>
-            <X size={18} />
+          <button className={styles.closeBtn} onClick={onClose} aria-label="Close cart">
+            <X size={18} aria-hidden="true" />
           </button>
         </div>
 
         <div className={styles.items}>
           {cart.length === 0 && (
             <div className={styles.empty}>
-              <ShoppingCart size={32} style={{ color: 'var(--text-muted)', marginBottom: 'var(--sp-3)' }} />
+              <ShoppingCart size={32} style={{ color: 'var(--text-muted)', marginBottom: 'var(--sp-3)' }} aria-hidden="true" />
               <p className={styles.emptyText}>Your cart is empty.</p>
               <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Browse the store and add products.</p>
             </div>
@@ -68,8 +85,8 @@ export default function CartDrawer({ open, onClose, cart, onRemove, clearCart })
                 <div className={styles.itemTitle}>{item.title}</div>
                 <div className={styles.itemPrice}>${item.price}</div>
               </div>
-              <button className={styles.removeBtn} onClick={() => onRemove(item.id)}>
-                <Trash2 size={14} />
+              <button className={styles.removeBtn} onClick={() => onRemove(item.id)} aria-label={`Remove ${item.title} from cart`}>
+                <Trash2 size={14} aria-hidden="true" />
               </button>
             </div>
           ))}
@@ -78,7 +95,7 @@ export default function CartDrawer({ open, onClose, cart, onRemove, clearCart })
         {cart.length > 0 && (
           <div className={styles.footer}>
             {error && (
-              <div className="alert alert-error" style={{ marginBottom: 'var(--sp-3)' }}>{error}</div>
+              <div className="alert alert-error" role="alert" style={{ marginBottom: 'var(--sp-3)' }}>{error}</div>
             )}
             <div className={styles.total}>
               <span className="mono">Total</span>
@@ -91,7 +108,7 @@ export default function CartDrawer({ open, onClose, cart, onRemove, clearCart })
               onClick={handleCheckout}
               disabled={loading}
             >
-              {loading ? <Loader size={16} className={styles.spin} /> : <CreditCard size={16} />}
+              {loading ? <Loader size={16} className={styles.spin} aria-hidden="true" /> : <CreditCard size={16} aria-hidden="true" />}
               {loading ? 'Redirecting to Stripe...' : 'Checkout Securely'}
             </button>
 

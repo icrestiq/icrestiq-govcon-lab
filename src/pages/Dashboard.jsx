@@ -6,6 +6,7 @@ import { MessageSquare, ShoppingBag, TrendingUp, ArrowRight, Zap, CreditCard, Gr
 import VersionCard from '../components/VersionCard'
 import LearningPathQuiz from '../components/LearningPathQuiz'
 import styles from './Dashboard.module.css'
+import useDocumentTitle from '../hooks/useDocumentTitle'
 
 // Each resource gets a distinct color matching GovCon Mastery style.
 // `image`: optional path under /public (e.g. '/icons/dibbs.png') — square,
@@ -36,6 +37,7 @@ const PILL_COLORS = {
 }
 
 export default function Dashboard() {
+  useDocumentTitle('Dashboard — GovCon Lab')
   const { profile } = useAuth()
   const [portalLoading, setPortalLoading] = useState(false)
   const [portalError, setPortalError] = useState('')

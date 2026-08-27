@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { Outlet, NavLink, Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../lib/AuthContext'
 import {
@@ -8,6 +8,7 @@ import {
 import Footer from './Footer'
 import Avatar from '../Avatar'
 import { isMemberOrFounding } from '../../lib/tier'
+import useDialogA11y from '../../hooks/useDialogA11y'
 import styles from './Layout.module.css'
 
 const NAV = [
@@ -25,6 +26,14 @@ export default function Layout() {
   const { user, profile, signOut, isAdmin } = useAuth()
   const navigate = useNavigate()
   const [mobileOpen, setMobileOpen] = useState(false)
+  const sidebarRef = useRef(null)
+
+  // A no-op on desktop: mobileOpen can only become true via the mobile
+  // menu button below, which CSS hides outside the mobile breakpoint, so
+  // this only ever traps focus/handles Escape when the drawer is actually
+  // open on a narrow viewport — the always-visible desktop sidebar is
+  // untouched.
+  useDialogA11y({ isOpen: mobileOpen, onClose: () => setMobileOpen(false), containerRef: sidebarRef })
 
   async function handleSignOut() {
     await signOut()
@@ -37,6 +46,8 @@ export default function Layout() {
 
   return (
     <div className={styles.shell}>
+      <a href="#main-content" className="skip-link">Skip to main content</a>
+
       {/* Mobile header */}
       <header className={`${styles.mobileHeader} no-print`}>
         <div className={styles.mobileLogo}>
@@ -46,7 +57,13 @@ export default function Layout() {
             <span className={styles.logoSub}> by iCrestiQ</span>
           </div>
         </div>
-        <button className={styles.menuBtn} onClick={() => setMobileOpen(!mobileOpen)}>
+        <button
+          className={styles.menuBtn}
+          onClick={() => setMobileOpen(!mobileOpen)}
+          aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
+          aria-expanded={mobileOpen}
+          aria-controls="primary-nav"
+        >
           {mobileOpen ? <X size={20} /> : <Menu size={20} />}
         </button>
       </header>
@@ -54,7 +71,7 @@ export default function Layout() {
       {mobileOpen && <div className={`${styles.overlay} no-print`} onClick={() => setMobileOpen(false)} />}
 
       {/* Sidebar */}
-      <aside className={`${styles.sidebar} ${mobileOpen ? styles.sidebarOpen : ''} no-print`}>
+      <aside id="primary-nav" ref={sidebarRef} className={`${styles.sidebar} ${mobileOpen ? styles.sidebarOpen : ''} no-print`}>
         <div className={styles.logo}>
           <div className={styles.logoMark}>iQ</div>
           <div>
@@ -140,8 +157,8 @@ export default function Layout() {
                 <div className={styles.userRole}>{profile?.membership_tier || profile?.role || 'member'}</div>
               </div>
             </div>
-            <button className={styles.signOutBtn} onClick={handleSignOut} title="Sign out">
-              <LogOut size={16} />
+            <button className={styles.signOutBtn} onClick={handleSignOut} aria-label="Sign out">
+              <LogOut size={16} aria-hidden="true" />
             </button>
           </div>
         ) : (
@@ -158,7 +175,7 @@ export default function Layout() {
 
       {/* Main content + footer */}
       <div className={styles.mainWrap}>
-        <main className={styles.main}>
+        <main id="main-content" className={styles.main} tabIndex={-1}>
           <Outlet />
         </main>
         <Footer />

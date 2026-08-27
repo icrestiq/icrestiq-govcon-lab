@@ -3,6 +3,7 @@ import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { useAuth } from '../lib/AuthContext'
 import { createCheckoutSession } from '../lib/stripe'
 import { Check, Zap, Crown, Star, Tag, Radar } from 'lucide-react'
+import useDocumentTitle from '../hooks/useDocumentTitle'
 import styles from './Membership.module.css'
 
 export const TIERS = [
@@ -89,6 +90,7 @@ export const FOUNDING = {
 }
 
 export default function Membership() {
+  useDocumentTitle('Membership — GovCon Lab')
   const { user, profile } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
@@ -156,9 +158,10 @@ export default function Membership() {
 
         {/* Discount code box */}
         <div className={styles.discountBox}>
-          <Tag size={15} style={{ color: 'var(--gold)', flexShrink: 0 }} />
+          <Tag size={15} style={{ color: 'var(--gold)', flexShrink: 0 }} aria-hidden="true" />
           <input
             className={styles.discountInput}
+            aria-label="Promo code"
             placeholder="Have a promo code? Enter it here"
             value={discountCode}
             onChange={e => { setDiscountCode(e.target.value); setCodeApplied(false); setCodeError('') }}
@@ -169,12 +172,12 @@ export default function Membership() {
           </button>
         </div>
         {codeApplied && (
-          <div className="alert alert-success" style={{ maxWidth: 480, margin: '0 auto var(--sp-4)', textAlign: 'center' }}>
+          <div className="alert alert-success" role="status" style={{ maxWidth: 480, margin: '0 auto var(--sp-4)', textAlign: 'center' }}>
             ✓ Code applied — 10% off your membership
           </div>
         )}
         {codeError && (
-          <div className="alert alert-error" style={{ maxWidth: 480, margin: '0 auto var(--sp-4)', textAlign: 'center' }}>
+          <div className="alert alert-error" role="alert" style={{ maxWidth: 480, margin: '0 auto var(--sp-4)', textAlign: 'center' }}>
             {codeError}
           </div>
         )}
@@ -201,7 +204,7 @@ export default function Membership() {
       </div>
 
       {error && (
-        <div className="alert alert-error" style={{ maxWidth: 640, margin: '0 auto var(--sp-6)' }}>
+        <div className="alert alert-error" role="alert" style={{ maxWidth: 640, margin: '0 auto var(--sp-6)' }}>
           {error}
         </div>
       )}

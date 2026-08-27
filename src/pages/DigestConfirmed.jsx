@@ -1,5 +1,6 @@
 import { Link, useSearchParams } from 'react-router-dom'
 import { CheckCircle, XCircle } from 'lucide-react'
+import useDocumentTitle from '../hooks/useDocumentTitle'
 import styles from './Auth.module.css'
 
 const DOWNLOADS = [
@@ -34,6 +35,7 @@ export default function DigestConfirmed() {
   const [params] = useSearchParams()
   const ok = params.get('status') === 'ok'
   const isSample = params.get('source') === 'sample-proposal'
+  useDocumentTitle(`${ok ? "You're confirmed" : "That link didn't work"} — GovCon Lab`)
 
   return (
     <div className={styles.page}>
@@ -45,7 +47,7 @@ export default function DigestConfirmed() {
           </Link>
           {ok ? (
             <>
-              <CheckCircle size={40} style={{ color: 'var(--gold)', margin: '0 auto var(--sp-4)' }} />
+              <CheckCircle size={40} style={{ color: 'var(--gold)', margin: '0 auto var(--sp-4)' }} aria-hidden="true" />
               <h1 className={styles.title}>You're confirmed</h1>
               <p className={styles.sub}>
                 {isSample
@@ -55,7 +57,7 @@ export default function DigestConfirmed() {
             </>
           ) : (
             <>
-              <XCircle size={40} style={{ color: 'var(--red)', margin: '0 auto var(--sp-4)' }} />
+              <XCircle size={40} style={{ color: 'var(--red)', margin: '0 auto var(--sp-4)' }} aria-hidden="true" />
               <h1 className={styles.title}>That link didn't work</h1>
               <p className={styles.sub}>
                 It may have already been used, or it's expired. Head back to the homepage and sign up again.

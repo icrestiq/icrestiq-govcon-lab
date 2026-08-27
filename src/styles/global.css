@@ -38,7 +38,10 @@
   /* Text */
   --text-primary:   #1B2A4A;
   --text-secondary: #4A5568;
-  --text-muted:     #8A94A6;
+  /* Was #8A94A6 (2.9:1 on white — fails WCAG 2.2 AA's 4.5:1 for normal
+     text). Darkened to the same hue/feel at a ratio that passes; this
+     token is used broadly for hints/timestamps/muted labels site-wide. */
+  --text-muted:     #6B7280;
   --text-accent:    #C9A84C;
 
   /* Status */
@@ -326,6 +329,14 @@ select.input { cursor: pointer; }
 
 @keyframes spin { to { transform: rotate(360deg); } }
 
+/* Respect a reduced-motion preference for every infinite/looping animation
+   in the app (this spinner, plus the ones in MatchedOpportunities and
+   CartDrawer, and Landing's auto-scrolling ticker) — a static state stands
+   in for the animation rather than removing the loading indicator. */
+@media (prefers-reduced-motion: reduce) {
+  .spinner { animation: none; }
+}
+
 .loading-screen {
   min-height: 100vh;
   display: flex;
@@ -360,6 +371,27 @@ select.input { cursor: pointer; }
 .text-accent { color: var(--gold); }
 .font-display { font-family: var(--font-display); }
 .truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ── Skip link — off-screen until focused (Tab from page load), then
+   pinned to the top-left so keyboard users can bypass repeated nav
+   straight to main content. Used on every page that has a nav block
+   before its primary content. ── */
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 1000;
+  background: var(--navy);
+  color: #FFFFFF;
+  padding: var(--sp-3) var(--sp-5);
+  border-radius: 0 0 var(--r-md) 0;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+.skip-link:focus {
+  left: 0;
+}
 
 /* ── Responsive ── */
 @media (max-width: 768px) { .hide-mobile { display: none !important; } }

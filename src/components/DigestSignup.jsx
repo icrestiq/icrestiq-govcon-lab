@@ -61,12 +61,12 @@ export default function DigestSignup() {
         </p>
 
         {status === 'check-email' ? (
-          <p className={styles.confirmMessage}>
+          <p className={styles.confirmMessage} role="status">
             Check your inbox and click the confirmation link — you'll only start getting Monday's digest
             (and your 5 free tools) once you've verified your email.
           </p>
         ) : status === 'already-confirmed' ? (
-          <p className={styles.confirmMessage}>
+          <p className={styles.confirmMessage} role="status">
             That email is already confirmed. Monday's digest is on its way.
           </p>
         ) : (
@@ -96,16 +96,20 @@ export default function DigestSignup() {
             <input
               type="text"
               required
+              aria-label="First name"
               placeholder="First name"
               className={`input ${styles.input}`}
+              autoComplete="given-name"
               value={firstName}
               onChange={e => setFirstName(e.target.value)}
               disabled={status === 'loading'}
             />
             <input
               type="text"
+              aria-label="Last name"
               placeholder="Last name"
               className={`input ${styles.input}`}
+              autoComplete="family-name"
               value={lastName}
               onChange={e => setLastName(e.target.value)}
               disabled={status === 'loading'}
@@ -113,8 +117,10 @@ export default function DigestSignup() {
             <input
               type="email"
               required
+              aria-label="Email"
               placeholder="you@example.com"
               className={`input ${styles.input}`}
+              autoComplete="email"
               value={email}
               onChange={e => setEmail(e.target.value)}
               disabled={status === 'loading'}
@@ -126,7 +132,7 @@ export default function DigestSignup() {
           </form>
         )}
 
-        {status === 'error' && <p className={styles.errorMessage}>{error}</p>}
+        {status === 'error' && <p className={styles.errorMessage} role="alert">{error}</p>}
 
         <p className={styles.upsellNote}>
           The paid version includes the full list, quote templates, and my notes on what I bid.

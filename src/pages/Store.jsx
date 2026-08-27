@@ -8,6 +8,7 @@ import { ShoppingCart, Package, Search,Shirt, ArrowRight } from 'lucide-react'
 import styles from './Store.module.css'
 import CartDrawer from '../components/store/CartDrawer'
 import { useCart } from '../hooks/useCart'
+import useDocumentTitle from '../hooks/useDocumentTitle'
 
 const CATEGORY_COLORS = {
   'Playbooks': { bg: '#EBF4FF', color: '#2B6CB0', border: '#BEE3F8' },
@@ -20,6 +21,7 @@ const CATEGORY_COLORS = {
 const CATEGORIES = ['All', 'Playbooks', 'Templates', 'Tools', 'Courses', 'Bundles']
 
 export default function Store() {
+  useDocumentTitle('Store — GovCon Lab')
   const { profile, isAdmin } = useAuth()
   const founder = isFoundingMember(profile, isAdmin)
   const [products, setProducts] = useState([])

@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../lib/AuthContext'
 import { UserPlus } from 'lucide-react'
 import Turnstile from '../components/Turnstile'
+import useDocumentTitle from '../hooks/useDocumentTitle'
 import styles from './Auth.module.css'
 
 // Open-redirect guard: only ever navigate to a same-origin, root-relative
@@ -53,6 +54,21 @@ export default function Register() {
 
   const [captchaToken, setCaptchaToken] = useState('')
   const turnstileRef = useRef(null)
+  // The three views below (form / pending / existing) are separate early
+  // returns, not separate route changes, so a screen-reader user gets no
+  // navigation cue that the content swapped — moving focus to the new
+  // heading each time postSubmitState changes is the fix.
+  const headingRef = useRef(null)
+
+  useDocumentTitle(
+    postSubmitState === 'pending' ? 'Check your email — iCrestiQ GovCon Lab'
+      : postSubmitState === 'existing' ? 'Account already exists — iCrestiQ GovCon Lab'
+      : 'Join the Lab — iCrestiQ GovCon Lab'
+  )
+
+  useEffect(() => {
+    if (postSubmitState) headingRef.current?.focus()
+  }, [postSubmitState])
 
   useEffect(() => {
     if (resendCooldown === 0) return
@@ -162,7 +178,7 @@ export default function Register() {
               <div className={styles.logoMark}>iQ</div>
               <span className={styles.logoText}>iCrestiQ GovCon Lab</span>
             </Link>
-            <h1 className={styles.title}>Check your email</h1>
+            <h1 ref={headingRef} tabIndex={-1} className={styles.title}>Check your email</h1>
             <p className={styles.sub}>
               We sent a confirmation link to <strong>{submittedEmail}</strong>. Click the link in
               that email to activate your account.
@@ -184,12 +200,12 @@ export default function Register() {
           </button>
 
           {resendStatus === 'sent' && (
-            <div className="alert alert-success" style={{ marginTop: 'var(--sp-4)' }}>
+            <div className="alert alert-success" role="status" style={{ marginTop: 'var(--sp-4)' }}>
               Sent — check your inbox.
             </div>
           )}
           {resendStatus === 'error' && (
-            <div className="alert alert-error" style={{ marginTop: 'var(--sp-4)' }}>
+            <div className="alert alert-error" role="alert" style={{ marginTop: 'var(--sp-4)' }}>
               {resendError}
             </div>
           )}
@@ -221,7 +237,7 @@ export default function Register() {
               <div className={styles.logoMark}>iQ</div>
               <span className={styles.logoText}>iCrestiQ GovCon Lab</span>
             </Link>
-            <h1 className={styles.title}>Account already exists</h1>
+            <h1 ref={headingRef} tabIndex={-1} className={styles.title}>Account already exists</h1>
             <p className={styles.sub}>
               If an account already exists for <strong>{submittedEmail}</strong>, you can sign in
               below.
@@ -251,7 +267,7 @@ export default function Register() {
         </div>
 
         {error && (
-          <div className="alert alert-error" style={{ marginBottom: 'var(--sp-5)' }}>
+          <div className="alert alert-error" role="alert" style={{ marginBottom: 'var(--sp-5)' }}>
             {error}
           </div>
         )}
@@ -260,22 +276,26 @@ export default function Register() {
           {/* First & Last Name row */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--sp-3)' }}>
             <div className="field">
-              <label className="label">First Name</label>
+              <label className="label" htmlFor="register-first-name">First Name <span aria-hidden="true">*</span></label>
               <input
+                id="register-first-name"
                 type="text"
                 className="input"
                 placeholder="Keith"
+                autoComplete="given-name"
                 value={form.firstName}
                 onChange={set('firstName')}
                 required
               />
             </div>
             <div className="field">
-              <label className="label">Last Name</label>
+              <label className="label" htmlFor="register-last-name">Last Name</label>
               <input
+                id="register-last-name"
                 type="text"
                 className="input"
                 placeholder="Atkinson"
+                autoComplete="family-name"
                 value={form.lastName}
                 onChange={set('lastName')}
               />
@@ -283,28 +303,33 @@ export default function Register() {
           </div>
 
           <div className="field">
-            <label className="label">Username</label>
+            <label className="label" htmlFor="register-username">Username</label>
             <input
+              id="register-username"
               type="text"
               className="input"
               placeholder="your_handle (optional)"
+              autoComplete="username"
               value={form.username}
               onChange={set('username')}
               minLength={3}
               pattern="[a-zA-Z0-9_-]+"
               title="Letters, numbers, underscores, and dashes only — no spaces."
+              aria-describedby="register-username-help"
             />
-            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 'var(--sp-2)' }}>
+            <p id="register-username-help" style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 'var(--sp-2)' }}>
               {USERNAME_HELP}
             </p>
           </div>
 
           <div className="field">
-            <label className="label">Email</label>
+            <label className="label" htmlFor="register-email">Email <span aria-hidden="true">*</span></label>
             <input
+              id="register-email"
               type="email"
               className="input"
               placeholder="you@example.com"
+              autoComplete="email"
               value={form.email}
               onChange={set('email')}
               required
@@ -312,11 +337,13 @@ export default function Register() {
           </div>
 
           <div className="field">
-            <label className="label">Password</label>
+            <label className="label" htmlFor="register-password">Password <span aria-hidden="true">*</span></label>
             <input
+              id="register-password"
               type="password"
               className="input"
               placeholder="Min. 8 characters"
+              autoComplete="new-password"
               value={form.password}
               onChange={set('password')}
               required
@@ -324,11 +351,13 @@ export default function Register() {
           </div>
 
           <div className="field">
-            <label className="label">Confirm Password</label>
+            <label className="label" htmlFor="register-confirm">Confirm Password <span aria-hidden="true">*</span></label>
             <input
+              id="register-confirm"
               type="password"
               className="input"
               placeholder="Repeat your password"
+              autoComplete="new-password"
               value={form.confirm}
               onChange={set('confirm')}
               required
@@ -343,7 +372,7 @@ export default function Register() {
             disabled={loading}
             style={{ justifyContent: 'center', marginTop: 'var(--sp-2)' }}
           >
-            {loading ? <div className="spinner" /> : <><UserPlus size={16} /> Create Account</>}
+            {loading ? <div className="spinner" /> : <><UserPlus size={16} aria-hidden="true" /> Create Account</>}
           </button>
         </form>
 

@@ -1,8 +1,9 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { Mail } from 'lucide-react'
 import Turnstile from '../components/Turnstile'
+import useDocumentTitle from '../hooks/useDocumentTitle'
 import styles from './Auth.module.css'
 
 export default function ForgotPassword() {
@@ -12,6 +13,10 @@ export default function ForgotPassword() {
   const [captchaToken, setCaptchaToken] = useState('')
   const [captchaError, setCaptchaError] = useState('')
   const turnstileRef = useRef(null)
+  const headingRef = useRef(null)
+
+  useDocumentTitle(submitted ? 'Check your email — iCrestiQ GovCon Lab' : 'Reset your password — iCrestiQ GovCon Lab')
+  useEffect(() => { if (submitted) headingRef.current?.focus() }, [submitted])
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -55,10 +60,10 @@ export default function ForgotPassword() {
               <div className={styles.logoMark}>iQ</div>
               <span className={styles.logoText}>iCrestiQ GovCon Lab</span>
             </Link>
-            <h1 className={styles.title}>Check your email</h1>
+            <h1 ref={headingRef} tabIndex={-1} className={styles.title}>Check your email</h1>
           </div>
 
-          <div className="alert alert-success">
+          <div className="alert alert-success" role="status">
             If that address has an account, we've sent a reset link.
           </div>
 
@@ -82,15 +87,17 @@ export default function ForgotPassword() {
           <p className={styles.sub}>Enter your email and we'll send you a link to reset it.</p>
         </div>
 
-        {captchaError && <div className="alert alert-error" style={{ marginBottom: 'var(--sp-4)' }}>{captchaError}</div>}
+        {captchaError && <div className="alert alert-error" role="alert" style={{ marginBottom: 'var(--sp-4)' }}>{captchaError}</div>}
 
         <form onSubmit={handleSubmit}>
           <div className="field">
-            <label className="label">Email</label>
+            <label className="label" htmlFor="forgot-email">Email <span aria-hidden="true">*</span></label>
             <input
+              id="forgot-email"
               type="email"
               className="input"
               placeholder="you@example.com"
+              autoComplete="email"
               value={email}
               onChange={e => setEmail(e.target.value)}
               required
@@ -105,7 +112,7 @@ export default function ForgotPassword() {
             disabled={loading}
             style={{ justifyContent: 'center', marginTop: 'var(--sp-2)' }}
           >
-            {loading ? <div className="spinner" /> : <><Mail size={16} /> Send Reset Link</>}
+            {loading ? <div className="spinner" /> : <><Mail size={16} aria-hidden="true" /> Send Reset Link</>}
           </button>
         </form>
 

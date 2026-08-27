@@ -1,10 +1,12 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/AuthContext'
 import { Users, Package, MessageSquare, Plus, Trash2, Edit, Tag, Upload, X, Image as ImageIcon, Copy, Check, Download, Newspaper, Eye, Activity, FileText, MessageCircle, Heart, BarChart3, Flag } from 'lucide-react'
 import { htmlToBodyText, plainTextToBodyText } from '../lib/blogPasteImport'
 import Avatar from '../components/Avatar'
 import ActivityHeatmap from '../components/ActivityHeatmap'
+import useDialogA11y from '../hooks/useDialogA11y'
+import useDocumentTitle from '../hooks/useDocumentTitle'
 import styles from './AdminPanel.module.css'
 
 const TABS = [
@@ -19,6 +21,7 @@ const TABS = [
 ]
 
 export default function AdminPanel() {
+  useDocumentTitle('Admin Panel — GovCon Lab')
   const { profile } = useAuth()
   const [tab, setTab] = useState('products')
   const [products, setProducts] = useState([])
@@ -160,12 +163,12 @@ async function testMonthlyRewards() {
                 </span>
                 <span className={styles.cellActions}>
                   <button className="btn btn-ghost" style={{ padding: '4px 10px' }}
-                    onClick={() => { setEditProduct(p); setShowProductForm(true) }}>
-                    <Edit size={14} />
+                    onClick={() => { setEditProduct(p); setShowProductForm(true) }} aria-label={`Edit ${p.title}`}>
+                    <Edit size={14} aria-hidden="true" />
                   </button>
                   <button className="btn btn-danger" style={{ padding: '4px 10px' }}
-                    onClick={() => deleteProduct(p.id)}>
-                    <Trash2 size={14} />
+                    onClick={() => deleteProduct(p.id)} aria-label={`Delete ${p.title}`}>
+                    <Trash2 size={14} aria-hidden="true" />
                   </button>
                 </span>
               </div>
@@ -1175,8 +1178,8 @@ function PeopleTab() {
                   <Eye size={14} /> View
                 </button>
                 {p.subscriber_id && (
-                  <button className="btn btn-danger" style={{ padding: '4px 10px' }} onClick={() => removeFromDigest(p)} title="Remove from digest list">
-                    <Trash2 size={14} />
+                  <button className="btn btn-danger" style={{ padding: '4px 10px' }} onClick={() => removeFromDigest(p)} aria-label="Remove from digest list">
+                    <Trash2 size={14} aria-hidden="true" />
                   </button>
                 )}
               </span>
@@ -1443,8 +1446,8 @@ function ProductForm({ product, onSave, onCancel }) {
                   style={{ width: 120, height: 90, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border)' }} />
                 <button type="button"
                   style={{ position: 'absolute', top: -8, right: -8, background: 'var(--red)', border: 'none', borderRadius: '50%', width: 20, height: 20, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}
-                  onClick={() => setForm(f => ({ ...f, thumbnail_url: '' }))}>
-                  <X size={12} />
+                  onClick={() => setForm(f => ({ ...f, thumbnail_url: '' }))} aria-label="Remove thumbnail image">
+                  <X size={12} aria-hidden="true" />
                 </button>
               </div>
             )}
@@ -1579,12 +1582,12 @@ function BlogTab() {
             </span>
             <span className={styles.cellActions}>
               <button className="btn btn-ghost" style={{ padding: '4px 10px' }}
-                onClick={() => { setEditPost(p); setShowForm(true) }}>
-                <Edit size={14} />
+                onClick={() => { setEditPost(p); setShowForm(true) }} aria-label={`Edit ${p.title}`}>
+                <Edit size={14} aria-hidden="true" />
               </button>
               <button className="btn btn-danger" style={{ padding: '4px 10px' }}
-                onClick={() => deletePost(p.id)}>
-                <Trash2 size={14} />
+                onClick={() => deletePost(p.id)} aria-label={`Delete ${p.title}`}>
+                <Trash2 size={14} aria-hidden="true" />
               </button>
             </span>
           </div>
@@ -1788,8 +1791,8 @@ function BlogPostForm({ post, onSave, onCancel }) {
                   style={{ width: 160, height: 90, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border)' }} />
                 <button type="button"
                   style={{ position: 'absolute', top: -8, right: -8, background: 'var(--red)', border: 'none', borderRadius: '50%', width: 20, height: 20, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}
-                  onClick={() => setForm(f => ({ ...f, cover_image_url: '' }))}>
-                  <X size={12} />
+                  onClick={() => setForm(f => ({ ...f, cover_image_url: '' }))} aria-label="Remove cover image">
+                  <X size={12} aria-hidden="true" />
                 </button>
               </div>
             )}
@@ -1831,6 +1834,8 @@ function BlogPostForm({ post, onSave, onCancel }) {
 // data already passed in — no fetch needed.
 function PersonDetailModal({ person, onClose, onDeleted, onRemoveFromDigest }) {
   const isMember = Boolean(person.member_id)
+  const dialogRef = useRef(null)
+  useDialogA11y({ isOpen: true, onClose, containerRef: dialogRef })
 
   const [member, setMember] = useState(null)
   const [activityData, setActivityData] = useState({})
@@ -1933,6 +1938,10 @@ function PersonDetailModal({ person, onClose, onDeleted, onRemoveFromDigest }) {
       onClick={onClose}
     >
       <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="person-modal-title"
         style={{
           background: '#fff', borderRadius: 10, maxWidth: 560, width: '100%',
           maxHeight: '85vh', display: 'flex', flexDirection: 'column',
@@ -1944,9 +1953,9 @@ function PersonDetailModal({ person, onClose, onDeleted, onRemoveFromDigest }) {
           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
           padding: '20px 28px', borderBottom: '1px solid var(--border)', flexShrink: 0,
         }}>
-          <h2 style={{ margin: 0, fontSize: 18, color: 'var(--navy)' }}>{isMember ? 'Member Profile' : 'Subscriber Profile'}</h2>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#888', flexShrink: 0 }}>
-            <X size={20} />
+          <h2 id="person-modal-title" style={{ margin: 0, fontSize: 18, color: 'var(--navy)' }}>{isMember ? 'Member Profile' : 'Subscriber Profile'}</h2>
+          <button onClick={onClose} aria-label="Close" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#888', flexShrink: 0 }}>
+            <X size={20} aria-hidden="true" />
           </button>
         </div>
 
@@ -2148,10 +2157,11 @@ function AnalyticsTab() {
           <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>No referrer data for this window.</p>
         ) : (
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
+            <caption style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0,0,0,0)' }}>{title}</caption>
             <thead>
               <tr style={{ textAlign: 'left', color: 'var(--text-muted)', borderBottom: '1px solid var(--border)' }}>
-                <th style={{ padding: 'var(--sp-2) 0', fontWeight: 500 }}>Source</th>
-                <th style={{ padding: 'var(--sp-2) 0', fontWeight: 500, textAlign: 'right' }}>Visits</th>
+                <th scope="col" style={{ padding: 'var(--sp-2) 0', fontWeight: 500 }}>Source</th>
+                <th scope="col" style={{ padding: 'var(--sp-2) 0', fontWeight: 500, textAlign: 'right' }}>Visits</th>
               </tr>
             </thead>
             <tbody>

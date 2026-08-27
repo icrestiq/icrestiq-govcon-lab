@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
+import useDocumentTitle from '../hooks/useDocumentTitle'
 import { Shield, Zap, MessageSquare, ShoppingBag, TrendingUp, Lock, Mail, MapPin, FileText, Check } from 'lucide-react'
 import { TIERS, FOUNDING } from './Membership'
 import MemberCount from '../components/MemberCount'
@@ -92,6 +93,7 @@ const PRICING_CTAS = {
 const PAYMENT_LABELS = ['Visa', 'Mastercard', 'Amex', 'Klarna', 'Affirm', 'Apple Pay', 'Google Pay']
 
 export default function Landing() {
+  useDocumentTitle('iCrestiQ GovCon Lab — Government Contracting Made Accessible')
   const foundingSpotsRemaining = useFoundingSpotsRemaining()
   const location = useLocation()
 
@@ -108,6 +110,7 @@ export default function Landing() {
 
   return (
     <div className={styles.page}>
+      <a href="#main-content" className="skip-link">Skip to main content</a>
       {/* Nav */}
       <nav className={styles.nav}>
         <div className={styles.navLogo}>
@@ -129,6 +132,7 @@ export default function Landing() {
         </div>
       </nav>
 
+      <main id="main-content">
       {/* Hero */}
       <section className={styles.hero}>
         <div className={styles.heroGrid} aria-hidden="true" />
@@ -379,13 +383,20 @@ export default function Landing() {
           </div>
         </div>
       </section>
+      </main>
 
       <footer className={styles.footer}>
-        <div className={styles.footerLogo}>
-          <div className={styles.logoMarkSmall}>iQ</div>
-          <span className={styles.footerText}>© {new Date().getFullYear()} iCrestiQ LLC · Easley, South Carolina · All rights reserved.</span>
+        <div className={styles.footerTopRow}>
+          <div className={styles.footerLogo}>
+            <div className={styles.logoMarkSmall}>iQ</div>
+            <span className={styles.footerText}>© {new Date().getFullYear()} iCrestiQ LLC · Easley, South Carolina · All rights reserved.</span>
+          </div>
+          <div className={styles.footerRight}>govconlab.com</div>
         </div>
-        <div className={styles.footerRight}>govconlab.com</div>
+        <nav className={styles.footerPolicyLinks} aria-label="Policies">
+          <Link to="/policies">Policies</Link>
+          <Link to="/accessibility">Accessibility</Link>
+        </nav>
       </footer>
     </div>
   )

@@ -7,6 +7,7 @@ import { isFoundingMember } from '../lib/tier'
 import FounderBadge from '../components/FounderBadge'
 import SampleOutputStrip from '../components/SampleOutputStrip'
 import styles from './ProductDetail.module.css'
+import useDocumentTitle from '../hooks/useDocumentTitle'
 
 export default function ProductDetail() {
   const { productId } = useParams()
@@ -16,6 +17,7 @@ export default function ProductDetail() {
   const nextParam = `?next=${encodeURIComponent(location.pathname)}`
   const [product, setProduct] = useState(null)
   const [loading, setLoading] = useState(true)
+  useDocumentTitle(product ? `${product.title} — GovCon Lab Store` : 'GovCon Lab Store')
 
   useEffect(() => {
     loadProduct()

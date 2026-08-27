@@ -61,7 +61,7 @@ export default function SocialLinks({ size = 18, gap = 'var(--sp-4)', className,
           className={linkClassName}
           style={{ color: 'inherit', display: 'flex' }}
         >
-          <Icon size={size} />
+          <Icon size={size} aria-hidden="true" />
         </a>
       ))}
     </div>

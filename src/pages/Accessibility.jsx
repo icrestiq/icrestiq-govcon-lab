@@ -3,8 +3,8 @@ import { MapPin, Mail } from 'lucide-react'
 import useDocumentTitle from '../hooks/useDocumentTitle'
 import styles from './About.module.css'
 
-export default function About() {
-  useDocumentTitle('About — iCrestiQ GovCon Lab')
+export default function Accessibility() {
+  useDocumentTitle('Accessibility — iCrestiQ GovCon Lab')
   return (
     <div className={styles.page}>
       <a href="#main-content" className="skip-link">Skip to main content</a>
@@ -23,21 +23,31 @@ export default function About() {
       </nav>
 
       <main id="main-content" className={styles.content}>
-        <div className={styles.eyebrow}>About</div>
-        <h1 className={styles.heading}>Who's behind GovCon Lab</h1>
+        <div className={styles.eyebrow}>Accessibility</div>
+        <h1 className={styles.heading}>Our accessibility commitment</h1>
         <p className={styles.body}>
-          GovCon Lab is run by iCrestiQ LLC, a small federal supplier based in Easley, South Carolina.
-          We bid DIBBS and SAM.gov opportunities for hardware, fasteners, safety gear, and MRO —
-          the same commodity work taught inside the Lab.
+          iCrestiQ LLC is working to make GovCon Lab accessible to the widest possible audience,
+          including people who use assistive technology such as screen readers, screen
+          magnification, voice control, or keyboard-only navigation.
         </p>
         <p className={styles.body}>
-          Everything here comes from that day-to-day sourcing work, not from theory.
+          Our technical accessibility target is <strong>WCAG 2.2 Level AA</strong>, the current
+          Web Content Accessibility Guidelines published by the W3C. We review and improve the
+          site against these guidelines on an ongoing basis — accessibility work is never fully
+          "done," and this statement reflects effort and intent, not a claim of complete or
+          certified compliance.
         </p>
-        <Link to="/#founder" className={styles.link}>Meet the founder →</Link>
+        <p className={styles.body}>
+          If you use assistive technology and run into something on GovCon Lab that doesn't work
+          the way you'd expect, or that gets in the way of using the site, please let us know.
+          Specifics help — the page you were on, what you were trying to do, and what happened
+          instead.
+        </p>
 
         <p className={styles.disclosure}>
-          Greg and Riley are illustrated guides we use to teach. GovCon Lab is run by Keith
-          Atkinson of iCrestiQ LLC, an active federal supplier.
+          This statement describes our ongoing efforts, not a guarantee that every page or
+          feature is fully accessible at all times, and it is not a legal or certification
+          document.
         </p>
       </main>
 

@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../lib/AuthContext'
 import { LogIn, Eye, EyeOff } from 'lucide-react'
 import Turnstile from '../components/Turnstile'
+import useDocumentTitle from '../hooks/useDocumentTitle'
 import styles from './Auth.module.css'
 
 // Open-redirect guard: only ever navigate to a same-origin, root-relative
@@ -27,6 +28,7 @@ function isEmailNotConfirmedError(err) {
 const RESEND_COOLDOWN_SECONDS = 60
 
 export default function Login() {
+  useDocumentTitle('Sign In — iCrestiQ GovCon Lab')
   const { signIn, resendConfirmation } = useAuth()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -115,10 +117,10 @@ export default function Login() {
           <p className={styles.sub}>Sign in to your iCrestiQ GovCon Lab account</p>
         </div>
 
-        {error && <div className="alert alert-error">{error}</div>}
+        {error && <div className="alert alert-error" role="alert">{error}</div>}
 
         {unconfirmedEmail && (
-          <div className="alert alert-error">
+          <div className="alert alert-error" role="alert">
             <div>
               Your account exists, but <strong>{unconfirmedEmail}</strong> hasn't been confirmed
               yet. Check your email for the confirmation link.
@@ -137,12 +139,12 @@ export default function Login() {
                   : 'Resend confirmation email'}
             </button>
             {resendStatus === 'sent' && (
-              <div className="alert alert-success" style={{ marginTop: 'var(--sp-3)' }}>
+              <div className="alert alert-success" role="status" style={{ marginTop: 'var(--sp-3)' }}>
                 Sent — check your inbox.
               </div>
             )}
             {resendStatus === 'error' && (
-              <div style={{ color: 'var(--red)', fontSize: '0.8125rem', marginTop: 'var(--sp-2)' }}>
+              <div role="alert" style={{ color: 'var(--red)', fontSize: '0.8125rem', marginTop: 'var(--sp-2)' }}>
                 {resendError}
               </div>
             )}
@@ -151,23 +153,27 @@ export default function Login() {
 
         <form onSubmit={handleSubmit}>
           <div className="field">
-            <label className="label">Email</label>
+            <label className="label" htmlFor="login-email">Email <span aria-hidden="true">*</span></label>
             <input
+              id="login-email"
               type="email"
               className="input"
               placeholder="you@example.com"
+              autoComplete="email"
               value={form.email}
               onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
               required
             />
           </div>
           <div className="field">
-            <label className="label">Password</label>
+            <label className="label" htmlFor="login-password">Password <span aria-hidden="true">*</span></label>
             <div className={styles.passwordWrap}>
               <input
+                id="login-password"
                 type={showPassword ? 'text' : 'password'}
                 className="input"
                 placeholder="Your password"
+                autoComplete="current-password"
                 value={form.password}
                 onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
                 required
@@ -196,7 +202,7 @@ export default function Login() {
             disabled={loading}
             style={{ justifyContent: 'center', marginTop: 'var(--sp-2)' }}
           >
-            {loading ? <div className="spinner" /> : <><LogIn size={16} /> Sign In</>}
+            {loading ? <div className="spinner" /> : <><LogIn size={16} aria-hidden="true" /> Sign In</>}
           </button>
         </form>
 

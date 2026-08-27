@@ -237,6 +237,10 @@
 
 .tickerInner:hover { animation-play-state: paused; }
 
+@media (prefers-reduced-motion: reduce) {
+  .tickerInner { animation: none; }
+}
+
 @keyframes tickerScroll {
   0%   { transform: translateX(0); }
   100% { transform: translateX(-33.333%); }
@@ -595,10 +599,16 @@
 /* ── Footer ── */
 .footer {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
+  gap: var(--sp-3);
   padding: var(--sp-5) var(--sp-8);
   background: var(--navy);
+}
+
+.footerTopRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   flex-wrap: wrap; gap: var(--sp-4);
 }
 
@@ -613,6 +623,23 @@
   font-family: var(--font-mono);
   font-size: 0.75rem; color: rgba(255,255,255,0.35);
 }
+
+.footerPolicyLinks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2) var(--sp-4);
+  padding-top: var(--sp-3);
+  border-top: 1px solid rgba(255,255,255,0.1);
+}
+
+.footerPolicyLinks a {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  color: rgba(255,255,255,0.5);
+  text-decoration: none;
+  transition: color 0.12s;
+}
+.footerPolicyLinks a:hover { color: var(--gold); }
 
 /* ── Responsive ── */
 @media (max-width: 768px) {

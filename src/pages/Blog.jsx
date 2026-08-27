@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { Newspaper, Search, Clock } from 'lucide-react'
 import styles from './Blog.module.css'
+import useDocumentTitle from '../hooks/useDocumentTitle'
 
 const CATEGORY_COLORS = [
   { bg: '#EBF4FF', color: '#2B6CB0', border: '#BEE3F8' },
@@ -26,6 +27,7 @@ function formatDate(iso) {
 }
 
 export default function Blog() {
+  useDocumentTitle('Blog — GovCon Lab')
   const [posts, setPosts] = useState([])
   const [loading, setLoading] = useState(true)
   const [category, setCategory] = useState('All')

@@ -133,6 +133,11 @@
   max-width: 420px;
 }
 
+.searchRow:focus-within {
+  border-color: var(--navy);
+  box-shadow: 0 0 0 3px rgba(27, 42, 74, 0.25);
+}
+
 .searchRow input {
   border: none;
   outline: none;
