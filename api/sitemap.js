@@ -39,6 +39,26 @@ function escapeXml(str) {
     .replace(/'/g, '&apos;')
 }
 
+// Best-effort, non-blocking — same alert endpoint the Supabase Edge
+// Functions use on failure (api/sam-gov-alert.js), so a degraded sitemap
+// (blog posts silently omitted) doesn't go unnoticed the way it did
+// before: it used to fail back to static-only pages with no signal to
+// anyone that it happened.
+async function alertOnFailure(message, details) {
+  try {
+    await fetch(`${SITE_URL}/api/sam-gov-alert`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-webhook-secret': process.env.REPORT_WEBHOOK_SECRET || '',
+      },
+      body: JSON.stringify({ source: 'sitemap', message, details }),
+    })
+  } catch (err) {
+    console.error('Failed to send sitemap failure alert:', err)
+  }
+}
+
 function urlEntry({ loc, changefreq, priority, lastmod }) {
   return [
     '  <url>',
@@ -78,9 +98,18 @@ export default async function handler(req, res) {
   } catch (err) {
     console.error('sitemap generation error:', err)
     // Fail safe: at minimum still return the static pages, so a transient
-    // Supabase error never takes the whole sitemap down for crawlers.
+    // Supabase error never takes the whole sitemap down for crawlers. But
+    // silently dropping every blog post URL used to have no signal
+    // attached to it at all — alert so this degraded mode gets noticed
+    // and fixed rather than persisting unnoticed.
+    await alertOnFailure(err.message, { effect: 'blog post URLs omitted from sitemap.xml this request' })
     const fallback = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${STATIC_PAGES.map(p => urlEntry({ loc: `${SITE_URL}${p.path}`, changefreq: p.changefreq, priority: p.priority })).join('\n')}\n</urlset>\n`
     res.setHeader('Content-Type', 'application/xml; charset=utf-8')
+    // Deliberately no s-maxage here (unlike the success path's 1-hour CDN
+    // cache) — a degraded, post-less sitemap should get re-tried on the
+    // next crawl/request instead of being stuck cached for an hour after
+    // Supabase has already recovered.
+    res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=0')
     return res.status(200).send(fallback)
   }
 }
