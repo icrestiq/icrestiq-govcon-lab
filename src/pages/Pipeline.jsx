@@ -21,6 +21,7 @@ import {
   Building2, Users, Columns3, Plus, Pencil, Trash2, X, ChevronUp, ChevronDown,
   MessageSquare, ChevronDown as ChevronDownIcon, ChevronRight, Briefcase,
   ListTodo, Square, CheckSquare, Calendar, Search, BarChart3, FileText,
+  Copy, Check, ExternalLink,
 } from 'lucide-react'
 import useDialogA11y from '../hooks/useDialogA11y'
 import useDocumentTitle from '../hooks/useDocumentTitle'
@@ -1113,7 +1114,7 @@ function DealDetailModal({ dealId, stages, onClose, onStageChange }) {
         id, title, value_estimate, stage_id, opportunity_id,
         deal_companies(id, role_on_deal, companies(id, name, company_type)),
         opportunities(solicitation_number),
-        bid_requests(suggested_bid)
+        bid_requests(suggested_bid, supplier_research)
       `)
       .eq('id', dealId)
       .single()
@@ -1214,6 +1215,8 @@ function DealDetailModal({ dealId, stages, onClose, onStageChange }) {
               </div>
             )}
 
+            <SuggestedBidBlock bidRequest={Array.isArray(deal.bid_requests) ? deal.bid_requests[0] : deal.bid_requests} />
+
             <TasksPanel parentField="deal_id" parentId={dealId} />
             <NotesPanel parentField="deal_id" parentId={dealId} />
           </>
@@ -1221,6 +1224,142 @@ function DealDetailModal({ dealId, stages, onClose, onStageChange }) {
       </div>
     </div>
   )
+}
+
+// Renders the AI-researched Suggested Bid (price range, technical
+// approach, risk notes, supplier/shipping leads, RFQ drafts) the exact
+// same way MatchedOpportunities.jsx does for the purchase itself — this
+// deal modal already fetched the raw suggested_bid/supplier_research JSON
+// (see DealDetailModal's load()), it just never rendered it richly before,
+// leaving only the flattened plain-text notes createCrmDeal() writes as
+// the deal-side view of this same data.
+function SuggestedBidBlock({ bidRequest }) {
+  const bid = bidRequest?.suggested_bid
+  const research = bidRequest?.supplier_research
+  if (!bid) return null
+
+  return (
+    <div className={styles.bidResults}>
+      {bid.price_range && (
+        <p className={styles.bidPrice}>
+          Suggested range: ${Number(bid.price_range.low).toLocaleString()} – ${Number(bid.price_range.high).toLocaleString()}
+        </p>
+      )}
+      {bid.technical_approach && (
+        <div className={styles.bidBlock}>
+          <h4>Suggested Approach</h4>
+          <BidBullets content={bid.technical_approach} />
+        </div>
+      )}
+      {bid.risk_notes && (
+        <div className={styles.bidBlock}>
+          <h4>Risk Notes</h4>
+          <BidBullets content={bid.risk_notes} />
+        </div>
+      )}
+
+      {(research?.suppliers?.length > 0 || research?.shipping_packing?.length > 0) && (
+        <p className={styles.bidDisclaimer}>
+          AI-researched leads below — verify independently before contacting.
+        </p>
+      )}
+
+      {research?.suppliers?.length > 0 && (
+        <div className={styles.bidBlock}>
+          <h4>Possible Suppliers</h4>
+          <ul>
+            {research.suppliers.map((s, i) => (
+              <li key={i}>
+                <strong>{s.name}</strong> — {s.note}
+                {s.source_url && (
+                  <a href={s.source_url} target="_blank" rel="noopener noreferrer" className={styles.link}>
+                    {' '}source <ExternalLink size={11} />
+                  </a>
+                )}
+              </li>
+            ))}
+          </ul>
+          <RfqDraftBlock label="Copy Supplier RFQ Email" draft={bid.rfq_drafts?.supplier_email} />
+        </div>
+      )}
+
+      {research?.shipping_packing?.length > 0 && (
+        <div className={styles.bidBlock}>
+          <h4>Possible Packaging / Shipping</h4>
+          <ul>
+            {research.shipping_packing.map((s, i) => (
+              <li key={i}>
+                <strong>{s.name}</strong> — {s.note}
+                {s.source_url && (
+                  <a href={s.source_url} target="_blank" rel="noopener noreferrer" className={styles.link}>
+                    {' '}source <ExternalLink size={11} />
+                  </a>
+                )}
+              </li>
+            ))}
+          </ul>
+          <RfqDraftBlock label="Copy Shipping/Packaging RFQ Email" draft={bid.rfq_drafts?.shipping_email} />
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Ready-to-send quote-request email draft with a one-click copy button —
+// same component as MatchedOpportunities.jsx's, duplicated here since
+// pages in this codebase keep their own self-contained helpers rather
+// than sharing across page modules.
+function RfqDraftBlock({ label, draft }) {
+  const [copied, setCopied] = useState(false)
+  if (!draft) return null
+
+  async function handleCopy() {
+    const text = `Subject: ${draft.subject}\n\n${draft.body}`
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch (err) {
+      console.error('Copy failed:', err)
+    }
+  }
+
+  return (
+    <div className={styles.rfqBlock}>
+      <div className={styles.rfqHeader}>
+        <span className={styles.rfqSubject}>{draft.subject}</span>
+        <button type="button" className="btn btn-gold" onClick={handleCopy} style={{ fontSize: '0.75rem', padding: 'var(--sp-2) var(--sp-4)' }}>
+          {copied ? <Check size={13} /> : <Copy size={13} />} {copied ? 'Copied' : label}
+        </button>
+      </div>
+      <p className={styles.rfqBody}>{draft.body}</p>
+    </div>
+  )
+}
+
+const URL_PATTERN = /(https?:\/\/[^\s)]+)/g
+
+function linkifyText(text) {
+  const parts = String(text).split(URL_PATTERN)
+  return parts.map((part, i) =>
+    part.startsWith('http://') || part.startsWith('https://')
+      ? <a key={i} href={part} target="_blank" rel="noopener noreferrer" className={styles.bulletLink}>{part}</a>
+      : <span key={i}>{part}</span>
+  )
+}
+
+// Suggested Approach / Risk Notes as a bullet list — bids generated before
+// the array-of-bullets format stored a single prose string, rendered as a
+// plain paragraph so already-purchased results don't break.
+function BidBullets({ content }) {
+  if (Array.isArray(content)) {
+    return (
+      <ul>
+        {content.map((line, i) => <li key={i}>{linkifyText(line)}</li>)}
+      </ul>
+    )
+  }
+  return <p>{linkifyText(content)}</p>
 }
 
 // ---------------------------------------------------------------------

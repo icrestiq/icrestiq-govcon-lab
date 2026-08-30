@@ -581,3 +581,115 @@
   gap: var(--sp-3);
   flex-wrap: wrap;
 }
+
+/* Suggested Bid display inside the deal modal — same visual pattern as
+   MatchedOpportunities.module.css's bid* / rfq* classes, duplicated here
+   since each page keeps its own self-contained CSS module. */
+.bidResults {
+  margin-top: var(--sp-4);
+  padding: var(--sp-4);
+  background: rgba(201, 168, 76, 0.06);
+  border: 1px solid rgba(201, 168, 76, 0.2);
+  border-radius: var(--r-lg);
+}
+
+.bidPrice {
+  font-family: var(--font-display);
+  font-weight: 600;
+  color: var(--navy);
+  margin-bottom: var(--sp-3);
+}
+
+.bidBlock {
+  margin-bottom: var(--sp-3);
+}
+
+.bidBlock h4 {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--navy);
+  margin-bottom: var(--sp-1);
+}
+
+.bidBlock p {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.bidBlock ul {
+  margin: 0;
+  padding-left: var(--sp-5);
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.bidBlock li {
+  margin-bottom: var(--sp-1);
+}
+
+.bidDisclaimer {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-style: italic;
+  margin-bottom: var(--sp-3);
+}
+
+.link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8125rem;
+  color: var(--navy);
+  font-weight: 600;
+}
+
+.link:hover {
+  text-decoration: underline;
+}
+
+.bulletLink {
+  color: var(--gold-dim);
+  text-decoration: underline;
+  font-weight: 600;
+}
+
+.bulletLink:hover {
+  color: var(--gold);
+}
+
+.rfqBlock {
+  margin-top: var(--sp-3);
+  padding: var(--sp-3);
+  background: rgba(43, 108, 176, 0.05);
+  border: 1px solid rgba(43, 108, 176, 0.18);
+  border-radius: var(--r-md);
+}
+
+.rfqHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2) var(--sp-3);
+  margin-bottom: var(--sp-2);
+}
+
+.rfqHeader .btn {
+  flex-shrink: 0;
+}
+
+.rfqSubject {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.8125rem;
+  color: var(--navy);
+}
+
+.rfqBody {
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  white-space: pre-wrap;
+  margin: 0;
+}
