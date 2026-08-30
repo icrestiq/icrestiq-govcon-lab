@@ -7,6 +7,7 @@ import nodemailer from 'nodemailer'
 import { PDFDocument, rgb } from 'pdf-lib'
 import fs from 'fs'
 import path from 'path'
+import { hasValidWebhookSecret } from './_lib/webhook-secret.js'
 
 const transporter = nodemailer.createTransport({
   service: 'gmail',
@@ -30,8 +31,7 @@ const BG_COLOR = rgb(249 / 255, 248 / 255, 246 / 255)
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end()
 
-  const secret = req.headers['x-webhook-secret']
-  if (process.env.REPORT_WEBHOOK_SECRET && secret !== process.env.REPORT_WEBHOOK_SECRET) {
+  if (!hasValidWebhookSecret(req, process.env.REPORT_WEBHOOK_SECRET)) {
     return res.status(401).json({ error: 'Unauthorized' })
   }
 

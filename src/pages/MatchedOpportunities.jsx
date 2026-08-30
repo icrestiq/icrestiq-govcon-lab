@@ -472,7 +472,6 @@ export default function MatchedOpportunities() {
 
                   <SuggestedBidSection
                     opportunityId={opp.id}
-                    userId={user.id}
                     tier={isAdmin ? 'admin' : profile?.membership_tier}
                     bidRequest={bidRequests[opp.id]}
                     dealId={dealsByBidRequestId[bidRequests[opp.id]?.id]}
@@ -548,7 +547,6 @@ export default function MatchedOpportunities() {
 
                     <SuggestedBidSection
                       opportunityId={opp.id}
-                      userId={user.id}
                       tier={isAdmin ? 'admin' : profile?.membership_tier}
                       bidRequest={bidRequests[opp.id]}
                       dealId={dealsByBidRequestId[bidRequests[opp.id]?.id]}
@@ -804,7 +802,7 @@ function SampleBidPreview() {
 // checkout.js re-derives both server-side from the caller's real
 // membership_tier before ever creating a charge.
 // ---------------------------------------------------------------------
-function SuggestedBidSection({ opportunityId, userId, tier, bidRequest, dealId, autoExpand, onRequested }) {
+function SuggestedBidSection({ opportunityId, tier, bidRequest, dealId, autoExpand, onRequested }) {
   const [starting, setStarting] = useState(false)
   const [startError, setStartError] = useState('')
   const [expanded, setExpanded] = useState(!!autoExpand)
@@ -816,7 +814,7 @@ function SuggestedBidSection({ opportunityId, userId, tier, bidRequest, dealId, 
     setStartError('')
     setStarting(true)
     try {
-      const { url } = await createSuggestedBidCheckout({ opportunityId, userId })
+      const { url } = await createSuggestedBidCheckout({ opportunityId })
       window.location.href = url
     } catch (err) {
       setStartError(err.message || 'Could not start checkout. Please try again.')

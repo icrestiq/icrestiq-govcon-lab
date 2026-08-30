@@ -5,6 +5,7 @@
 
 import nodemailer from 'nodemailer'
 import { createClient } from '@supabase/supabase-js'
+import { hasValidWebhookSecret } from './_lib/webhook-secret.js'
 
 const supabase = createClient(
   process.env.VITE_SUPABASE_URL,
@@ -23,10 +24,8 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end()
 
   // Supabase Database Webhooks send a simple secret in a custom header —
-  // this is optional but recommended so random internet traffic can't
-  // trigger emails to your inbox.
-  const secret = req.headers['x-webhook-secret']
-  if (process.env.REPORT_WEBHOOK_SECRET && secret !== process.env.REPORT_WEBHOOK_SECRET) {
+  // this is required so random internet traffic cannot trigger emails.
+  if (!hasValidWebhookSecret(req, process.env.REPORT_WEBHOOK_SECRET)) {
     return res.status(401).json({ error: 'Unauthorized' })
   }
 

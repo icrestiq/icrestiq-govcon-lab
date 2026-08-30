@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useSearchParams, Link } from 'react-router-dom'
 import { CheckCircle, ArrowRight, Download, MessageSquare, Loader } from 'lucide-react'
 import { useAuth } from '../lib/AuthContext'
+import { supabase } from '../lib/supabase'
 import styles from './CheckoutResult.module.css'
 import useDocumentTitle from '../hooks/useDocumentTitle'
 
@@ -32,10 +33,18 @@ export default function CheckoutSuccess() {
     setDownloadError('')
 
     try {
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+      if (sessionError || !session?.access_token) {
+        throw new Error('Your session has expired. Please sign in again to download your purchase.')
+      }
+
       const res = await fetch('/api/stripe/download', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ productId, userId: user.id }),
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ productId }),
       })
 
       const data = await res.json()

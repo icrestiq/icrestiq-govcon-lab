@@ -5,6 +5,7 @@
 // Password", not a new third-party email service).
 
 import nodemailer from 'nodemailer'
+import { hasValidWebhookSecret } from './_lib/webhook-secret.js'
 
 const transporter = nodemailer.createTransport({
   service: 'gmail',
@@ -17,8 +18,7 @@ const transporter = nodemailer.createTransport({
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end()
 
-  const secret = req.headers['x-webhook-secret']
-  if (process.env.REPORT_WEBHOOK_SECRET && secret !== process.env.REPORT_WEBHOOK_SECRET) {
+  if (!hasValidWebhookSecret(req, process.env.REPORT_WEBHOOK_SECRET)) {
     return res.status(401).json({ error: 'Unauthorized' })
   }
 

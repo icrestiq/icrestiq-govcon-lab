@@ -1,7 +1,16 @@
 import { loadStripe } from '@stripe/stripe-js'
+import { supabase } from './supabase'
 
 // Stripe publishable key - safe to expose on frontend
 let stripePromise = null
+
+async function getAccessToken() {
+  const { data: { session }, error } = await supabase.auth.getSession()
+  if (error || !session?.access_token) {
+    throw new Error('Your session has expired. Please sign in again.')
+  }
+  return session.access_token
+}
 
 export function getStripe() {
   if (!stripePromise) {
@@ -26,11 +35,15 @@ export const STRIPE_PRICES = {
 }
 
 // ── Checkout helper ──────────────────────────────────────────
-export async function createCheckoutSession({ productId, userId, userEmail, mode }) {
+export async function createCheckoutSession({ productId }) {
+  const accessToken = await getAccessToken()
   const res = await fetch('/api/stripe/checkout', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ productId, userId, userEmail, mode }),
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify({ productId }),
   })
 
   if (!res.ok) {
@@ -57,11 +70,15 @@ export const SUGGESTED_BID_PRICING = {
   admin: { label: 'Free (Admin Test)', searchCap: 8 },
 }
 
-export async function createSuggestedBidCheckout({ opportunityId, userId }) {
+export async function createSuggestedBidCheckout({ opportunityId }) {
+  const accessToken = await getAccessToken()
   const res = await fetch('/api/stripe/suggested-bid-checkout', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ opportunityId, userId }),
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify({ opportunityId }),
   })
 
   if (!res.ok) {
@@ -73,11 +90,14 @@ export async function createSuggestedBidCheckout({ opportunityId, userId }) {
 }
 
 // ── Subscription portal helper ────────────────────────────────
-export async function createPortalSession({ userId }) {
+export async function createPortalSession() {
+  const accessToken = await getAccessToken()
   const res = await fetch('/api/stripe/portal', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ userId }),
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${accessToken}`,
+    },
   })
 
   if (!res.ok) {

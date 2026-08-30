@@ -40,8 +40,6 @@ export default function CartDrawer({ open, onClose, cart, onRemove, clearCart })
       const item = cart[0]
       const { url } = await createCheckoutSession({
         productId: item.id,
-        userId: user.id,
-        userEmail: user.email,
       })
       window.location.href = url
     } catch (err) {

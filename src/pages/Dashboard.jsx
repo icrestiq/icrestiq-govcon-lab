@@ -50,7 +50,7 @@ export default function Dashboard() {
     setPortalLoading(true)
     setPortalError('')
     try {
-      const { url } = await createPortalSession({ userId: profile.id })
+      const { url } = await createPortalSession()
       window.location.href = url
     } catch (err) {
       setPortalError(err.message || 'Could not open billing portal')

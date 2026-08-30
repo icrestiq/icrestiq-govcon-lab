@@ -1,5 +1,6 @@
 // api/upload/image.mjs
 import { createClient } from '@supabase/supabase-js'
+import { requireAdminUser } from '../_lib/admin-auth.js'
 
 const ALLOWED_FOLDERS = new Set(['products', 'blog'])
 
@@ -53,10 +54,13 @@ function getExt(contentType) {
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*')
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-File-Name')
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-File-Name, Authorization')
 
   if (req.method === 'OPTIONS') return res.status(200).end()
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
+
+  const admin = await requireAdminUser(req, supabase)
+  if (!admin) return res.status(403).json({ error: 'Admin access required' })
 
   try {
     const chunks = []

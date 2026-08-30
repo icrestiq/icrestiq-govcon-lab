@@ -134,8 +134,6 @@ export default function Membership() {
     try {
       const { url } = await createCheckoutSession({
         productId,
-        userId: user.id,
-        userEmail: user.email,
         // Stripe coupon applied at checkout level
         discountCode: codeApplied ? discountCode.trim().toUpperCase() : null,
       })

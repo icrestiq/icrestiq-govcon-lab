@@ -6,6 +6,7 @@
 // same Gmail SMTP setup as notify-report.js.
 
 import nodemailer from 'nodemailer'
+import { hasValidWebhookSecret } from './_lib/webhook-secret.js'
 
 const transporter = nodemailer.createTransport({
   service: 'gmail',
@@ -20,8 +21,7 @@ export default async function handler(req, res) {
 
   // Same shared-secret pattern as notify-report.js, so random traffic
   // can't trigger emails.
-  const secret = req.headers['x-webhook-secret']
-  if (process.env.REPORT_WEBHOOK_SECRET && secret !== process.env.REPORT_WEBHOOK_SECRET) {
+  if (!hasValidWebhookSecret(req, process.env.REPORT_WEBHOOK_SECRET)) {
     return res.status(401).json({ error: 'Unauthorized' })
   }
 

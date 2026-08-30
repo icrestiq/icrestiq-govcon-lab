@@ -1,4 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
+import { requireAuthenticatedUser } from '../_lib/auth.js'
+import { hasDownloadEntitlement } from '../_lib/download-entitlement.js'
 
 const supabase = createClient(
   process.env.VITE_SUPABASE_URL,
@@ -11,10 +13,15 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { productId, userId } = req.body
+    const user = await requireAuthenticatedUser(req, supabase)
+    if (!user) {
+      return res.status(401).json({ error: 'Authentication required' })
+    }
 
-    if (!productId || !userId) {
-      return res.status(400).json({ error: 'Missing productId or userId' })
+    const { productId } = req.body || {}
+
+    if (!productId) {
+      return res.status(400).json({ error: 'Missing productId' })
     }
 
     // Get the file path from the products table
@@ -30,6 +37,11 @@ export default async function handler(req, res) {
 
     if (!product.file_url) {
       return res.status(400).json({ error: 'No file available for this product' })
+    }
+
+    const entitled = await hasDownloadEntitlement(supabase, user.id, productId)
+    if (!entitled) {
+      return res.status(403).json({ error: 'Purchase required' })
     }
 
     // Generate a secure signed URL that expires in 24 hours

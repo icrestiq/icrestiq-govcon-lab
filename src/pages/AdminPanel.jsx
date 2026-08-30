@@ -730,9 +730,14 @@ function ImageUploaderTab() {
       if (file.size > 5 * 1024 * 1024) {
         throw new Error('File too large. Max size is 5MB.')
       }
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) throw new Error('Your session has expired. Please sign in again.')
       const res = await fetch('/api/upload/image', {
         method: 'POST',
-        headers: { 'Content-Type': file.type },
+        headers: {
+          'Content-Type': file.type,
+          Authorization: `Bearer ${session.access_token}`,
+        },
         body: file,
       })
       if (!res.ok) {
@@ -1299,9 +1304,14 @@ function ProductForm({ product, onSave, onCancel }) {
       if (file.size > 2 * 1024 * 1024) {
         throw new Error('File too large. Max size is 2MB.')
       }
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) throw new Error('Your session has expired. Please sign in again.')
       const res = await fetch('/api/upload/image', {
         method: 'POST',
-        headers: { 'Content-Type': file.type },
+        headers: {
+          'Content-Type': file.type,
+          Authorization: `Bearer ${session.access_token}`,
+        },
         body: file,
       })
       if (!res.ok) {
@@ -1665,9 +1675,14 @@ function BlogPostForm({ post, onSave, onCancel }) {
       if (file.size > 2 * 1024 * 1024) {
         throw new Error('File too large. Max size is 2MB.')
       }
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) throw new Error('Your session has expired. Please sign in again.')
       const res = await fetch('/api/upload/image?folder=blog', {
         method: 'POST',
-        headers: { 'Content-Type': file.type },
+        headers: {
+          'Content-Type': file.type,
+          Authorization: `Bearer ${session.access_token}`,
+        },
         body: file,
       })
       if (!res.ok) {

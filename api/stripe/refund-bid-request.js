@@ -6,6 +6,7 @@
 
 import Stripe from 'stripe'
 import { createClient } from '@supabase/supabase-js'
+import { hasValidWebhookSecret } from '../_lib/webhook-secret.js'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY)
 
@@ -17,8 +18,7 @@ const supabase = createClient(
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end()
 
-  const secret = req.headers['x-webhook-secret']
-  if (process.env.REPORT_WEBHOOK_SECRET && secret !== process.env.REPORT_WEBHOOK_SECRET) {
+  if (!hasValidWebhookSecret(req, process.env.REPORT_WEBHOOK_SECRET)) {
     return res.status(401).json({ error: 'Unauthorized' })
   }
 
