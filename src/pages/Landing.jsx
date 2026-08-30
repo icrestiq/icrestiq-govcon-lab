@@ -313,7 +313,7 @@ export default function Landing() {
             <div className={styles.founderEyebrow}>Who runs this</div>
             <h2 className={styles.founderHeading}>I&rsquo;m Keith. I quote federal solicitations every week.</h2>
             <p className={styles.founderBody}>
-              I run iCrestiQ Sourcing, a small federal supplier in Easley, South Carolina. We bid
+              I run <a href="https://icrestiq.com" target="_blank" rel="noopener noreferrer" className={styles.founderLink}>iCrestiQ Sourcing</a>, a small federal supplier in Easley, South Carolina. We bid
               DIBBS and SAM.gov opportunities for hardware, fasteners, safety gear and MRO — the
               unglamorous commodity work that most GovCon training ignores completely.
             </p>
@@ -321,6 +321,11 @@ export default function Landing() {
               I built GovCon Lab because the courses I could find were written by consultants and
               former officials, not by anyone currently sending in quotes. Everything in here is
               the process I actually use, including the parts that didn&rsquo;t work.
+            </p>
+            <p className={styles.founderBody}>
+              iCrestiQ LLC also runs <a href="https://icrestiqcommercial.com" target="_blank" rel="noopener noreferrer" className={styles.founderLink}>iCrestiQ Commercial</a>, which sells commercial
+              equipment to construction contractors, businesses, and government entities outside
+              the federal-contracting process taught here.
             </p>
             <p className={styles.founderBody}>
               I&rsquo;ve quoted 15 solicitations this year.
@@ -396,6 +401,11 @@ export default function Landing() {
         <nav className={styles.footerPolicyLinks} aria-label="Policies">
           <Link to="/policies">Policies</Link>
           <Link to="/accessibility">Accessibility</Link>
+        </nav>
+
+        <nav className={styles.footerPolicyLinks} aria-label="Related iCrestiQ sites">
+          <a href="https://icrestiq.com" target="_blank" rel="noopener noreferrer">iCrestiQ Sourcing</a>
+          <a href="https://icrestiqcommercial.com" target="_blank" rel="noopener noreferrer">iCrestiQ Commercial</a>
         </nav>
       </footer>
     </div>

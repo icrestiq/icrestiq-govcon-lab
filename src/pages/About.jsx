@@ -33,6 +33,15 @@ export default function About() {
         <p className={styles.body}>
           Everything here comes from that day-to-day sourcing work, not from theory.
         </p>
+        <p className={styles.body}>
+          iCrestiQ LLC also operates{' '}
+          <a href="https://icrestiq.com" target="_blank" rel="noopener noreferrer" className={styles.link}>iCrestiQ Sourcing</a>
+          {' '}(icrestiq.com), the federal supply business this course is drawn from, and{' '}
+          <a href="https://icrestiqcommercial.com" target="_blank" rel="noopener noreferrer" className={styles.link}>iCrestiQ Commercial</a>
+          {' '}(icrestiqcommercial.com), which sells commercial equipment to construction
+          contractors, businesses, and government entities outside the federal-contracting
+          process taught here.
+        </p>
         <Link to="/#founder" className={styles.link}>Meet the founder →</Link>
 
         <p className={styles.disclosure}>

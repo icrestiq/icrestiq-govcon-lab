@@ -29,6 +29,11 @@ export default function Footer() {
         <Link to="/policies">Policies</Link>
         <Link to="/accessibility">Accessibility</Link>
       </nav>
+
+      <nav className={styles.policyLinks} aria-label="Related iCrestiQ sites">
+        <a href="https://icrestiq.com" target="_blank" rel="noopener noreferrer">iCrestiQ Sourcing</a>
+        <a href="https://icrestiqcommercial.com" target="_blank" rel="noopener noreferrer">iCrestiQ Commercial</a>
+      </nav>
     </footer>
   )
 }

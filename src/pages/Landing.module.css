@@ -526,6 +526,18 @@
   margin-top: var(--sp-5);
 }
 
+.founderLink {
+  color: var(--navy);
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-color: var(--gold);
+  text-underline-offset: 3px;
+}
+
+.founderLink:hover {
+  color: var(--gold-dim);
+}
+
 @media (max-width: 768px) {
   .founder { padding: 90px var(--sp-5); }
   .founderInner { grid-template-columns: 1fr; gap: var(--sp-6); }
