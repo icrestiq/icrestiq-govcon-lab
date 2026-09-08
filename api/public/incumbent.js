@@ -8,9 +8,23 @@
 // a public route instead of from inside the paid generation flow, and with
 // a soft agency-name match layered on top to surface a likely incumbent
 // rather than just a flat list of NAICS-wide recent awards.
+//
+// Phase 3 addition: also flags a "recompete window" using the same result
+// set — no second USASpending call. Confirmed live 2026-09-08 that
+// "Period of Performance Current End Date" is not a recognized field name
+// for this endpoint (comes back null); "End Date" is the one that returns
+// real values.
+
+const RECOMPETE_WINDOW_DAYS = 365
 
 function normalize(value) {
   return String(value || '').toLowerCase().replace(/[^a-z0-9]/g, '')
+}
+
+function daysUntil(dateStr) {
+  if (!dateStr) return null
+  const diff = new Date(dateStr).getTime() - Date.now()
+  return Math.ceil(diff / 86400000)
 }
 
 export default async function handler(req, res) {
@@ -36,7 +50,7 @@ export default async function handler(req, res) {
           time_period: [{ start_date: threeYearsAgo.toISOString().slice(0, 10), end_date: new Date().toISOString().slice(0, 10) }],
           award_type_codes: ['A', 'B', 'C', 'D'],
         },
-        fields: ['Award ID', 'Recipient Name', 'Award Amount', 'Awarding Agency', 'Start Date'],
+        fields: ['Award ID', 'Recipient Name', 'Award Amount', 'Awarding Agency', 'Start Date', 'End Date'],
         sort: 'Start Date',
         order: 'desc',
         limit: 10,
@@ -61,12 +75,20 @@ export default async function handler(req, res) {
         })
       : []
 
-    const toAward = (r) => ({
-      recipient: r['Recipient Name'] || null,
-      amount: r['Award Amount'] ?? null,
-      agency: r['Awarding Agency'] || null,
-      date: r['Start Date'] || null,
-    })
+    const toAward = (r) => {
+      const recompeteInDays = daysUntil(r['End Date'])
+      return {
+        recipient: r['Recipient Name'] || null,
+        amount: r['Award Amount'] ?? null,
+        agency: r['Awarding Agency'] || null,
+        date: r['Start Date'] || null,
+        endDate: r['End Date'] || null,
+        // Only flagged when the period-of-performance end is a real future
+        // date within the window — a past/null end date isn't a recompete
+        // signal, just a completed or undated award.
+        recompeteInDays: (recompeteInDays != null && recompeteInDays >= 0 && recompeteInDays <= RECOMPETE_WINDOW_DAYS) ? recompeteInDays : null,
+      }
+    }
 
     const likelyIncumbent = agencyMatches.length > 0 ? toAward(agencyMatches[0]) : null
     const recentAwards = (agencyMatches.length > 0 ? agencyMatches : results).slice(0, 5).map(toAward)

@@ -706,6 +706,11 @@ function IncumbentIntel({ naicsCode, agency }) {
       ) : (
         <p className={styles.incumbentHeadline}>No award matched this agency directly — recent awards for this NAICS code instead:</p>
       )}
+      {data.likelyIncumbent?.recompeteInDays != null && (
+        <p className={styles.recompeteFlag}>
+          <RefreshCw size={12} /> That contract's period of performance ends in {data.likelyIncumbent.recompeteInDays} days — likely heading toward recompete.
+        </p>
+      )}
       <ul className={styles.incumbentList}>
         {data.recentAwards.slice(0, 5).map((a, i) => (
           <li key={i}>
@@ -713,6 +718,7 @@ function IncumbentIntel({ naicsCode, agency }) {
             {a.amount != null && ` — $${Number(a.amount).toLocaleString()}`}
             {a.agency && ` · ${a.agency}`}
             {a.date && ` · ${new Date(a.date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}`}
+            {a.recompeteInDays != null && <span className={styles.recompeteBadge}> · recompetes in {a.recompeteInDays}d</span>}
           </li>
         ))}
       </ul>

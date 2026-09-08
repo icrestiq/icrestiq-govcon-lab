@@ -510,6 +510,21 @@
   margin-bottom: 4px;
 }
 
+.recompeteFlag {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #C05621;
+  margin-bottom: var(--sp-3);
+}
+
+.recompeteBadge {
+  color: #C05621;
+  font-weight: 600;
+}
+
 .spin {
   animation: spin 0.8s linear infinite;
 }

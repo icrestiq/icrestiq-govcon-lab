@@ -700,6 +700,8 @@ export default function Profile() {
         </div>
       )}
 
+      {tab === 'matching' && <WatchlistCard profileId={user.id} />}
+
       {tab === 'notion' && notionEligible && (
         <div className={styles.card}>
           <h3 className={styles.cardTitle}>Notion Sync</h3>
@@ -796,6 +798,110 @@ function NaicsMultiSelect({ selected, onChange }) {
           )}
         </>
       )}
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------
+// Watchlist (Market Intelligence Redesign, Phase 3) — a lighter-weight
+// parallel to the main NAICS/PSC matching fields above. Matching runs
+// full AI scoring against a member's whole profile (bid criteria,
+// capabilities summary, etc.) once a day and is only ever viewed in-app;
+// this is just "email me when a new opportunity posts on this exact
+// code," backed by its own naics_watchlist table and the
+// api/digest/watchlist-alerts.js daily cron, independent of the main
+// matching_enabled toggle. Each add/remove writes directly to the table
+// rather than batching into the big matchForm save above — it isn't part
+// of the profiles row at all.
+// ---------------------------------------------------------------------
+function WatchlistCard({ profileId }) {
+  const [rows, setRows] = useState(null)
+  const [error, setError] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    supabase
+      .from('naics_watchlist')
+      .select('id, code, code_type')
+      .eq('profile_id', profileId)
+      .order('created_at')
+      .then(({ data, error: err }) => {
+        if (err) { setError(err.message); return }
+        setRows(data || [])
+      })
+  }, [profileId])
+
+  if (rows === null) return null
+
+  const naicsCodes = rows.filter((r) => r.code_type === 'naics').map((r) => r.code)
+  const pscCodes = rows.filter((r) => r.code_type === 'psc').map((r) => r.code)
+
+  async function syncCodes(codeType, nextCodes) {
+    setSaving(true)
+    setError('')
+    const current = rows.filter((r) => r.code_type === codeType)
+    const currentCodes = current.map((r) => r.code)
+    const added = nextCodes.filter((c) => !currentCodes.includes(c))
+    const removedRows = current.filter((r) => !nextCodes.includes(r.code))
+
+    try {
+      if (removedRows.length > 0) {
+        const { error: delErr } = await supabase.from('naics_watchlist').delete().in('id', removedRows.map((r) => r.id))
+        if (delErr) throw delErr
+      }
+      let insertedRows = []
+      if (added.length > 0) {
+        const { data, error: insErr } = await supabase
+          .from('naics_watchlist')
+          .insert(added.map((code) => ({ profile_id: profileId, code, code_type: codeType })))
+          .select('id, code, code_type')
+        if (insErr) throw insErr
+        insertedRows = data || []
+      }
+      setRows((prev) => [
+        ...prev.filter((r) => r.code_type !== codeType || nextCodes.includes(r.code)),
+        ...insertedRows,
+      ])
+    } catch (err) {
+      setError(err.message || 'Could not update your watchlist.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className={styles.card}>
+      <h3 className={styles.cardTitle}>Watchlist</h3>
+      <p className={styles.bio} style={{ marginBottom: 'var(--sp-5)' }}>
+        A lighter alternative to full matching above — get a plain email whenever a new SAM.gov opportunity
+        posts on one of these exact codes, whether or not it's a strong overall fit. Checked daily.
+      </p>
+
+      {error && <div className="alert alert-error" role="alert" style={{ marginBottom: 'var(--sp-4)' }}>{error}</div>}
+
+      <div style={{ marginBottom: 'var(--sp-5)' }}>
+        <label className="label" htmlFor="watchlist-naics">Watched NAICS Codes</label>
+        <TagInput
+          id="watchlist-naics"
+          value={naicsCodes}
+          onChange={(codes) => syncCodes('naics', codes)}
+          placeholder="Type a NAICS code and press Enter"
+          transform={(s) => s.trim()}
+        />
+      </div>
+
+      <div>
+        <label className="label" htmlFor="watchlist-psc">Watched PSC Codes</label>
+        <TagInput
+          id="watchlist-psc"
+          value={pscCodes}
+          onChange={(codes) => syncCodes('psc', codes)}
+          placeholder="Type a PSC code and press Enter"
+          transform={(s) => s.trim().toUpperCase()}
+        />
+      </div>
+
+      {saving && <p className={styles.fieldHint} style={{ marginTop: 'var(--sp-3)' }}>Saving…</p>}
     </div>
   )
 }
