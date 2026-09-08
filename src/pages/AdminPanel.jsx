@@ -1631,6 +1631,7 @@ function BlogPostForm({ post, onSave, onCancel }) {
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState('')
+  const [imageUrl, setImageUrl] = useState('')
 
   function handleTitleChange(value) {
     setForm(f => ({ ...f, title: value, slug: slugTouched ? f.slug : slugify(value) }))
@@ -1693,6 +1694,35 @@ function BlogPostForm({ post, onSave, onCancel }) {
       setForm(f => ({ ...f, cover_image_url: url }))
     } catch (err) {
       setUploadError('Upload failed: ' + err.message)
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  async function handleImageUrlFetch() {
+    if (!imageUrl.trim()) return
+    setUploadError('')
+    setUploading(true)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) throw new Error('Your session has expired. Please sign in again.')
+      const res = await fetch('/api/upload/image', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ url: imageUrl.trim(), folder: 'blog' }),
+      })
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.error || 'Fetch failed')
+      }
+      const { url } = await res.json()
+      setForm(f => ({ ...f, cover_image_url: url }))
+      setImageUrl('')
+    } catch (err) {
+      setUploadError('Fetch failed: ' + err.message)
     } finally {
       setUploading(false)
     }
@@ -1817,6 +1847,15 @@ function BlogPostForm({ post, onSave, onCancel }) {
               {uploading ? 'Uploading...' : 'Upload Cover Image'}
               <input type="file" accept="image/*" onChange={handleImageUpload} style={{ display: 'none' }} disabled={uploading} />
             </label>
+
+            <div style={{ display: 'flex', gap: 'var(--sp-2)', marginTop: 'var(--sp-3)' }}>
+              <input className="input" type="url" placeholder="Or paste an image URL to fetch it"
+                value={imageUrl} onChange={e => setImageUrl(e.target.value)} disabled={uploading} />
+              <button type="button" className="btn btn-ghost" onClick={handleImageUrlFetch}
+                disabled={uploading || !imageUrl.trim()}>
+                {uploading ? 'Fetching...' : 'Fetch'}
+              </button>
+            </div>
 
             {uploadError && <p style={{ color: 'var(--red)', fontSize: '0.8125rem', marginTop: 'var(--sp-2)' }}>{uploadError}</p>}
           </div>

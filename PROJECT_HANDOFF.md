@@ -100,6 +100,36 @@ Point-in-time verification, not an ongoing or auto-refreshed status.
 
 ~~Exact remaining custom-property headroom in Keith's live HubSpot portal~~ and ~~whether HubSpot's OAuth app review process applies~~ — **removed 2026-08-27, HubSpot integration dropped.**
 
+## Session — 2026-09-08
+
+**Goal:** Add a way for the admin to set a blog post's cover image by pasting a source URL instead of only uploading a local file — the site fetches it server-side and re-hosts it in the existing storage bucket.
+
+**Context:** Repository HEAD at session start was `193c6f4` (last commit in git log: "Render Suggested Bid results richly in the Pipeline deal modal"), working tree otherwise clean aside from pre-existing untracked `.claude/`, `AGENTS.md`, `supabase/.temp/`. This session did not investigate or reconcile the gap between this handoff's last logged session (2026-08-27) and the commits since (`e646cc1` security hardening, `f19e348`, `7e4b677`, `193c6f4`) — that reconciliation is still outstanding and belongs to whichever session picks it up next.
+
+**Work completed:**
+- Confirmed `public.blog_posts.body` already stores raw Markdown (not HTML) via a direct Supabase query — relevant to a separate discussion about migrating content to a new site (tryholo.ai), not itself a code change.
+- **`api/upload/image.mjs`:** added a second request mode. The existing binary/multipart file-upload path is unchanged. New: a POST with `Content-Type: application/json` and body `{ url, folder }` fetches that URL server-side and uploads the result to the same `product-images` Supabase Storage bucket the file-upload path already uses, returning the same `{ url }` shape. Guardrails added since this is a server-initiated outbound fetch triggered by admin-supplied input (SSRF surface): only `http:`/`https:` protocols accepted; the resolved DNS address is checked against loopback/private/link-local ranges (127.0.0.0/8, 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 169.254.0.0/16, and IPv6 equivalents) before the fetch is made; `redirect: 'error'` so a public URL can't redirect the fetch to an internal address after that check passes; response `Content-Type` must start with `image/`; a 2MB cap (matching the existing client-side file-size check) enforced both via `Content-Length` and a running byte count while streaming, aborting mid-download if exceeded; a 10s timeout via `AbortController`.
+- **`src/pages/AdminPanel.jsx` (`BlogPostForm`):** added a URL text input + "Fetch" button next to the existing "Upload Cover Image" file button, calling the new JSON mode and setting `cover_image_url` on success. Reused the existing `uploading`/`uploadError` state rather than adding new UI state for it.
+
+**Files changed:** `api/upload/image.mjs`, `src/pages/AdminPanel.jsx` — both uncommitted at end of session, no commit made (not asked to commit).
+
+**Decisions and reasons:**
+- Scoped to the blog cover image only, not the Store product thumbnail uploader (`ProductForm`, same file), which has an identical file-only upload today — the user's request was specifically about the blog cover image. Extending the same pattern to product thumbnails would be a small follow-up if wanted.
+- Reused the existing `/api/upload/image` endpoint with a content-type branch rather than a new endpoint, since the two modes converge on the same storage-upload logic and the endpoint already branched on multipart vs. raw binary.
+- Added SSRF protections proactively (not explicitly requested) given this app's recent security-hardening history (`e646cc1`, per the Obsidian project note) — a server-side "fetch this URL" feature is a classic SSRF vector, and it seemed consistent with this project's standing bar for admin-facing endpoints.
+
+**Tests and results:** `npm test` (vitest) run in full: 85/86 pass, the 1 failure is the pre-existing unrelated `outline.test.js` issue already documented in the Obsidian project note and earlier sessions here — not a regression from this change. No test file exists yet for `api/upload/image.mjs` (none existed before this change either); not added since it wasn't requested. No browser/live verification was possible this session — this repo's `dev` script is plain `vite` with no local API-route runner (no `vercel dev`), so `/api/upload/image` only actually runs once deployed to Vercel.
+
+**Deployment and verification status:** Not deployed. Uncommitted, unpushed. The new URL-fetch path has not been exercised against a real image URL or a real admin session — code-reviewed only.
+
+**Unresolved issues:**
+- New code is untested end-to-end (no local API runner available, not deployed).
+- The `PROJECT_HANDOFF.md` "Current Repository State" section (below) still reflects 2026-08-27 and was not updated this session to cover `e646cc1` through `193c6f4` — flagged here rather than silently left inconsistent.
+
+**Next recommended action:** Deploy (or preview-deploy) and try the new "paste a URL" flow against a real image link and a real admin session before relying on it in production. This is a recommendation, not an approved priority.
+
+---
+
 ## Session — 2026-08-27
 
 **Goal:** Full WCAG 2.2 AA accessibility audit/remediation, integrate a legal policy package from a provided document, then work through the "what's left on the whole site" punch list — CRM verification, an AI fit-scoring cron, dropping HubSpot/Notion, and scoping/building an attachment-parsing enhancement to Suggested Bid.
@@ -476,4 +506,4 @@ Point-in-time verification, not an ongoing or auto-refreshed status.
 
 ## Last Handoff Update
 
-2026-08-27, America/New_York.
+2026-09-08, America/New_York.
