@@ -40,6 +40,48 @@
   padding: var(--sp-8) 0;
 }
 
+.viewToggle {
+  display: flex;
+  justify-content: center;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-6);
+}
+
+.viewToggleBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: var(--sp-2) var(--sp-5);
+  border-radius: 100px;
+  border: 1px solid var(--border);
+  background: #FFFFFF;
+  color: var(--text-secondary);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.viewToggleActive {
+  background: var(--navy);
+  border-color: var(--navy);
+  color: #FFFFFF;
+}
+
+.mapNote {
+  text-align: center;
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+  max-width: 600px;
+  margin: 0 auto var(--sp-5);
+}
+
+.mapWrap {
+  height: 480px;
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
