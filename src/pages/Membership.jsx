@@ -89,6 +89,34 @@ export const FOUNDING = {
   ],
 }
 
+// Feature comparison matrix (Market Intelligence Redesign, Phase 1) —
+// a scannable row-by-row table beneath the tier cards, the way competitor
+// pricing pages (Mindy, GovScraper) present tier differences. Values are
+// booleans (renders check/dash) or short strings for anything that isn't
+// simply on/off (price points, cadence). Kept as a flat hardcoded list
+// rather than derived from TIERS/FOUNDING above — those arrays are
+// marketing bullet copy, not a normalized feature model, and forcing a
+// shared source would make either the cards or this table read awkwardly.
+const FEATURE_MATRIX = [
+  { label: 'GovCon Mastery Foundation Course', free: 'Sample chapter', lab: 'Full library', founding: 'Full library + future drops' },
+  { label: 'Community chat rooms', free: 'Read-only', lab: 'All 6 rooms', founding: 'All 6 rooms' },
+  { label: 'Weekly GovCon intel email', free: true, lab: true, founding: true },
+  { label: 'Matched Opportunities — live SAM.gov matching', free: false, lab: true, founding: true },
+  { label: 'Suggested Bid (price range, supplier leads, RFQ drafts)', free: false, lab: '$2 / opportunity', founding: '$1 / opportunity' },
+  { label: 'Sourcing Pipeline CRM (Companies, Contacts, Deals)', free: false, lab: true, founding: true },
+  { label: 'New playbook drops', free: false, lab: 'Quarterly', founding: 'All future drops included' },
+  { label: 'Monthly live Q&A with Keith', free: false, lab: false, founding: true },
+  { label: 'Make.com workflow library', free: false, lab: false, founding: true },
+  { label: 'Name on the Founding Members wall', free: false, lab: false, founding: true },
+  { label: 'Billing', free: '$0 forever', lab: '$47/mo, cancel anytime', founding: '$497 one-time, lifetime' },
+]
+
+function MatrixCell({ value }) {
+  if (value === true) return <Check size={16} className={styles.matrixCheck} aria-label="Included" />
+  if (value === false) return <span className={styles.matrixDash} aria-label="Not included">—</span>
+  return <span className={styles.matrixText}>{value}</span>
+}
+
 export default function Membership() {
   useDocumentTitle('Membership — GovCon Lab')
   const { user, profile } = useAuth()
@@ -360,6 +388,33 @@ export default function Membership() {
           <p className={styles.klarnaNote} style={{ color: 'rgba(255,255,255,0.5)' }}>
             Split into installments with Affirm at checkout
           </p>
+        </div>
+      </div>
+
+      {/* Feature comparison matrix */}
+      <div className={styles.matrixSection}>
+        <h2 className={styles.matrixTitle}>Compare every feature</h2>
+        <div className={styles.matrixScroll}>
+          <table className={styles.matrixTable}>
+            <thead>
+              <tr>
+                <th></th>
+                <th>Free Tier</th>
+                <th>Lab Member</th>
+                <th>Founding Member</th>
+              </tr>
+            </thead>
+            <tbody>
+              {FEATURE_MATRIX.map((row) => (
+                <tr key={row.label}>
+                  <th scope="row">{row.label}</th>
+                  <td><MatrixCell value={row.free} /></td>
+                  <td><MatrixCell value={row.lab} /></td>
+                  <td><MatrixCell value={row.founding} /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
 

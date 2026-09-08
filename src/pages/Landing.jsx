@@ -4,6 +4,7 @@ import useDocumentTitle from '../hooks/useDocumentTitle'
 import { Shield, Zap, MessageSquare, ShoppingBag, TrendingUp, Lock, Mail, MapPin, FileText, Check } from 'lucide-react'
 import { TIERS, FOUNDING } from './Membership'
 import MemberCount from '../components/MemberCount'
+import PlatformStats from '../components/PlatformStats'
 import Testimonials from '../components/Testimonials'
 import RecentWins from '../components/RecentWins'
 import DigestSignup from '../components/DigestSignup'
@@ -184,6 +185,8 @@ export default function Landing() {
           </div>
         </div>
       </section>
+
+      <PlatformStats />
 
       <ProofSection />
 

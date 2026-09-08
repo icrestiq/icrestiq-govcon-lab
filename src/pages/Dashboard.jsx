@@ -1,12 +1,22 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../lib/AuthContext'
 import { createPortalSession } from '../lib/stripe'
-import { MessageSquare, ShoppingBag, TrendingUp, ArrowRight, Zap, CreditCard, GraduationCap, Shirt } from 'lucide-react'
+import { supabase } from '../lib/supabase'
+import { MessageSquare, ShoppingBag, TrendingUp, ArrowRight, Zap, CreditCard, GraduationCap, Shirt, Radar } from 'lucide-react'
 import VersionCard from '../components/VersionCard'
 import LearningPathQuiz from '../components/LearningPathQuiz'
 import styles from './Dashboard.module.css'
 import useDocumentTitle from '../hooks/useDocumentTitle'
+
+// Mirrors MatchedOpportunities.jsx's own scoreBadgeClass — kept as a
+// separate small copy rather than a shared import since this component
+// only needs the color mapping, not the rest of that page's logic.
+function scoreBadgeClass(score) {
+  if (score >= 80) return 'badge-green'
+  if (score >= 50) return 'badge-amber'
+  return 'badge-red'
+}
 
 // Each resource gets a distinct color matching GovCon Mastery style.
 // `image`: optional path under /public (e.g. '/icons/dibbs.png') — square,
@@ -34,6 +44,135 @@ const PILL_COLORS = {
   orange: { bg: '#FFFAF0', color: '#C05621', border: '#FBD38D' },
   red:    { bg: '#FFF5F5', color: '#C53030', border: '#FEB2B2' },
   teal:   { bg: '#E6FFFA', color: '#234E52', border: '#81E6D9' },
+}
+
+// ---------------------------------------------------------------------
+// "Today's Briefing" — the Dashboard's lead intelligence section
+// (Market Intelligence Redesign, Phase 1; see the Obsidian project note
+// of the same name). Built entirely from opportunity_matches/opportunities
+// data the matching engine already writes — no new data source. Free
+// members never see matches at all (Matched Opportunities is a TierRoute),
+// so this renders an upsell card for them instead of an empty briefing.
+// ---------------------------------------------------------------------
+function TodaysBriefing({ profile, isPaidMember }) {
+  const [matches, setMatches] = useState(null)
+
+  useEffect(() => {
+    if (!isPaidMember || !profile?.id) return
+    let cancelled = false
+    supabase
+      .from('opportunity_matches')
+      .select(`
+        id, match_score, hidden_by_user, created_at,
+        opportunities ( id, title, agency, response_deadline, estimated_value )
+      `)
+      .eq('profile_id', profile.id)
+      .then(({ data }) => {
+        if (!cancelled) setMatches((data || []).filter((m) => m.opportunities))
+      })
+    return () => { cancelled = true }
+  }, [isPaidMember, profile?.id])
+
+  if (!isPaidMember) {
+    return (
+      <Link to="/membership" className={`card card-hover ${styles.briefingCard}`}>
+        <div className={styles.briefingUpsell}>
+          <Radar size={20} />
+          <div>
+            <div className={styles.briefingUpsellTitle}>Get matched to live SAM.gov opportunities</div>
+            <div className={styles.briefingUpsellDesc}>
+              Lab Member and up get a daily briefing here — opportunities matched to your NAICS/PSC codes, scored and ranked.
+            </div>
+          </div>
+        </div>
+        <ArrowRight size={18} className={styles.quickArrow} />
+      </Link>
+    )
+  }
+
+  if (!profile?.matching_enabled) {
+    return (
+      <div className={`card ${styles.briefingCard}`}>
+        <div className={styles.briefingUpsell}>
+          <Radar size={20} />
+          <div>
+            <div className={styles.briefingUpsellTitle}>Matching is off</div>
+            <div className={styles.briefingUpsellDesc}>
+              <Link to="/profile">Turn on matching and set your NAICS/PSC codes</Link> to get a daily briefing here.
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (matches === null) return null
+
+  const now = Date.now()
+  const isOpen = (m) => !m.opportunities.response_deadline || new Date(m.opportunities.response_deadline).getTime() >= now
+  const visible = matches.filter((m) => !m.hidden_by_user && isOpen(m))
+  const weekAgo = now - 7 * 86400000
+  const newThisWeek = matches.filter((m) => new Date(m.created_at).getTime() >= weekAgo).length
+  const topMatches = [...visible]
+    .sort((a, b) => (b.match_score ?? -1) - (a.match_score ?? -1))
+    .slice(0, 3)
+
+  const agencyCounts = {}
+  for (const m of visible) {
+    if (m.opportunities.agency) agencyCounts[m.opportunities.agency] = (agencyCounts[m.opportunities.agency] || 0) + 1
+  }
+  const topAgency = Object.entries(agencyCounts).sort((a, b) => b[1] - a[1])[0]
+
+  return (
+    <div className={`card ${styles.briefingCard}`}>
+      <div className={styles.briefingHeader}>
+        <Radar size={18} />
+        <span className={styles.briefingLabel}>Today's Briefing</span>
+      </div>
+
+      <h2 className={styles.briefingHeadline}>
+        {topAgency
+          ? `${topAgency[0]} leads your open matches — ${topAgency[1]} live ${topAgency[1] === 1 ? 'opportunity' : 'opportunities'}.`
+          : visible.length > 0
+          ? 'Your matches are ready to review.'
+          : 'No open matches yet — the next daily match run may bring some in.'}
+      </h2>
+
+      <div className={styles.briefingStats}>
+        <div className={styles.briefingStat}>
+          <span className={styles.briefingStatValue}>{visible.length}</span>
+          <span className={styles.briefingStatLabel}>open {visible.length === 1 ? 'match' : 'matches'} tracked</span>
+        </div>
+        <div className={styles.briefingStat}>
+          <span className={styles.briefingStatValue}>{newThisWeek}</span>
+          <span className={styles.briefingStatLabel}>new this week</span>
+        </div>
+      </div>
+
+      {topMatches.length > 0 && (
+        <div className={styles.briefingList}>
+          {topMatches.map((m) => (
+            <Link key={m.id} to="/opportunities" className={styles.briefingItem}>
+              <span className={styles.briefingItemTitle}>{m.opportunities.title}</span>
+              <span className={styles.briefingItemMeta}>
+                <span>{m.opportunities.agency || 'Agency not listed'}</span>
+                {m.opportunities.estimated_value != null && (
+                  <span className="badge badge-navy">Est. ${Number(m.opportunities.estimated_value).toLocaleString()}</span>
+                )}
+                {m.match_score != null && (
+                  <span className={`badge ${scoreBadgeClass(m.match_score)}`}>{m.match_score}/100</span>
+                )}
+              </span>
+            </Link>
+          ))}
+        </div>
+      )}
+
+      <Link to="/opportunities" className="btn btn-ghost" style={{ marginTop: 'var(--sp-2)' }}>
+        View all matches <ArrowRight size={14} />
+      </Link>
+    </div>
+  )
 }
 
 export default function Dashboard() {
@@ -90,6 +229,9 @@ export default function Dashboard() {
           {portalError}
         </div>
       )}
+
+      {/* Today's Briefing */}
+      <TodaysBriefing profile={profile} isPaidMember={isPaidMember} />
 
      {/* Quick links */}
       <div className={styles.quickLinks}>

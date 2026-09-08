@@ -70,6 +70,8 @@ export default function MatchedOpportunities() {
   const [matches, setMatches] = useState([])
   const [bidRequests, setBidRequests] = useState({}) // keyed by opportunity_id
   const [dealsByBidRequestId, setDealsByBidRequestId] = useState({}) // Sourcing Pipeline Phase 1 — keyed by bid_request_id
+  const [dealStages, setDealStages] = useState({}) // keyed by deal_id -> stage_id, Market Intelligence Redesign Phase 1
+  const [stages, setStages] = useState([]) // this profile's deal_stages, sorted
   const [loading, setLoading] = useState(true)
   const [showLowScoring, setShowLowScoring] = useState(false)
   const [showClosed, setShowClosed] = useState(false)
@@ -85,9 +87,41 @@ export default function MatchedOpportunities() {
     if (user) {
       loadMatches()
       loadBidRequests()
+      loadStages()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user])
+
+  // Inline pipeline status (Market Intelligence Redesign Phase 1) — this
+  // profile's Kanban columns from the Sourcing Pipeline, so a deal's stage
+  // can be changed right from its matched-opportunity card without leaving
+  // this page. Loaded once; unlike bid requests/deals, stages rarely change
+  // mid-session.
+  async function loadStages() {
+    try {
+      const { data, error } = await supabase
+        .from('deal_stages')
+        .select('id, name, sort_order')
+        .eq('profile_id', user.id)
+        .order('sort_order')
+      if (error) throw error
+      setStages(data || [])
+    } catch (err) {
+      console.error('Failed to load pipeline stages:', err)
+    }
+  }
+
+  async function handleStageChange(dealId, newStageId) {
+    const prevStageId = dealStages[dealId]
+    setDealStages((prev) => ({ ...prev, [dealId]: newStageId }))
+    try {
+      const { error } = await supabase.from('deals').update({ stage_id: newStageId }).eq('id', dealId)
+      if (error) throw error
+    } catch (err) {
+      console.error('Failed to update deal stage:', err)
+      setDealStages((prev) => ({ ...prev, [dealId]: prevStageId }))
+    }
+  }
 
   // Poll while anything is in flight (just paid, or generating) —
   // covers both a fresh return from Stripe and a request left running
@@ -229,13 +263,18 @@ export default function MatchedOpportunities() {
     try {
       const { data: deals, error: dealsError } = await supabase
         .from('deals')
-        .select('id, bid_request_id')
+        .select('id, bid_request_id, stage_id')
         .eq('profile_id', user.id)
         .not('bid_request_id', 'is', null)
       if (dealsError) throw dealsError
       const byBidRequest = {}
-      for (const d of deals || []) byBidRequest[d.bid_request_id] = d.id
+      const stageByDeal = {}
+      for (const d of deals || []) {
+        byBidRequest[d.bid_request_id] = d.id
+        stageByDeal[d.id] = d.stage_id
+      }
       setDealsByBidRequestId(byBidRequest)
+      setDealStages(stageByDeal)
     } catch (err) {
       console.error('Failed to load pipeline deals:', err)
     }
@@ -475,6 +514,9 @@ export default function MatchedOpportunities() {
                     tier={isAdmin ? 'admin' : profile?.membership_tier}
                     bidRequest={bidRequests[opp.id]}
                     dealId={dealsByBidRequestId[bidRequests[opp.id]?.id]}
+                    stages={stages}
+                    currentStageId={dealStages[dealsByBidRequestId[bidRequests[opp.id]?.id]]}
+                    onStageChange={handleStageChange}
                     autoExpand={bidRequests[opp.id]?.id === highlightedBidRequestId}
                     onRequested={loadBidRequests}
                   />
@@ -802,7 +844,7 @@ function SampleBidPreview() {
 // checkout.js re-derives both server-side from the caller's real
 // membership_tier before ever creating a charge.
 // ---------------------------------------------------------------------
-function SuggestedBidSection({ opportunityId, tier, bidRequest, dealId, autoExpand, onRequested }) {
+function SuggestedBidSection({ opportunityId, tier, bidRequest, dealId, stages, currentStageId, onStageChange, autoExpand, onRequested }) {
   const [starting, setStarting] = useState(false)
   const [startError, setStartError] = useState('')
   const [expanded, setExpanded] = useState(!!autoExpand)
@@ -897,6 +939,17 @@ function SuggestedBidSection({ opportunityId, tier, bidRequest, dealId, autoExpa
         <Link to={`/pipeline?tab=deals&deal=${dealId}`} className="btn btn-ghost" style={{ marginLeft: 'var(--sp-2)' }}>
           View in Pipeline <ExternalLink size={13} />
         </Link>
+      )}
+      {dealId && stages?.length > 0 && (
+        <select
+          className="btn btn-ghost"
+          style={{ marginLeft: 'var(--sp-2)' }}
+          value={currentStageId || ''}
+          onChange={(e) => onStageChange?.(dealId, e.target.value)}
+          aria-label="Pipeline stage for this deal"
+        >
+          {stages.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+        </select>
       )}
 
       {expanded && (

@@ -404,3 +404,70 @@
 @media (max-width: 768px) {
   .page { padding: var(--sp-5); }
 }
+
+/* ── Feature comparison matrix ── */
+.matrixSection {
+  margin: var(--sp-10) 0;
+}
+
+.matrixTitle {
+  font-size: 1.5rem;
+  color: var(--navy);
+  text-align: center;
+  margin-bottom: var(--sp-6);
+}
+
+.matrixScroll {
+  overflow-x: auto;
+}
+
+.matrixTable {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 640px;
+  background: #FFFFFF;
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+}
+
+.matrixTable th,
+.matrixTable td {
+  padding: var(--sp-3) var(--sp-4);
+  border-bottom: 1px solid var(--border);
+  text-align: center;
+  font-size: 0.875rem;
+}
+
+.matrixTable thead th {
+  font-family: var(--font-display);
+  font-weight: 700;
+  color: var(--navy);
+  background: var(--bg-subtle, #F7F8FA);
+}
+
+.matrixTable tbody th {
+  text-align: left;
+  font-weight: 500;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.matrixTable tbody tr:last-child th,
+.matrixTable tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.matrixCheck {
+  color: var(--gold-dim, #93762c);
+}
+
+.matrixDash {
+  color: var(--text-muted);
+}
+
+.matrixText {
+  color: var(--navy);
+  font-weight: 600;
+  white-space: nowrap;
+}

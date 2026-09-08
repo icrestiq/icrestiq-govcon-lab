@@ -49,6 +49,117 @@
   white-space: nowrap;
 }
 
+/* ── Today's Briefing ── */
+.briefingCard {
+  display: block;
+  padding: var(--sp-6);
+  margin-bottom: var(--sp-6);
+  text-decoration: none;
+  color: inherit;
+}
+
+.briefingUpsell {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+  color: var(--navy);
+}
+
+.briefingUpsellTitle {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.9375rem;
+  color: var(--navy);
+  margin-bottom: 2px;
+}
+
+.briefingUpsellDesc {
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+}
+
+.briefingHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  color: var(--gold-dim);
+  margin-bottom: var(--sp-3);
+}
+
+.briefingLabel {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.briefingHeadline {
+  font-size: 1.375rem;
+  color: var(--navy);
+  margin-bottom: var(--sp-5);
+  line-height: 1.3;
+}
+
+.briefingStats {
+  display: flex;
+  gap: var(--sp-6);
+  margin-bottom: var(--sp-5);
+  padding-bottom: var(--sp-5);
+  border-bottom: 1px solid var(--border);
+}
+
+.briefingStat {
+  display: flex;
+  flex-direction: column;
+}
+
+.briefingStatValue {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.5rem;
+  color: var(--navy);
+}
+
+.briefingStatLabel {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.briefingList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-4);
+}
+
+.briefingItem {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: var(--sp-3) var(--sp-4);
+  background: var(--bg-subtle, #F7F8FA);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  text-decoration: none;
+  transition: border-color 0.15s;
+}
+.briefingItem:hover { border-color: var(--gold); }
+
+.briefingItemTitle {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: var(--navy);
+}
+
+.briefingItemMeta {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+}
+
 /* ── Quick links ── */
 .quickLinks {
   display: grid;
