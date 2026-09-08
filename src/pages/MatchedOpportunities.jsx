@@ -162,7 +162,7 @@ export default function MatchedOpportunities() {
         .from('opportunity_matches')
         .select(`
           id, match_reason, match_score, recommendation, recommendation_basis, hidden_by_user,
-          opportunities ( id, title, agency, solicitation_number, response_deadline, sam_gov_url, set_aside_type, estimated_value )
+          opportunities ( id, title, agency, naics_code, solicitation_number, response_deadline, sam_gov_url, set_aside_type, estimated_value )
         `)
         .eq('profile_id', user.id)
       if (error) throw error
@@ -509,6 +509,8 @@ export default function MatchedOpportunities() {
                     </button>
                   </div>
 
+                  <IncumbentIntel naicsCode={opp.naics_code} agency={opp.agency} />
+
                   <SuggestedBidSection
                     opportunityId={opp.id}
                     tier={isAdmin ? 'admin' : profile?.membership_tier}
@@ -636,6 +638,87 @@ export default function MatchedOpportunities() {
           <Settings size={14} /> Edit Matching Preferences
         </Link>
       </div>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------
+// Free "incumbent/recent awards" teaser (Market Intelligence Redesign,
+// Phase 2) — same USASpending query the paid Suggested Bid's price-range
+// research already runs (see fetchHistoricalAwards in the
+// generate_suggested_bid Edge Function), surfaced here before anyone
+// pays, via api/public/incumbent.js. Lazy-loaded on click rather than on
+// mount: eagerly firing this for every visible match card would mean
+// dozens of parallel USASpending calls on page load for a member with a
+// long match list.
+// ---------------------------------------------------------------------
+function IncumbentIntel({ naicsCode, agency }) {
+  const [state, setState] = useState('idle') // idle | loading | loaded | error
+  const [data, setData] = useState(null)
+
+  async function handleLoad() {
+    if (!naicsCode) return
+    setState('loading')
+    try {
+      const params = new URLSearchParams({ naicsCode })
+      if (agency) params.set('agency', agency)
+      const res = await fetch(`/api/public/incumbent?${params.toString()}`)
+      if (!res.ok) throw new Error('Request failed')
+      const json = await res.json()
+      setData(json)
+      setState('loaded')
+    } catch (err) {
+      console.error('Incumbent lookup failed:', err)
+      setState('error')
+    }
+  }
+
+  if (!naicsCode) return null
+
+  if (state === 'idle') {
+    return (
+      <button type="button" className={`btn btn-ghost ${styles.btnBlue}`} onClick={handleLoad} style={{ marginTop: 'var(--sp-2)' }}>
+        <Database size={13} /> Show incumbent &amp; recent awards
+      </button>
+    )
+  }
+
+  if (state === 'loading') {
+    return <p className={styles.refreshHint}><Loader size={13} className={styles.spin} /> Checking USASpending for recent awards in this NAICS code…</p>
+  }
+
+  if (state === 'error' || !data) {
+    return <p className={styles.bidError}>Could not load award history right now.</p>
+  }
+
+  if (!data.recentAwards || data.recentAwards.length === 0) {
+    return <p className={styles.refreshHint}>No comparable federal awards found for this NAICS code in the last 3 years.</p>
+  }
+
+  return (
+    <div className={styles.incumbentBlock}>
+      {data.likelyIncumbent ? (
+        <p className={styles.incumbentHeadline}>
+          Likely incumbent: <strong>{data.likelyIncumbent.recipient}</strong>
+          {data.likelyIncumbent.amount != null && ` — $${Number(data.likelyIncumbent.amount).toLocaleString()}`}
+          {data.likelyIncumbent.date && ` (${new Date(data.likelyIncumbent.date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })})`}
+        </p>
+      ) : (
+        <p className={styles.incumbentHeadline}>No award matched this agency directly — recent awards for this NAICS code instead:</p>
+      )}
+      <ul className={styles.incumbentList}>
+        {data.recentAwards.slice(0, 5).map((a, i) => (
+          <li key={i}>
+            {a.recipient || 'Unknown recipient'}
+            {a.amount != null && ` — $${Number(a.amount).toLocaleString()}`}
+            {a.agency && ` · ${a.agency}`}
+            {a.date && ` · ${new Date(a.date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}`}
+          </li>
+        ))}
+      </ul>
+      <p className={styles.pitchSource}>
+        <Database size={13} /> From USASpending.gov — a fit signal, not a certified incumbent record.
+      </p>
     </div>
   )
 }

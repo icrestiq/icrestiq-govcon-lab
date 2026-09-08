@@ -31,6 +31,7 @@ const BlogPost = lazy(() => import('./pages/BlogPost'))
 const ProposalBuilder = lazy(() => import('./pages/ProposalBuilder'))
 const Profile = lazy(() => import('./pages/Profile'))
 const MatchedOpportunities = lazy(() => import('./pages/MatchedOpportunities'))
+const Markets = lazy(() => import('./pages/Markets'))
 const Pipeline = lazy(() => import('./pages/Pipeline'))
 const AdminPanel = lazy(() => import('./pages/AdminPanel'))
 const CheckoutSuccess = lazy(() => import('./pages/CheckoutSuccess'))
@@ -136,6 +137,7 @@ export default function App() {
         <Route path="tools/proposal-builder" element={<ProposalBuilder />} />
         <Route path="profile" element={<Profile />} />
         <Route path="opportunities" element={<TierRoute><MatchedOpportunities /></TierRoute>} />
+        <Route path="markets" element={<TierRoute><Markets /></TierRoute>} />
         <Route path="pipeline" element={<TierRoute><Pipeline /></TierRoute>} />
       </Route>
 

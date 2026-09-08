@@ -1,0 +1,140 @@
+.page {
+  padding: var(--sp-8);
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: var(--sp-8);
+}
+
+.iconWrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border-radius: var(--r-lg);
+  background: rgba(79,107,237,0.1);
+  color: #4F6BED;
+  margin-bottom: var(--sp-4);
+}
+
+.title {
+  font-size: 1.75rem;
+  color: var(--navy);
+  margin-bottom: var(--sp-2);
+}
+
+.sub {
+  font-size: 0.9375rem;
+  color: var(--text-secondary);
+  max-width: 560px;
+  margin: 0 auto;
+}
+
+.empty {
+  text-align: center;
+  color: var(--text-secondary);
+  padding: var(--sp-8) 0;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: var(--sp-4);
+}
+
+.sectorCard {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  text-align: left;
+  background: #FFFFFF;
+  cursor: pointer;
+}
+
+.sectorCount {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.5rem;
+  color: var(--navy);
+}
+
+.sectorName {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.9375rem;
+  color: var(--navy);
+  line-height: 1.3;
+}
+
+.sectorHint {
+  font-size: 0.75rem;
+  color: var(--gold-dim, #93762c);
+}
+
+.sectorHeading {
+  font-size: 1.375rem;
+  color: var(--navy);
+  margin-bottom: var(--sp-1);
+}
+
+.sectorSubheading {
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+  margin-bottom: var(--sp-5);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.oppRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  padding: var(--sp-4);
+  background: #FFFFFF;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+}
+
+.oppInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.oppTitle {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.9375rem;
+  color: var(--navy);
+}
+
+.oppMeta {
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+}
+
+.oppLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.8125rem;
+  color: var(--navy);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+  .page { padding: var(--sp-5); }
+  .oppRow { flex-direction: column; align-items: flex-start; }
+}
