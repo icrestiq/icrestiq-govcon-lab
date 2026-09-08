@@ -8,6 +8,7 @@ import FounderBadge from '../components/FounderBadge'
 import SampleOutputStrip from '../components/SampleOutputStrip'
 import styles from './ProductDetail.module.css'
 import useDocumentTitle from '../hooks/useDocumentTitle'
+import { formatProductPriceAmount } from '../lib/pricing'
 
 export default function ProductDetail() {
   const { productId } = useParams()
@@ -117,7 +118,7 @@ export default function ProductDetail() {
             ) : (
               <>
                 <span className={styles.currency}>$</span>
-                <span className={styles.amount}>{product.price}</span>
+                <span className={styles.amount}>{formatProductPriceAmount(product.price)}</span>
               </>
             )}
           </div>

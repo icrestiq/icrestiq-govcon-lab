@@ -5,6 +5,7 @@ import { createCheckoutSession } from '../../lib/stripe'
 import { useNavigate } from 'react-router-dom'
 import useDialogA11y from '../../hooks/useDialogA11y'
 import styles from './CartDrawer.module.css'
+import { formatProductPriceAmount } from '../../lib/pricing'
 
 export default function CartDrawer({ open, onClose, cart, onRemove, clearCart }) {
   const { user } = useAuth()
@@ -81,7 +82,7 @@ export default function CartDrawer({ open, onClose, cart, onRemove, clearCart })
             <div key={item.id} className={styles.item}>
               <div className={styles.itemInfo}>
                 <div className={styles.itemTitle}>{item.title}</div>
-                <div className={styles.itemPrice}>${item.price}</div>
+                <div className={styles.itemPrice}>${formatProductPriceAmount(item.price)}</div>
               </div>
               <button className={styles.removeBtn} onClick={() => onRemove(item.id)} aria-label={`Remove ${item.title} from cart`}>
                 <Trash2 size={14} aria-hidden="true" />

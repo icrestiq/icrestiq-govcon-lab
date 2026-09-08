@@ -57,3 +57,24 @@ export function formatCurrency(amount) {
     maximumFractionDigits: 2,
   });
 }
+
+/**
+ * Store/membership product price display — the numeric part only, no "$"
+ * (callers render the currency symbol themselves in a separately-styled
+ * span). Postgres numeric columns come back as strings like "47.00"; this
+ * drops the trailing zeros to "47" so a whole-dollar price matches the
+ * clean "$47" style already used elsewhere (e.g. the Membership page's
+ * hardcoded tier copy), while a genuinely fractional price like "$1.50"
+ * still shows its cents. Distinct from formatCurrency() above, which is
+ * locked to the Proposal Builder's always-2-decimal invoice convention —
+ * do not reuse that one here, the display conventions are deliberately
+ * different.
+ */
+export function formatProductPriceAmount(amount) {
+  const n = toNumber(amount);
+  const hasCents = Math.round(n * 100) % 100 !== 0;
+  return n.toLocaleString('en-US', {
+    minimumFractionDigits: hasCents ? 2 : 0,
+    maximumFractionDigits: 2,
+  });
+}

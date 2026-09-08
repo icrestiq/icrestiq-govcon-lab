@@ -9,6 +9,7 @@ import styles from './Store.module.css'
 import CartDrawer from '../components/store/CartDrawer'
 import { useCart } from '../hooks/useCart'
 import useDocumentTitle from '../hooks/useDocumentTitle'
+import { formatProductPriceAmount } from '../lib/pricing'
 
 const CATEGORY_COLORS = {
   'Playbooks': { bg: '#EBF4FF', color: '#2B6CB0', border: '#BEE3F8' },
@@ -240,7 +241,7 @@ function ProductCard({ product, founder, inCart, onAddToCart, onRemove }) {
           ) : (
             <>
               <span className={styles.priceCurrency}>$</span>
-              <span className={styles.priceAmount}>{product.price}</span>
+              <span className={styles.priceAmount}>{formatProductPriceAmount(product.price)}</span>
             </>
           )}
         </div>

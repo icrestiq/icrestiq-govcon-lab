@@ -8,6 +8,7 @@ import ActivityHeatmap from '../components/ActivityHeatmap'
 import useDialogA11y from '../hooks/useDialogA11y'
 import useDocumentTitle from '../hooks/useDocumentTitle'
 import styles from './AdminPanel.module.css'
+import { formatProductPriceAmount } from '../lib/pricing'
 
 const TABS = [
   { id: 'products',    label: 'Products',       icon: Package },
@@ -146,7 +147,7 @@ async function testMonthlyRewards() {
                   {p.title}
                 </span>
                 <span><span className="badge badge-blue">{p.category}</span></span>
-                <span className={styles.cellPrice}>${p.price}</span>
+                <span className={styles.cellPrice}>${formatProductPriceAmount(p.price)}</span>
                 <span>
                   <button
                     className={`badge ${p.active ? 'badge-green' : 'badge-amber'}`}
