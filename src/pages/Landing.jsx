@@ -122,6 +122,9 @@ export default function Landing() {
           </div>
         </div>
         <div className={styles.navActions}>
+          <Link to="/blog" className="btn btn-ghost hide-mobile">Blog</Link>
+          <Link to="/directory" className="btn btn-ghost hide-mobile">Directory</Link>
+          <SocialLinks size={16} gap="var(--sp-3)" className="hide-mobile" style={{ marginRight: 'var(--sp-2)' }} linkClassName={styles.navSocialLink} />
           <Link to="/login" className="btn btn-ghost hide-mobile">Sign In</Link>
           {/* Full ghost button is too wide next to the logo block on
               mobile, but hiding it entirely (previous behavior) left
@@ -155,7 +158,7 @@ export default function Landing() {
               Start free — no card required
             </Link>
             <Link to="/membership" className={styles.heroCtaSecondary}>
-              See what&rsquo;s inside → $57/mo after the free tier
+              See what&rsquo;s inside → $47/mo after the free tier
             </Link>
           </div>
           <MemberCount />

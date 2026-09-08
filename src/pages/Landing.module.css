@@ -65,6 +65,11 @@
 }
 .mobileSignIn:hover { color: var(--navy); }
 
+.navSocialLink {
+  color: var(--text-muted);
+}
+.navSocialLink:hover { color: var(--navy); }
+
 /* ── Hero ── */
 .hero {
   position: relative;
