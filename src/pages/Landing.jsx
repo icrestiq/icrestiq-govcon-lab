@@ -384,6 +384,9 @@ export default function Landing() {
             <Link to="/blog" className={styles.contactLink} style={{ display: 'block', marginTop: 4 }}>
               Blog →
             </Link>
+            <Link to="/directory" className={styles.contactLink} style={{ display: 'block', marginTop: 4 }}>
+              Business Directory →
+            </Link>
           </div>
           <div>
             <div className={styles.contactLabel}>Follow</div>

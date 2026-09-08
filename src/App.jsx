@@ -32,6 +32,7 @@ const ProposalBuilder = lazy(() => import('./pages/ProposalBuilder'))
 const Profile = lazy(() => import('./pages/Profile'))
 const MatchedOpportunities = lazy(() => import('./pages/MatchedOpportunities'))
 const Markets = lazy(() => import('./pages/Markets'))
+const Directory = lazy(() => import('./pages/Directory'))
 const Pipeline = lazy(() => import('./pages/Pipeline'))
 const AdminPanel = lazy(() => import('./pages/AdminPanel'))
 const CheckoutSuccess = lazy(() => import('./pages/CheckoutSuccess'))
@@ -125,6 +126,7 @@ export default function App() {
         <Route path="store/:productId" element={<ProductDetail />} />
         <Route path="membership" element={<Membership />} />
         <Route path="founders" element={<FoundersWall />} />
+        <Route path="directory" element={<Directory />} />
         <Route path="blog" element={<Blog />} />
         <Route path="blog/:slug" element={<BlogPost />} />
       </Route>

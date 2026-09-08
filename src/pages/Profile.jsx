@@ -1,7 +1,8 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { Link } from 'react-router-dom'
 import { useAuth } from '../lib/AuthContext'
 import { supabase } from '../lib/supabase'
-import { User, Activity, FileText, MessageCircle, Heart, Pencil, X, Camera, Target, Plug } from 'lucide-react'
+import { User, Activity, FileText, MessageCircle, Heart, Pencil, X, Camera, Target, Plug, Building2 } from 'lucide-react'
 import ActivityHeatmap from '../components/ActivityHeatmap'
 import FounderBadge from '../components/FounderBadge'
 import Avatar from '../components/Avatar'
@@ -406,6 +407,12 @@ export default function Profile() {
         >
           <Target size={15} /> Matching Preferences
         </button>
+        <button
+          className={`${styles.tab} ${tab === 'directory' ? styles.tabActive : ''}`}
+          onClick={() => setTab('directory')}
+        >
+          <Building2 size={15} /> Public Directory
+        </button>
         {notionEligible && (
           <button
             className={`${styles.tab} ${tab === 'notion' ? styles.tabActive : ''}`}
@@ -702,6 +709,20 @@ export default function Profile() {
 
       {tab === 'matching' && <WatchlistCard profileId={user.id} />}
 
+      {tab === 'directory' && (
+        isMemberOrFounding(profile, isAdmin) ? (
+          <DirectoryListingCard profileId={user.id} />
+        ) : (
+          <div className={styles.card}>
+            <h3 className={styles.cardTitle}>Public Directory</h3>
+            <p className={styles.bio}>
+              A free public profile for your business — discoverable by buyers browsing GovCon Lab's directory,
+              even if they're not a member. Available to Lab Member and Founding Member accounts.
+            </p>
+          </div>
+        )
+      )}
+
       {tab === 'notion' && notionEligible && (
         <div className={styles.card}>
           <h3 className={styles.cardTitle}>Notion Sync</h3>
@@ -902,6 +923,217 @@ function WatchlistCard({ profileId }) {
       </div>
 
       {saving && <p className={styles.fieldHint} style={{ marginTop: 'var(--sp-3)' }}>Saving…</p>}
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------
+// Public Directory listing (Market Intelligence Redesign, Phase 4) — a
+// paid member's own free public company profile, separate from and never
+// derived from the Sourcing Pipeline's private companies/contacts CRM
+// (see the Market Intelligence Redesign project note's Phase 4 section
+// for why: that CRM holds member-contributed vendor/supplier leads never
+// intended to be public, so this is an entirely opt-in table instead of
+// exposing existing data). One listing per member (profile_id unique in
+// the DB), always starts 'pending' on create or any edit — RLS itself
+// enforces that a member can never set their own status to 'approved';
+// only api/admin/moderate-listing.js can do that.
+// ---------------------------------------------------------------------
+const DIRECTORY_SET_ASIDE_OPTIONS = ['8(a)', 'HUBZone', 'WOSB', 'EDWOSB', 'VOSB', 'SDVOSB', 'SDB']
+
+const EMPTY_LISTING_FORM = {
+  company_name: '', cage_code: '', website: '', naics_codes: [],
+  set_aside_certifications: [], capabilities_summary: '', contact_email: '',
+}
+
+const LISTING_STATUS_LABEL = {
+  pending: { label: 'Pending review', badgeClass: 'badge-amber' },
+  approved: { label: 'Live in directory', badgeClass: 'badge-green' },
+  rejected: { label: 'Not approved', badgeClass: 'badge-red' },
+}
+
+function DirectoryListingCard({ profileId }) {
+  const [listing, setListing] = useState(null) // null = loading, undefined = no listing yet
+  const [form, setForm] = useState(EMPTY_LISTING_FORM)
+  const [editing, setEditing] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  const load = useCallback(async () => {
+    const { data, error: err } = await supabase
+      .from('directory_listings')
+      .select('*')
+      .eq('profile_id', profileId)
+      .maybeSingle()
+    if (err) { setError(err.message); return }
+    setListing(data || undefined)
+    if (data) {
+      setForm({
+        company_name: data.company_name || '', cage_code: data.cage_code || '', website: data.website || '',
+        naics_codes: data.naics_codes || [], set_aside_certifications: data.set_aside_certifications || [],
+        capabilities_summary: data.capabilities_summary || '', contact_email: data.contact_email || '',
+      })
+    }
+  }, [profileId])
+
+  useEffect(() => { load() }, [load])
+
+  async function save() {
+    if (!form.company_name.trim()) { setError('Company name is required.'); return }
+    setSaving(true)
+    setError('')
+    try {
+      const payload = {
+        ...form,
+        company_name: form.company_name.trim(),
+        cage_code: form.cage_code.trim() || null,
+        website: form.website.trim() || null,
+        contact_email: form.contact_email.trim() || null,
+        status: 'pending',
+      }
+      if (listing) {
+        const { error: err } = await supabase.from('directory_listings').update(payload).eq('id', listing.id)
+        if (err) throw err
+      } else {
+        const { error: err } = await supabase.from('directory_listings').insert({ ...payload, profile_id: profileId })
+        if (err) throw err
+      }
+      setEditing(false)
+      await load()
+    } catch (err) {
+      setError(err.message || 'Could not save your listing.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function removeListing() {
+    if (!listing || !window.confirm('Remove your public directory listing? This takes it down immediately.')) return
+    setSaving(true)
+    setError('')
+    try {
+      const { error: err } = await supabase.from('directory_listings').delete().eq('id', listing.id)
+      if (err) throw err
+      setForm(EMPTY_LISTING_FORM)
+      await load()
+    } catch (err) {
+      setError(err.message || 'Could not remove your listing.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (listing === null) return null
+
+  const showForm = editing || !listing
+  const statusInfo = listing ? LISTING_STATUS_LABEL[listing.status] : null
+
+  return (
+    <div className={styles.card}>
+      <h3 className={styles.cardTitle}>Public Directory</h3>
+      <p className={styles.bio} style={{ marginBottom: 'var(--sp-5)' }}>
+        A free public profile for your business — discoverable by anyone browsing GovCon Lab's directory at{' '}
+        <Link to="/directory">/directory</Link>, member or not. Reviewed by an admin before it goes live; any edit
+        after approval sends it back for review.
+      </p>
+
+      {error && <div className="alert alert-error" role="alert" style={{ marginBottom: 'var(--sp-4)' }}>{error}</div>}
+
+      {listing && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-3)', marginBottom: 'var(--sp-5)' }}>
+          <span className={`badge ${statusInfo.badgeClass}`}>{statusInfo.label}</span>
+          {listing.status === 'rejected' && listing.rejection_reason && (
+            <span className={styles.fieldHint}>{listing.rejection_reason}</span>
+          )}
+        </div>
+      )}
+
+      {!showForm && listing && (
+        <div>
+          <p style={{ fontWeight: 600, color: 'var(--navy)', marginBottom: 4 }}>{listing.company_name}</p>
+          {listing.cage_code && <p className={styles.fieldHint}>CAGE {listing.cage_code}</p>}
+          {listing.naics_codes?.length > 0 && <p className={styles.fieldHint}>NAICS: {listing.naics_codes.join(', ')}</p>}
+          <button type="button" className="btn btn-ghost" style={{ marginTop: 'var(--sp-4)' }} onClick={() => setEditing(true)}>
+            <Pencil size={14} /> Edit Listing
+          </button>
+          <button type="button" className="btn btn-ghost" style={{ marginTop: 'var(--sp-4)', marginLeft: 'var(--sp-3)', color: 'var(--red)' }} onClick={removeListing} disabled={saving}>
+            <X size={14} /> Remove Listing
+          </button>
+        </div>
+      )}
+
+      {showForm && (
+        <div>
+          <div style={{ marginBottom: 'var(--sp-4)' }}>
+            <label className="label" htmlFor="listing-name">Company Name</label>
+            <input id="listing-name" className="input" value={form.company_name} onChange={(e) => setForm((f) => ({ ...f, company_name: e.target.value }))} placeholder="Acme Fasteners Inc." />
+          </div>
+          <div className={styles.editRow} style={{ marginBottom: 'var(--sp-4)' }}>
+            <div>
+              <label className="label" htmlFor="listing-cage">CAGE Code</label>
+              <input id="listing-cage" className="input" value={form.cage_code} onChange={(e) => setForm((f) => ({ ...f, cage_code: e.target.value }))} placeholder="1A2B3" />
+            </div>
+            <div>
+              <label className="label" htmlFor="listing-website">Website</label>
+              <input id="listing-website" className="input" value={form.website} onChange={(e) => setForm((f) => ({ ...f, website: e.target.value }))} placeholder="https://…" />
+            </div>
+          </div>
+          <div style={{ marginBottom: 'var(--sp-4)' }}>
+            <label className="label" htmlFor="listing-contact">Public Contact Email</label>
+            <input id="listing-contact" type="email" className="input" value={form.contact_email} onChange={(e) => setForm((f) => ({ ...f, contact_email: e.target.value }))} placeholder="sales@example.com" />
+          </div>
+          <div style={{ marginBottom: 'var(--sp-4)' }}>
+            <label className="label">NAICS Codes</label>
+            <TagInput
+              value={form.naics_codes}
+              onChange={(codes) => setForm((f) => ({ ...f, naics_codes: codes }))}
+              placeholder="Type a NAICS code and press Enter"
+              transform={(s) => s.trim()}
+              ariaLabel="NAICS codes for this listing"
+            />
+          </div>
+          <div style={{ marginBottom: 'var(--sp-4)' }}>
+            <label className="label">Set-Aside Certifications</label>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--sp-3)', marginTop: 'var(--sp-2)' }}>
+              {DIRECTORY_SET_ASIDE_OPTIONS.map((cert) => (
+                <label key={cert} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.875rem', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={form.set_aside_certifications.includes(cert)}
+                    onChange={(e) => setForm((f) => ({
+                      ...f,
+                      set_aside_certifications: e.target.checked
+                        ? [...f.set_aside_certifications, cert]
+                        : f.set_aside_certifications.filter((c) => c !== cert),
+                    }))}
+                  />
+                  {cert}
+                </label>
+              ))}
+            </div>
+          </div>
+          <div style={{ marginBottom: 'var(--sp-5)' }}>
+            <label className="label" htmlFor="listing-capabilities">Capabilities Summary</label>
+            <textarea
+              id="listing-capabilities"
+              className="input"
+              rows={4}
+              maxLength={CAPABILITIES_MAX_LEN}
+              placeholder="What your business does and what it's good at — shown publicly on your directory listing."
+              value={form.capabilities_summary}
+              onChange={(e) => setForm((f) => ({ ...f, capabilities_summary: e.target.value.slice(0, CAPABILITIES_MAX_LEN) }))}
+            />
+          </div>
+          <button type="button" className="btn btn-primary" onClick={save} disabled={saving}>
+            {saving ? 'Saving…' : listing ? 'Save & Resubmit for Review' : 'Submit Listing'}
+          </button>
+          {listing && (
+            <button type="button" className="btn btn-ghost" style={{ marginLeft: 'var(--sp-3)' }} onClick={() => { setEditing(false); setError('') }} disabled={saving}>
+              Cancel
+            </button>
+          )}
+        </div>
+      )}
     </div>
   )
 }

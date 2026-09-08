@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/AuthContext'
-import { Users, Package, MessageSquare, Plus, Trash2, Edit, Tag, Upload, X, Image as ImageIcon, Copy, Check, Download, Newspaper, Eye, Activity, FileText, MessageCircle, Heart, BarChart3, Flag } from 'lucide-react'
+import { Users, Package, MessageSquare, Plus, Trash2, Edit, Tag, Upload, X, Image as ImageIcon, Copy, Check, Download, Newspaper, Eye, Activity, FileText, MessageCircle, Heart, BarChart3, Flag, Building2 } from 'lucide-react'
 import { htmlToBodyText, plainTextToBodyText } from '../lib/blogPasteImport'
 import Avatar from '../components/Avatar'
 import ActivityHeatmap from '../components/ActivityHeatmap'
@@ -19,6 +19,7 @@ const TABS = [
   { id: 'blog',        label: 'Blog Posts',      icon: Newspaper },
   { id: 'analytics',   label: 'Site Analytics',  icon: BarChart3 },
   { id: 'flagged-notes', label: 'Flagged Notes', icon: Flag },
+  { id: 'directory-listings', label: 'Directory Listings', icon: Building2 },
 ]
 
 export default function AdminPanel() {
@@ -196,6 +197,7 @@ async function testMonthlyRewards() {
       {/* ── Site Analytics ── */}
       {tab === 'analytics' && <AnalyticsTab />}
       {tab === 'flagged-notes' && <FlaggedNotesTab />}
+      {tab === 'directory-listings' && <DirectoryListingsTab />}
     </div>
   )
 }
@@ -487,6 +489,136 @@ function FlaggedNotesTab() {
               <Check size={14} /> Dismiss Flag
             </button>
           </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// ── Directory Listings Tab — Market Intelligence Redesign Phase 4
+// moderation queue. Approve/reject go through api/admin/moderate-listing,
+// same service-role-only pattern as removeNote above (RLS itself blocks a
+// member from setting their own listing's status directly). ──
+function DirectoryListingsTab() {
+  const [listings, setListings] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [actingId, setActingId] = useState(null)
+  const [rejectingId, setRejectingId] = useState(null)
+  const [rejectReason, setRejectReason] = useState('')
+
+  useEffect(() => { loadListings() }, [])
+
+  async function authHeader() {
+    const { data: { session } } = await supabase.auth.getSession()
+    return { Authorization: `Bearer ${session?.access_token}` }
+  }
+
+  async function loadListings() {
+    setLoading(true)
+    setError('')
+    try {
+      const { data, error: err } = await supabase
+        .from('directory_listings')
+        .select('*')
+        .eq('status', 'pending')
+        .order('created_at', { ascending: true })
+      if (err) throw err
+      setListings(data || [])
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function act(listing, action, reason) {
+    setActingId(listing.id)
+    try {
+      const headers = await authHeader()
+      const res = await fetch('/api/admin/moderate-listing', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...headers },
+        body: JSON.stringify({ listingId: listing.id, action, reason }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || `Failed to ${action} listing`)
+      setListings((prev) => prev.filter((l) => l.id !== listing.id))
+      setRejectingId(null)
+      setRejectReason('')
+    } catch (err) {
+      alert(`Could not ${action} listing: ${err.message}`)
+    } finally {
+      setActingId(null)
+    }
+  }
+
+  return (
+    <div>
+      <div className={styles.tabActions}>
+        <h2 className={styles.tabTitle}>Directory Listings Pending Review ({listings.length})</h2>
+      </div>
+
+      {error && (
+        <div className="alert alert-info" style={{ marginBottom: 'var(--sp-5)', borderColor: 'var(--red)', color: 'var(--red)' }}>
+          {error}
+        </div>
+      )}
+
+      {loading && <div className={styles.tableEmpty}>Loading pending listings…</div>}
+      {!loading && listings.length === 0 && (
+        <div className={styles.tableEmpty}>No listings waiting for review. All clear.</div>
+      )}
+
+      {!loading && listings.map((l) => (
+        <div key={l.id} className="card" style={{ marginBottom: 'var(--sp-4)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 'var(--sp-3)' }}>
+            <div>
+              <p style={{ fontWeight: 600, color: 'var(--navy)', marginBottom: 4 }}>{l.company_name}</p>
+              <span className="mono" style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                Submitted {new Date(l.created_at).toLocaleString()}
+              </span>
+            </div>
+          </div>
+
+          <div style={{ background: 'var(--surface-2)', borderRadius: 'var(--r-md)', padding: 'var(--sp-3) var(--sp-4)', marginBottom: 'var(--sp-4)', fontSize: '0.875rem' }}>
+            {l.cage_code && <p>CAGE: {l.cage_code}</p>}
+            {l.website && <p>Website: {l.website}</p>}
+            {l.contact_email && <p>Contact: {l.contact_email}</p>}
+            {l.naics_codes?.length > 0 && <p>NAICS: {l.naics_codes.join(', ')}</p>}
+            {l.set_aside_certifications?.length > 0 && <p>Set-asides: {l.set_aside_certifications.join(', ')}</p>}
+            {l.capabilities_summary && <p style={{ marginTop: 'var(--sp-2)' }}>{l.capabilities_summary}</p>}
+          </div>
+
+          {rejectingId === l.id ? (
+            <div>
+              <textarea
+                className="input"
+                rows={2}
+                placeholder="Reason for rejection (shown to the member)"
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                style={{ marginBottom: 'var(--sp-3)' }}
+              />
+              <div style={{ display: 'flex', gap: 'var(--sp-3)' }}>
+                <button className="btn btn-danger" disabled={actingId === l.id} onClick={() => act(l, 'reject', rejectReason)}>
+                  Confirm Reject
+                </button>
+                <button className="btn btn-ghost" disabled={actingId === l.id} onClick={() => { setRejectingId(null); setRejectReason('') }}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', gap: 'var(--sp-3)' }}>
+              <button className="btn btn-primary" disabled={actingId === l.id} onClick={() => act(l, 'approve')}>
+                <Check size={14} /> Approve
+              </button>
+              <button className="btn btn-ghost" disabled={actingId === l.id} onClick={() => setRejectingId(l.id)}>
+                <X size={14} /> Reject
+              </button>
+            </div>
+          )}
         </div>
       ))}
     </div>
