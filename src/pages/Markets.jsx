@@ -1,22 +1,26 @@
 // src/pages/Markets.jsx
 // Market Intelligence Redesign, Phase 2 — browsable NAICS-sector view of
 // all currently-open opportunities (not just this member's own matches),
-// mirroring Mindy's "Start Exploring" market categories. opportunities'
-// own RLS allows any authenticated user to SELECT (confirmed live via
-// pg_policies, 2026-09-08 — "Authenticated users can view opportunities",
-// qual: true), so this queries the table directly rather than needing a
-// server-side aggregate route like the incumbent/stats ones.
+// mirroring Mindy's "Start Exploring" market categories.
 //
-// Phase 5 addition: a state-level map view. opportunities has no
-// dedicated location column, but sam_gov_ingest already stores SAM.gov's
-// full placeOfPerformance object inside raw_payload (confirmed live via
-// direct query 2026-09-08 — used by generate_suggested_bid's own
-// formatPlaceOfPerformance() for the exact same field). Selected via a
-// nested PostgREST path (raw_payload->placeOfPerformance->state->>code)
-// rather than fetching the whole raw_payload blob, which can be several
-// KB per row. Only ~16% of open opportunities carry a place of
-// performance at all (382 of 2323 as of the same check) — the map
-// necessarily only shows that subset, called out on the page itself.
+// Phase 5 addition: a state-level map view, built on raw_payload's
+// existing placeOfPerformance data (see the get_open_opportunity_state_
+// counts() function below for the full explanation).
+//
+// Bug fix, 2026-09-08: the original version of both views fetched one
+// big "sample" of opportunities (up to a client-requested limit) and
+// grouped it in JS. That silently broke in production — Supabase's
+// PostgREST caps any single request at 1000 rows server-side regardless
+// of the requested .limit(), confirmed via edge_logs showing
+// content-range: 0-999/*. Combined with this platform's real data being
+// heavily skewed toward recent Manufacturing (NAICS 33) postings, the
+// newest 1000 rows ended up being almost entirely Manufacturing — Keith
+// reported seeing only 2 sector cards (Manufacturing + a sliver of
+// Wholesale Trade) instead of the real 20-sector spread. Replaced
+// entirely: two Postgres RPCs do the counting server-side (accurate
+// totals over the full table, not a sample of any size), and each
+// drill-down list is its own small targeted query scoped to just the
+// selected sector/state — never re-uses one giant fetched array.
 
 import { useEffect, useMemo, useState } from 'react'
 import { MapContainer, TileLayer, CircleMarker, Popup } from 'react-leaflet'
@@ -54,11 +58,17 @@ const SECTOR_NAMES = {
   '92': 'Public Administration',
 }
 
+// Reverse lookup — a sector name back to its 2-digit prefixes, needed to
+// build the "naics_code starts with any of these" filter for a sector's
+// drill-down list (Manufacturing needs 31 OR 32 OR 33, etc).
+function prefixesForSector(sectorName) {
+  return Object.entries(SECTOR_NAMES).filter(([, name]) => name === sectorName).map(([prefix]) => prefix)
+}
+
 // State-level centroids only — opportunities carries city/state, not
 // lat/lon, and geocoding every city would need a paid API. A bubble per
 // state (sized by count) is the honest resolution of the data actually
-// available, same principle as Markets' own sector counts being a recent
-// sample rather than a precise live total.
+// available.
 const STATE_CENTROIDS = {
   AL: { name: 'Alabama', lat: 32.8, lon: -86.8 }, AK: { name: 'Alaska', lat: 64.2, lon: -149.5 },
   AZ: { name: 'Arizona', lat: 34.2, lon: -111.9 }, AR: { name: 'Arkansas', lat: 34.9, lon: -92.4 },
@@ -91,12 +101,8 @@ const STATE_CENTROIDS = {
   MP: { name: 'Northern Mariana Islands', lat: 15.2, lon: 145.7 },
 }
 
-// A rough recent-window sample, not an exhaustive live count — fetching
-// every open opportunity's full row for an exact count isn't worth the
-// payload size for a browse page. Ordered by newest first so the sample
-// (and therefore the sector/state counts) skews toward what's actually
-// currently postable, not whatever's oldest in the table.
-const SAMPLE_LIMIT = 2000
+const DRILLDOWN_LIST_LIMIT = 20
+const DRILLDOWN_FIELDS = 'id, title, agency, naics_code, response_deadline, sam_gov_url, estimated_value'
 
 function OpportunityList({ opportunities }) {
   return (
@@ -122,76 +128,95 @@ function OpportunityList({ opportunities }) {
   )
 }
 
-function sortByDeadline(list) {
-  return [...list].sort((a, b) => {
-    const aTime = a.response_deadline ? new Date(a.response_deadline).getTime() : Infinity
-    const bTime = b.response_deadline ? new Date(b.response_deadline).getTime() : Infinity
-    return aTime - bTime
-  })
+// Shared "open" filter (deadline missing or still in the future) plus
+// soonest-deadline-first ordering — every drill-down query uses this.
+function openAndSoonest(query, nowIso) {
+  return query.or(`response_deadline.is.null,response_deadline.gte.${nowIso}`).order('response_deadline', { ascending: true, nullsFirst: false }).limit(DRILLDOWN_LIST_LIMIT)
 }
 
 export default function Markets() {
   useDocumentTitle('Markets — GovCon Lab')
-  const [opportunities, setOpportunities] = useState(null)
   const [viewMode, setViewMode] = useState('sectors')
-  const [selectedSector, setSelectedSector] = useState(null)
-  const [selectedState, setSelectedState] = useState(null)
 
+  const [sectorCounts, setSectorCounts] = useState(null)
+  const [selectedSector, setSelectedSector] = useState(null)
+  const [sectorOpportunities, setSectorOpportunities] = useState(null)
+
+  const [stateCounts, setStateCounts] = useState(null)
+  const [selectedState, setSelectedState] = useState(null)
+  const [stateOpportunities, setStateOpportunities] = useState(null)
+
+  // Accurate, full-table counts via server-side aggregation — no sampling,
+  // no client-side row cap to worry about. See the get_open_opportunity_
+  // sector_counts()/get_open_opportunity_state_counts() Postgres functions.
   useEffect(() => {
     let cancelled = false
     ;(async () => {
-      const nowIso = new Date().toISOString()
-      const { data, error } = await supabase
-        .from('opportunities')
-        .select('id, title, agency, naics_code, response_deadline, sam_gov_url, estimated_value, created_at, pop_state:raw_payload->placeOfPerformance->state->>code')
-        .or(`response_deadline.is.null,response_deadline.gte.${nowIso}`)
-        .order('created_at', { ascending: false })
-        .limit(SAMPLE_LIMIT)
+      const { data, error } = await supabase.rpc('get_open_opportunity_sector_counts')
       if (cancelled) return
-      if (error) { console.error('Failed to load opportunities for Markets:', error); setOpportunities([]); return }
-      setOpportunities(data || [])
+      if (error) { console.error('Failed to load sector counts:', error); setSectorCounts([]); return }
+      const bySector = {}
+      for (const row of data || []) {
+        const name = SECTOR_NAMES[row.sector_prefix]
+        if (!name) continue
+        bySector[name] = (bySector[name] || 0) + Number(row.cnt)
+      }
+      setSectorCounts(Object.entries(bySector).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count))
     })()
     return () => { cancelled = true }
   }, [])
 
-  const sectorCounts = useMemo(() => {
-    if (!opportunities) return []
-    const counts = {}
-    for (const o of opportunities) {
-      const prefix = o.naics_code?.slice(0, 2)
-      const name = prefix && SECTOR_NAMES[prefix]
-      if (!name) continue
-      if (!counts[name]) counts[name] = 0
-      counts[name] += 1
-    }
-    return Object.entries(counts)
-      .map(([name, count]) => ({ name, count }))
-      .sort((a, b) => b.count - a.count)
-  }, [opportunities])
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      const { data, error } = await supabase.rpc('get_open_opportunity_state_counts')
+      if (cancelled) return
+      if (error) { console.error('Failed to load state counts:', error); setStateCounts([]); return }
+      const rows = (data || [])
+        .filter((row) => STATE_CENTROIDS[row.state_code])
+        .map((row) => ({ code: row.state_code, count: Number(row.cnt), ...STATE_CENTROIDS[row.state_code] }))
+      setStateCounts(rows)
+    })()
+    return () => { cancelled = true }
+  }, [])
 
-  const sectorOpportunities = useMemo(() => {
-    if (!opportunities || !selectedSector) return []
-    return sortByDeadline(opportunities.filter((o) => SECTOR_NAMES[o.naics_code?.slice(0, 2)] === selectedSector)).slice(0, 20)
-  }, [opportunities, selectedSector])
+  // Targeted per-sector query — only fires when a sector is actually
+  // selected, and only ever fetches DRILLDOWN_LIST_LIMIT rows scoped to
+  // that sector's own prefixes, never the whole table.
+  useEffect(() => {
+    if (!selectedSector) { setSectorOpportunities(null); return }
+    let cancelled = false
+    ;(async () => {
+      const prefixes = prefixesForSector(selectedSector)
+      const nowIso = new Date().toISOString()
+      let query = supabase.from('opportunities').select(DRILLDOWN_FIELDS)
+        .or(prefixes.map((p) => `naics_code.like.${p}%`).join(','))
+      query = openAndSoonest(query, nowIso)
+      const { data, error } = await query
+      if (cancelled) return
+      if (error) { console.error('Failed to load sector opportunities:', error); setSectorOpportunities([]); return }
+      setSectorOpportunities(data || [])
+    })()
+    return () => { cancelled = true }
+  }, [selectedSector])
 
-  const stateCounts = useMemo(() => {
-    if (!opportunities) return []
-    const counts = {}
-    for (const o of opportunities) {
-      const code = o.pop_state?.toUpperCase()
-      if (!code || !STATE_CENTROIDS[code]) continue
-      if (!counts[code]) counts[code] = 0
-      counts[code] += 1
-    }
-    return Object.entries(counts).map(([code, count]) => ({ code, count, ...STATE_CENTROIDS[code] }))
-  }, [opportunities])
+  useEffect(() => {
+    if (!selectedState) { setStateOpportunities(null); return }
+    let cancelled = false
+    ;(async () => {
+      const nowIso = new Date().toISOString()
+      let query = supabase.from('opportunities').select(DRILLDOWN_FIELDS)
+        .filter('raw_payload->placeOfPerformance->state->>code', 'eq', selectedState)
+      query = openAndSoonest(query, nowIso)
+      const { data, error } = await query
+      if (cancelled) return
+      if (error) { console.error('Failed to load state opportunities:', error); setStateOpportunities([]); return }
+      setStateOpportunities(data || [])
+    })()
+    return () => { cancelled = true }
+  }, [selectedState])
 
-  const stateOpportunities = useMemo(() => {
-    if (!opportunities || !selectedState) return []
-    return sortByDeadline(opportunities.filter((o) => o.pop_state?.toUpperCase() === selectedState)).slice(0, 20)
-  }, [opportunities, selectedState])
-
-  const maxStateCount = Math.max(1, ...stateCounts.map((s) => s.count))
+  const maxStateCount = useMemo(() => Math.max(1, ...(stateCounts || []).map((s) => s.count)), [stateCounts])
 
   return (
     <div className={styles.page}>
@@ -214,9 +239,9 @@ export default function Markets() {
         </button>
       </div>
 
-      {opportunities === null && <p className={styles.empty}>Loading markets…</p>}
+      {viewMode === 'sectors' && sectorCounts === null && <p className={styles.empty}>Loading markets…</p>}
 
-      {opportunities !== null && viewMode === 'sectors' && !selectedSector && (
+      {viewMode === 'sectors' && sectorCounts !== null && !selectedSector && (
         sectorCounts.length === 0 ? (
           <p className={styles.empty}>No open opportunities found right now — check back soon.</p>
         ) : (
@@ -238,12 +263,16 @@ export default function Markets() {
             <ChevronLeft size={14} /> All markets
           </button>
           <h2 className={styles.sectorHeading}>{selectedSector}</h2>
-          <p className={styles.sectorSubheading}>{sectorOpportunities.length} of {sectorCounts.find((s) => s.name === selectedSector)?.count || 0} open opportunities, soonest deadline first</p>
-          <OpportunityList opportunities={sectorOpportunities} />
+          <p className={styles.sectorSubheading}>
+            {sectorOpportunities === null ? 'Loading…' : `${sectorOpportunities.length} of ${sectorCounts.find((s) => s.name === selectedSector)?.count || 0} open opportunities, soonest deadline first`}
+          </p>
+          {sectorOpportunities && <OpportunityList opportunities={sectorOpportunities} />}
         </div>
       )}
 
-      {opportunities !== null && viewMode === 'map' && (
+      {viewMode === 'map' && stateCounts === null && <p className={styles.empty}>Loading map…</p>}
+
+      {viewMode === 'map' && stateCounts !== null && (
         <div>
           <p className={styles.mapNote}>
             Only opportunities with a listed place of performance are shown here — most SAM.gov notices don't specify one, so this is a partial view, not every open opportunity.
@@ -278,8 +307,10 @@ export default function Markets() {
                 <ChevronLeft size={14} /> Hide list
               </button>
               <h2 className={styles.sectorHeading}>{STATE_CENTROIDS[selectedState]?.name || selectedState}</h2>
-              <p className={styles.sectorSubheading}>{stateOpportunities.length} of {stateCounts.find((s) => s.code === selectedState)?.count || 0} open opportunities, soonest deadline first</p>
-              <OpportunityList opportunities={stateOpportunities} />
+              <p className={styles.sectorSubheading}>
+                {stateOpportunities === null ? 'Loading…' : `${stateOpportunities.length} of ${stateCounts.find((s) => s.code === selectedState)?.count || 0} open opportunities, soonest deadline first`}
+              </p>
+              {stateOpportunities && <OpportunityList opportunities={stateOpportunities} />}
             </div>
           )}
         </div>
