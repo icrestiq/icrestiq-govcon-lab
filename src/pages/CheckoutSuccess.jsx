@@ -14,6 +14,11 @@ const PRODUCT_CONTENT = {
   'mil-spec-bible':  { name: 'MIL-SPEC Packaging Bible™',              type: 'digital' },
   'founding-member': { name: 'Founding Member — Lifetime Access',      type: 'membership' },
   'lab-monthly':     { name: 'iCrestiQ GovCon Lab — $47/mo Membership',      type: 'membership' },
+  // No file_url — this is hand-delivered, not an instant download, so it
+  // gets its own 'service' type rather than falling into the default
+  // digital/download branch, which would show a "Download Your File Now"
+  // button that fails since there's nothing to download.
+  'bid-match-report': { name: 'Bid-Match Report',                      type: 'service' },
 }
 
 export default function CheckoutSuccess() {
@@ -77,6 +82,8 @@ export default function CheckoutSuccess() {
         <p className={styles.message}>
           {product.type === 'membership'
             ? 'Your membership is active. Full access to the community, courses, and intel digest is unlocked.'
+            : product.type === 'service'
+            ? "Your purchase is confirmed. We'll email your report within 2 business days."
             : 'Your purchase is confirmed. Download your file below or access it anytime from your dashboard.'
           }
         </p>

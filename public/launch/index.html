@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>GovCon Launch Package — Done-For-You Federal Contract Readiness | GovCon Lab</title>
+<meta name="description" content="We get your small business bid-ready for federal contracts in 10 days, done for you — SAM.gov registration audit, capability statement, NAICS/set-aside mapping, 20 hand-matched open solicitations, and a walkthrough call. $1,997." />
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<meta property="og:title" content="GovCon Launch Package — Done-For-You Federal Contract Readiness" />
+<meta property="og:description" content="We get your small business bid-ready for federal contracts in 10 days, done for you. SAM.gov audit, capability statement, NAICS/set-aside mapping, 20 hand-matched solicitations, walkthrough call." />
+<meta property="og:type" content="website" />
+<meta property="og:url" content="https://www.govconlab.com/launch" />
+<meta name="robots" content="index,follow" />
+<link rel="canonical" href="https://www.govconlab.com/launch" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --navy:#1B2A4A; --navy-light:#2C4070; --gold:#C9A84C; --gold-dim:#B8963E;
+    --surface:#FFFFFF; --void:#F4F5F7; --text-2:#4A5568; --muted:#8A94A6;
+    --border:#DDE1EA; --border-lit:#C8CEDB; --green:#276749; --green-bg:#F0FFF4;
+    --display:"Space Grotesk",system-ui,sans-serif;
+    --body:"Inter",system-ui,sans-serif;
+    --mono:"IBM Plex Mono",ui-monospace,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{-webkit-text-size-adjust:100%}
+  body{font-family:var(--body);color:var(--navy);background:var(--surface);line-height:1.6;
+       -webkit-font-smoothing:antialiased}
+  a{color:inherit;text-decoration:none}
+  .wrap{width:100%;max-width:760px;margin:0 auto;padding:0 22px}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+           color:var(--gold-dim)}
+  h1{font-family:var(--display);font-weight:700;font-size:clamp(28px,5.6vw,44px);line-height:1.16;
+     letter-spacing:-.01em}
+  h2{font-family:var(--display);font-weight:600;font-size:clamp(22px,4.4vw,30px);line-height:1.24;
+     color:var(--navy)}
+  h3{font-family:var(--display);font-weight:600;font-size:18px;color:var(--navy)}
+  .sub{color:var(--text-2);font-size:17px}
+  p{color:var(--text-2)}
+  section{padding:48px 0}
+  .divider{border-bottom:1px solid var(--border)}
+
+  /* ── nav ────────────────────────────────────────────── */
+  nav.top{border-bottom:1px solid var(--border);padding:16px 0}
+  .brandrow{display:flex;align-items:center;gap:9px}
+  .mark{width:28px;height:28px;border-radius:5px;background:var(--gold);color:var(--navy);
+        font-family:var(--display);font-weight:700;font-size:13px;display:grid;place-items:center;flex-shrink:0}
+  .brandname{font-family:var(--display);font-weight:600;font-size:15px;color:var(--navy)}
+
+  /* ── hero ───────────────────────────────────────────── */
+  .hero{background:var(--navy);color:#fff;padding:44px 0 48px;position:relative;overflow:hidden}
+  .hero::after{content:"";position:absolute;inset:auto 0 0 0;height:3px;
+               background:linear-gradient(90deg,var(--gold) 0%,var(--gold-dim) 55%,transparent 100%)}
+  .hero .eyebrow{color:var(--gold)}
+  .hero h1{color:#fff;margin:14px 0 18px}
+  .hero .sub{color:#C6CEDD;font-size:17.5px;max-width:64ch}
+  .hero .lead-in{color:#DCE2ED;font-size:16px;margin-top:20px;max-width:64ch}
+  .hero .lead-in b{color:#fff}
+
+  /* ── buttons ────────────────────────────────────────── */
+  .btn{display:inline-block;font-family:var(--display);font-weight:600;font-size:16px;
+    padding:16px 26px;border:0;border-radius:8px;background:var(--gold);color:var(--navy);
+    cursor:pointer;text-align:center;transition:background .15s ease}
+  .btn:hover{background:#D8B958}
+  .btn.block{display:block;width:100%}
+  .btn-outline{display:inline-block;font-family:var(--display);font-weight:600;font-size:15px;
+    padding:13px 22px;border:1.5px solid var(--navy);border-radius:8px;background:transparent;
+    color:var(--navy)}
+  .btn-outline:hover{background:var(--void)}
+  .cta-wrap{margin-top:26px}
+  .micro{font-family:var(--mono);font-size:11.5px;color:var(--muted);letter-spacing:.02em;margin-top:12px}
+  .hero .micro{color:#98A3B7}
+  .micro.center{text-align:center}
+
+  /* ── problem ────────────────────────────────────────── */
+  .problem{background:var(--void)}
+  .stat-callout{font-family:var(--display);font-weight:700;color:var(--gold-dim)}
+  .kicker{font-family:var(--display);font-weight:600;color:var(--navy);font-size:18px;margin-top:18px}
+
+  /* ── numbered offer list ────────────────────────────── */
+  .offer{display:flex;gap:16px;padding:22px 0;border-bottom:1px solid var(--border)}
+  .offer:last-of-type{border-bottom:0}
+  .offer .num{font-family:var(--display);font-weight:700;font-size:22px;color:var(--gold-dim);
+    flex:0 0 40px}
+  .offer .tx h3{margin-bottom:6px}
+
+  /* ── steps ──────────────────────────────────────────── */
+  .steps{background:var(--void)}
+  .step{display:flex;gap:16px;padding:16px 0}
+  .step .snum{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;
+    color:var(--gold-dim);flex:0 0 auto;padding-top:2px}
+  .step .stx b{font-family:var(--display);color:var(--navy)}
+
+  /* ── guarantee ──────────────────────────────────────── */
+  .guarantee{border:1px solid var(--gold);border-radius:12px;padding:26px 24px;background:#FFFDF6}
+  .guarantee .eyebrow{color:var(--gold-dim)}
+  .guarantee p{color:var(--text-2);margin-top:10px}
+  .guarantee b{color:var(--navy)}
+
+  /* ── fit / not-fit ──────────────────────────────────── */
+  .fitgrid{display:grid;grid-template-columns:1fr;gap:24px}
+  @media (min-width:640px){.fitgrid{grid-template-columns:1fr 1fr}}
+  .fitcol ul{list-style:none;padding:0;margin:12px 0 0;display:grid;gap:10px}
+  .fitcol li{position:relative;padding-left:22px;font-size:14.5px;line-height:1.55;color:var(--text-2)}
+  .fit li:before{content:"✓";position:absolute;left:0;color:var(--green);font-weight:700}
+  .notfit li:before{content:"✕";position:absolute;left:0;color:#C53030;font-weight:700}
+
+  /* ── pricing ────────────────────────────────────────── */
+  .pricing{background:var(--navy);color:#fff}
+  .pricing h2{color:#fff}
+  .price-card{border:1px solid rgba(255,255,255,.18);border-radius:12px;padding:28px 24px;
+    background:rgba(255,255,255,.03);margin-top:20px}
+  .price-eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+    color:var(--gold)}
+  .price-row{display:flex;align-items:baseline;gap:12px;margin:14px 0 6px;flex-wrap:wrap}
+  .price-main{font-family:var(--display);font-weight:700;font-size:40px;color:#fff}
+  .price-strike{font-family:var(--mono);font-size:17px;color:#8895AC;text-decoration:line-through}
+  .price-note{color:#C6CEDD;font-size:14.5px}
+  .price-spots{display:inline-block;margin-top:10px;font-family:var(--mono);font-size:12px;
+    letter-spacing:.05em;color:var(--navy);background:var(--gold);border-radius:100px;
+    padding:5px 12px}
+  .price-payoff{color:#C6CEDD;font-size:14.5px;margin-top:16px}
+  .pricing .btn{margin-top:20px}
+
+  .addon{border:1px dashed rgba(255,255,255,.3);border-radius:10px;padding:18px 20px;margin-top:24px}
+  .addon p{color:#C6CEDD;font-size:14.5px}
+  .addon .price-main{font-size:22px}
+
+  /* ── FAQ (native details/summary — accessible, no JS) ── */
+  .faq-item{border-bottom:1px solid var(--border)}
+  .faq-item:first-of-type{border-top:1px solid var(--border)}
+  .faq-item summary{font-family:var(--display);font-weight:600;font-size:16px;color:var(--navy);
+    padding:18px 4px;cursor:pointer;list-style:none;display:flex;align-items:center;
+    justify-content:space-between;gap:12px}
+  .faq-item summary::-webkit-details-marker{display:none}
+  .faq-item summary::after{content:"+";font-size:22px;color:var(--gold-dim);flex-shrink:0;
+    transition:transform .15s ease}
+  .faq-item[open] summary::after{content:"–"}
+  .faq-item p{padding:0 4px 18px;font-size:15px;color:var(--text-2);max-width:66ch}
+
+  /* ── closing ────────────────────────────────────────── */
+  .closing{background:var(--void);text-align:center}
+  .closing .btn{margin-top:22px}
+
+  footer{border-top:1px solid var(--border);padding:28px 0 34px;text-align:center}
+  footer .lk{font-size:13.5px;color:var(--text-2)}
+  footer .cp{font-family:var(--mono);font-size:10.5px;color:var(--muted);margin-top:10px}
+
+  @media (max-width:600px){
+    section{padding:36px 0}
+    .offer{gap:12px}
+  }
+</style>
+</head>
+<body>
+
+<nav class="top">
+  <div class="wrap">
+    <a class="brandrow" href="/">
+      <div class="mark">iQ</div>
+      <div class="brandname">GovCon Lab</div>
+    </a>
+  </div>
+</nav>
+
+<!-- ══ HERO ═══════════════════════════════════════════════ -->
+<header class="hero">
+  <div class="wrap">
+    <div class="eyebrow">GovCon Lab · Done-For-You Service</div>
+    <h1>The federal government awarded <em style="font-style:normal;color:var(--gold)">$793 billion</em> in contracts last year. We'll get your business ready to win its share — in 10 days, done for you.</h1>
+    <p class="sub">The <b style="color:#fff">GovCon Launch Package</b> takes a small business from "we've never bid on anything" to bid-ready: registered, positioned, and staring at a shortlist of real contracts you can actually win.</p>
+    <div class="cta-wrap">
+      <a class="btn" href="https://calendly.com/hello-icrestiq">Schedule Your Free Fit Call →</a>
+    </div>
+    <p class="lead-in"><em>No pitch decks. No 40-page guides. Done-for-you, in 10 days.</em></p>
+  </div>
+</header>
+
+<!-- ══ PROBLEM ════════════════════════════════════════════ -->
+<section class="problem">
+  <div class="wrap">
+    <h2>The problem nobody tells small businesses</h2>
+    <p style="margin-top:14px">SAM.gov — the government's contracting portal — is a maze built for insiders. Most small business owners open it once, get overwhelmed, and never come back.</p>
+    <p style="margin-top:14px">Meanwhile, <span class="stat-callout">over $170 billion</span> in federal contracts went to small businesses last year alone. Set-aside programs (8(a), HUBZone, women-owned, veteran-owned) <em>reserve</em> contracts specifically for businesses like yours — but only if you know how to find them and show up correctly.</p>
+    <p class="kicker">You're not losing to bigger competitors. You're losing to confusion.</p>
+  </div>
+</section>
+
+<!-- ══ WHAT WE DO ═════════════════════════════════════════ -->
+<section>
+  <div class="wrap">
+    <h2>Here's what we do for you</h2>
+    <div style="margin-top:8px">
+      <div class="offer">
+        <div class="num">1</div>
+        <div class="tx">
+          <h3>SAM.gov registration audit &amp; fix</h3>
+          <p>We review your SAM.gov entity registration line by line — the #1 reason bids get thrown out is paperwork errors. Already registered? We find what's wrong. Not registered? We walk you through it.</p>
+        </div>
+      </div>
+      <div class="offer">
+        <div class="num">2</div>
+        <div class="tx">
+          <h3>Agency-ready capability statement</h3>
+          <p>A one-page document contracting officers actually read: what you do, who you've served, your differentiators, your codes and certifications. Written for you, formatted for government eyes.</p>
+        </div>
+      </div>
+      <div class="offer">
+        <div class="num">3</div>
+        <div class="tx">
+          <h3>NAICS &amp; set-aside eligibility map</h3>
+          <p>We identify the exact NAICS codes and set-aside programs your business qualifies for — 8(a), HUBZone, SDVOSB, WOSB — so you're fishing in ponds where you have an unfair advantage.</p>
+        </div>
+      </div>
+      <div class="offer">
+        <div class="num">4</div>
+        <div class="tx">
+          <h3>20 hand-matched open solicitations</h3>
+          <p>Using live SAM.gov and DIBBS data, we hand you 20 open opportunities matched to your business, each scored bid / no-bid with a plain-English reason why. No 500-row spreadsheet dumps. A shortlist you can act on.</p>
+        </div>
+      </div>
+      <div class="offer">
+        <div class="num">5</div>
+        <div class="tx">
+          <h3>Walkthrough call + 30 days of support</h3>
+          <p>A 45-minute call where we walk through everything, answer questions, and show you how to track new opportunities going forward. Email support for 30 days after delivery.</p>
+        </div>
+      </div>
+    </div>
+    <p class="kicker">Delivered in 10 days. All of it done for you.</p>
+  </div>
+</section>
+
+<!-- ══ HOW IT WORKS ═══════════════════════════════════════ -->
+<section class="steps">
+  <div class="wrap">
+    <h2>How it works</h2>
+    <div style="margin-top:14px">
+      <div class="step">
+        <div class="snum">Step 1</div>
+        <div class="stx"><b>Free 20-minute fit call.</b> We make sure government contracting makes sense for your business. If it doesn't, we'll tell you straight and you pay nothing.</div>
+      </div>
+      <div class="step">
+        <div class="snum">Step 2</div>
+        <div class="stx"><b>30-minute intake.</b> You tell us what your business does. We handle everything from there.</div>
+      </div>
+      <div class="step">
+        <div class="snum">Step 3</div>
+        <div class="stx"><b>Delivery in 10 days.</b> Your full package lands in your inbox, then we walk through it together on a call.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ GUARANTEE ══════════════════════════════════════════ -->
+<section>
+  <div class="wrap">
+    <div class="guarantee">
+      <div class="eyebrow">Our Guarantee</div>
+      <p><b>If we can't find at least 10 viable contract matches for your business, you get a full refund.</b> No forms, no hassle.</p>
+      <p>We're confident because we do this with live federal data, not guesswork — and we'll tell you on the fit call if we don't think your business is a fit.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ══ WHO IT'S FOR ═══════════════════════════════════════ -->
+<section class="problem">
+  <div class="wrap">
+    <div class="fitgrid">
+      <div class="fitcol">
+        <h2 style="font-size:20px">Who this is for</h2>
+        <ul class="fit">
+          <li>Small businesses (under 500 employees) that have never won a federal contract</li>
+          <li>Owners in construction, IT services, professional services, logistics, facilities, or staffing — industries heavy with set-aside spending</li>
+          <li>Businesses willing to actually bid once they're ready</li>
+        </ul>
+      </div>
+      <div class="fitcol">
+        <h2 style="font-size:20px">Who this is NOT for</h2>
+        <ul class="notfit">
+          <li>Businesses looking for someone to write proposals for them (that's a separate service — ask us)</li>
+          <li>Anyone wanting "guaranteed" contract wins — nobody honest can promise that, and we won't</li>
+          <li>Large businesses with an existing capture team</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ PRICING ════════════════════════════════════════════ -->
+<section class="pricing">
+  <div class="wrap">
+    <h2>Investment</h2>
+    <div class="price-card">
+      <div class="price-eyebrow">GovCon Launch Package</div>
+      <div class="price-row">
+        <span class="price-main">$1,497</span>
+        <span class="price-strike">$1,997</span>
+        <span class="price-note">one-time</span>
+      </div>
+      <p class="price-note">Charter pricing for the first 5 clients.</p>
+      <span class="price-spots">5 spots remaining</span>
+      <p class="price-payoff">One contract — even a small one — typically pays for this many times over.</p>
+      <a class="btn" href="https://calendly.com/hello-icrestiq">Book Your Free Fit Call →</a>
+    </div>
+
+    <div class="addon">
+      <div class="price-eyebrow">Not ready for the full package?</div>
+      <p style="margin-top:8px">Start with a <b style="color:#fff">Bid-Match Report</b> — 15 hand-matched opportunities with bid/no-bid scoring.</p>
+      <div class="price-row"><span class="price-main">$197</span></div>
+      <a class="btn-outline" style="margin-top:10px;border-color:rgba(255,255,255,.4);color:#fff" href="/store/bid-match-report">Order the report →</a>
+    </div>
+  </div>
+</section>
+
+<!-- ══ FAQ ════════════════════════════════════════════════ -->
+<section>
+  <div class="wrap">
+    <h2>Questions</h2>
+    <div style="margin-top:8px">
+      <details class="faq-item">
+        <summary>Do I need to already be registered in SAM.gov?</summary>
+        <p>No. We audit existing registrations and guide new ones through the process.</p>
+      </details>
+      <details class="faq-item">
+        <summary>I've never bid on anything. Is this too advanced for me?</summary>
+        <p>That's exactly who this is for. The package assumes zero contracting experience.</p>
+      </details>
+      <details class="faq-item">
+        <summary>How fast will I win a contract?</summary>
+        <p>Honest answer: it varies. Most clients submit their first bids within 30–60 days of delivery. What we guarantee is that you'll be <em>ready</em> — positioned, registered, and looking at real opportunities.</p>
+      </details>
+      <details class="faq-item">
+        <summary>Do you write the actual proposals?</summary>
+        <p>No — proposal writing is a separate engagement. This package gets you bid-ready and pointed at the right targets. Many clients come back to us for proposal support afterward.</p>
+      </details>
+      <details class="faq-item">
+        <summary>What do you need from me?</summary>
+        <p>One 30-minute intake call and basic info about your business. That's it.</p>
+      </details>
+      <details class="faq-item">
+        <summary>What if my business isn't a fit for government contracting?</summary>
+        <p>We'll tell you on the free fit call — before you pay anything. We'd rather turn you away than sell you something useless.</p>
+      </details>
+    </div>
+  </div>
+</section>
+
+<!-- ══ CLOSING ════════════════════════════════════════════ -->
+<section class="closing">
+  <div class="wrap">
+    <h2>Why GovCon Lab</h2>
+    <p style="margin-top:12px">We run <a href="https://govconlab.com" style="border-bottom:1px solid var(--border-lit)">govconlab.com</a>, a platform built on live SAM.gov and DIBBS data — the same data behind this package. We spend our days inside federal opportunity data so you don't have to.</p>
+    <a class="btn" href="https://calendly.com/hello-icrestiq">Book Your Free Fit Call →</a>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="lk">Keith Atkinson · hello@icrestiq.com · GovConLab.com</div>
+    <div class="cp">iCrestiQ LLC · Easley, SC · © 2026</div>
+  </div>
+</footer>
+
+<!-- This page is a standalone static file (not part of the React app), so
+     it needs its own copy of the Vercel Analytics snippet — the <Analytics />
+     component in src/main.jsx only tracks pages that mount the React SPA. -->
+<script>
+  window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
+</script>
+<script defer src="/_vercel/insights/script.js"></script>
+</body>
+</html>

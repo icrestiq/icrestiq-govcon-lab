@@ -28,6 +28,7 @@ const STATIC_PAGES = [
   { path: '/founders', changefreq: 'monthly', priority: '0.6' },
   { path: '/go', changefreq: 'monthly', priority: '0.5' },
   { path: '/sample', changefreq: 'monthly', priority: '0.5' },
+  { path: '/launch', changefreq: 'monthly', priority: '0.7' },
 ]
 
 function escapeXml(str) {
