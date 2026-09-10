@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
 import { useParams, useLocation, Link } from 'react-router-dom'
-import { ArrowLeft, Package, ShoppingCart } from 'lucide-react'
+import { ArrowLeft, Package, ShoppingCart, Loader } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/AuthContext'
 import { isFoundingMember } from '../lib/tier'
+import { createCheckoutSession } from '../lib/stripe'
 import FounderBadge from '../components/FounderBadge'
 import SampleOutputStrip from '../components/SampleOutputStrip'
 import styles from './ProductDetail.module.css'
@@ -18,6 +19,8 @@ export default function ProductDetail() {
   const nextParam = `?next=${encodeURIComponent(location.pathname)}`
   const [product, setProduct] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [checkoutLoading, setCheckoutLoading] = useState(false)
+  const [checkoutError, setCheckoutError] = useState('')
   useDocumentTitle(product ? `${product.title} — GovCon Lab Store` : 'GovCon Lab Store')
 
   useEffect(() => {
@@ -44,6 +47,24 @@ export default function ProductDetail() {
   // name (name, slug, title) rather than assuming the schema, and never
   // an id or price, so this doesn't break if the record is renamed or
   // re-priced.
+  // This page has no cart UI to add anything to (unlike the Store grid,
+  // which shares a cart across its own cards + CartDrawer) — going
+  // straight to a single-item Stripe Checkout, the same path
+  // CartDrawer.jsx already uses for a one-item cart, is the correct
+  // behavior here, not literally "adding to a cart" that doesn't exist
+  // on this page.
+  async function handleBuyNow() {
+    setCheckoutError('')
+    setCheckoutLoading(true)
+    try {
+      const { url } = await createCheckoutSession({ productId: product.id })
+      window.location.href = url
+    } catch (err) {
+      setCheckoutError(err.message || 'Checkout failed. Try again.')
+      setCheckoutLoading(false)
+    }
+  }
+
   const isProposalBuilderPlaybook = Boolean(
     product &&
     [product.name, product.slug, product.title]
@@ -132,16 +153,29 @@ export default function ProductDetail() {
 
           {product.price > 0 && !founder && (
             user ? (
-              <button className="btn btn-primary w-full" style={{ justifyContent: 'center', fontSize: '1rem', padding: '14px' }}>
-                <ShoppingCart size={18} />
-                Add to Cart
+              <button
+                className="btn btn-primary w-full"
+                style={{ justifyContent: 'center', fontSize: '1rem', padding: '14px' }}
+                onClick={handleBuyNow}
+                disabled={checkoutLoading}
+              >
+                {checkoutLoading
+                  ? <><Loader size={18} className={styles.spin} aria-hidden="true" /> Redirecting to checkout...</>
+                  : <><ShoppingCart size={18} aria-hidden="true" /> Buy Now</>
+                }
               </button>
             ) : (
               <Link to={`/register${nextParam}`} className="btn btn-primary w-full" style={{ justifyContent: 'center', fontSize: '1rem', padding: '14px' }}>
-                <ShoppingCart size={18} />
-                Add to Cart
+                <ShoppingCart size={18} aria-hidden="true" />
+                Buy Now
               </Link>
             )
+          )}
+
+          {checkoutError && (
+            <p role="alert" style={{ color: 'var(--red)', fontSize: '0.875rem', marginTop: 'var(--sp-2)' }}>
+              {checkoutError}
+            </p>
           )}
 
           {(product.price === 0 || founder) && (
@@ -159,7 +193,9 @@ export default function ProductDetail() {
           <p className={styles.note}>
             {founder && product.price > 0
               ? 'Included with your Founding Membership — no charge.'
-              : 'Secure checkout. Instant digital delivery upon payment confirmation.'}
+              : product.file_url
+              ? 'Secure checkout. Instant digital delivery upon payment confirmation.'
+              : 'Secure checkout. Hand-researched and emailed to you within 5 business days.'}
           </p>
         </div>
       </div>

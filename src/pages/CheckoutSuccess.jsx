@@ -83,7 +83,7 @@ export default function CheckoutSuccess() {
           {product.type === 'membership'
             ? 'Your membership is active. Full access to the community, courses, and intel digest is unlocked.'
             : product.type === 'service'
-            ? "Your purchase is confirmed. We'll email your report within 2 business days."
+            ? "Your purchase is confirmed. We'll hand-research and email your report within 5 business days."
             : 'Your purchase is confirmed. Download your file below or access it anytime from your dashboard.'
           }
         </p>
