@@ -53,7 +53,7 @@
   .hero{background:var(--navy);color:#fff;padding:44px 0 48px;position:relative;overflow:hidden}
   .hero::after{content:"";position:absolute;inset:auto 0 0 0;height:3px;
                background:linear-gradient(90deg,var(--gold) 0%,var(--gold-dim) 55%,transparent 100%)}
-  .hero-inner{max-width:680px}
+  .hero-inner{max-width:680px;margin:0 auto;text-align:center}
   .hero .eyebrow{color:var(--gold)}
   .hero h1{color:#fff;margin:14px 0 18px}
   .hero .sub{color:#C6CEDD;font-size:17.5px;max-width:64ch}
@@ -134,10 +134,12 @@
      Plain cards for the three self-serve tiers, one accent
      card for "most popular", and a distinct navy flagship
      card for the full done-for-you package. ── */
-  .rail-head{margin-bottom:14px}
+  .pricing-rail{background:var(--void);border:1px solid var(--border);border-radius:16px;
+    padding:22px}
+  .rail-head{margin-bottom:14px;text-align:center}
   .rail-head h2{font-size:19px}
   .rail-head p{font-size:13.5px;margin-top:4px}
-  .tier-card{background:var(--void);border:1px solid var(--border);border-radius:12px;
+  .tier-card{background:#fff;border:1px solid var(--border);border-radius:12px;
     padding:20px;margin-bottom:16px}
   .tier-card.popular{background:#FFFDF6;border:1.5px solid var(--gold)}
   .tier-badge{display:inline-block;font-family:var(--mono);font-size:10px;letter-spacing:.1em;
