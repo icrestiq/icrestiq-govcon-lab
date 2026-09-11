@@ -2,8 +2,14 @@
 // Public, no-login checkout for the self-serve tiers sold on the /launch
 // landing page (Quick Scan, Bid-Match Report, Bid-Match + Strategy Call).
 // Unlike api/stripe/checkout.js, this never requires a Supabase account —
-// /launch is a static page outside the SPA with no auth of its own, and
-// Stripe's own hosted Checkout page collects the buyer's email and card.
+// /launch is a static page outside the SPA with no auth of its own.
+//
+// Uses Embedded Checkout (ui_mode: 'embedded') rather than the classic
+// hosted redirect, so the payment form mounts directly on /launch instead
+// of sending the buyer to checkout.stripe.com — returns a client_secret for
+// the page to mount with Stripe.js instead of a url to redirect to. Stripe
+// still fully hosts and collects the card data inside its own iframe;
+// nothing payment-related ever touches our own code or servers.
 // Prices are a fixed server-side map (like suggested-bid-checkout.js's
 // TIER_PRICING) — never trust a client-supplied amount for a real charge.
 // The flagship $1,497 GovCon Launch Package is intentionally NOT sold here:
@@ -37,6 +43,7 @@ export default async function handler(req, res) {
     }
 
     const session = await stripe.checkout.sessions.create({
+      ui_mode: 'embedded',
       mode: 'payment',
       payment_method_types: ['card'],
       line_items: [{
@@ -48,12 +55,14 @@ export default async function handler(req, res) {
         quantity: 1,
       }],
       metadata: { feature: 'launch_package', tier },
-      success_url: `${SITE_URL}/launch/thank-you?session_id={CHECKOUT_SESSION_ID}&tier=${tier}`,
-      cancel_url: `${SITE_URL}/launch`,
+      // Embedded Checkout takes a single return_url instead of separate
+      // success/cancel URLs — Stripe redirects the whole page here itself
+      // once payment completes (this isn't reachable until then).
+      return_url: `${SITE_URL}/launch/thank-you?session_id={CHECKOUT_SESSION_ID}&tier=${tier}`,
       billing_address_collection: 'auto',
     })
 
-    return res.status(200).json({ url: session.url })
+    return res.status(200).json({ clientSecret: session.client_secret })
   } catch (err) {
     console.error('Launch checkout error:', err)
     return res.status(500).json({ error: err.message })

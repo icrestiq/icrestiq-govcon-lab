@@ -171,6 +171,19 @@
 
   .rail-note{font-size:12px;color:var(--muted);text-align:center;margin-top:6px}
 
+  /* ── embedded checkout modal ────────────────────────── */
+  .checkout-modal{position:fixed;inset:0;z-index:1000;display:grid;place-items:start center;
+    overflow-y:auto;padding:32px 16px}
+  .checkout-modal[hidden]{display:none}
+  .checkout-backdrop{position:fixed;inset:0;background:rgba(27,42,74,.6)}
+  .checkout-panel{position:relative;background:#fff;border-radius:14px;width:100%;max-width:520px;
+    padding:20px 4px 4px;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+  .checkout-close{position:absolute;top:10px;right:14px;background:none;border:0;font-size:26px;
+    line-height:1;color:var(--muted);cursor:pointer;padding:4px 8px}
+  .checkout-close:hover{color:var(--navy)}
+  .checkout-loading{padding:60px 20px;text-align:center;color:var(--muted);font-family:var(--mono);
+    font-size:13px}
+
   /* ── FAQ (native details/summary — accessible, no JS) ── */
   .faq-item{border-bottom:1px solid var(--border)}
   .faq-item:first-of-type{border-top:1px solid var(--border)}
@@ -454,6 +467,21 @@
   </div>
 </footer>
 
+<!-- ══ EMBEDDED CHECKOUT MODAL ═══════════════════════════════
+     Stripe still fully hosts and collects the card data (in its
+     own iframe, mounted into #checkout-container) — this just
+     keeps the buyer on /launch instead of redirecting them to
+     checkout.stripe.com. ── -->
+<div class="checkout-modal" id="checkoutModal" hidden>
+  <div class="checkout-backdrop" id="checkoutBackdrop"></div>
+  <div class="checkout-panel">
+    <button type="button" class="checkout-close" id="checkoutClose" aria-label="Close checkout">&times;</button>
+    <div id="checkout-container">
+      <div class="checkout-loading">Loading checkout…</div>
+    </div>
+  </div>
+</div>
+
 <!-- This page is a standalone static file (not part of the React app), so
      it needs its own copy of the Vercel Analytics snippet — the <Analytics />
      component in src/main.jsx only tracks pages that mount the React SPA. -->
@@ -462,33 +490,84 @@
 </script>
 <script defer src="/_vercel/insights/script.js"></script>
 
+<!-- Stripe.js must load from js.stripe.com directly (not self-hosted or
+     proxied) — that's how Stripe fraud-monitors and keeps card data off
+     our servers entirely. -->
+<script src="https://js.stripe.com/v3/"></script>
+
 <!-- Self-serve tier checkout — no build step on this static page, so this
      is plain vanilla JS. Each buy button POSTs its tier to a guest-checkout
-     endpoint (no Supabase login involved) and redirects to Stripe's hosted
-     Checkout page, which collects the buyer's email and card itself. -->
+     endpoint (no Supabase login involved) and mounts Stripe's Embedded
+     Checkout inline in the modal above, instead of redirecting to
+     checkout.stripe.com. -->
 <script>
+(function () {
+  var modal = document.getElementById('checkoutModal');
+  var backdrop = document.getElementById('checkoutBackdrop');
+  var closeBtn = document.getElementById('checkoutClose');
+  var container = document.getElementById('checkout-container');
+  var stripeClient = null;
+  var activeCheckout = null;
+
+  async function getStripeClient() {
+    if (stripeClient) return stripeClient;
+    var res = await fetch('/api/stripe/publishable-key');
+    var data = await res.json();
+    if (!res.ok || !data.key) throw new Error('Could not load payment form');
+    stripeClient = Stripe(data.key);
+    return stripeClient;
+  }
+
+  function openModal() {
+    modal.hidden = false;
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeModal() {
+    modal.hidden = true;
+    document.body.style.overflow = '';
+    if (activeCheckout) {
+      activeCheckout.destroy();
+      activeCheckout = null;
+    }
+    container.innerHTML = '<div class="checkout-loading">Loading checkout…</div>';
+  }
+
+  closeBtn.addEventListener('click', closeModal);
+  backdrop.addEventListener('click', closeModal);
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && !modal.hidden) closeModal();
+  });
+
   document.querySelectorAll('.buy-btn').forEach(function (btn) {
     btn.addEventListener('click', async function () {
       var tier = btn.dataset.tier;
       var label = btn.dataset.label;
       btn.disabled = true;
-      btn.textContent = 'Redirecting to checkout…';
+      btn.textContent = 'Loading checkout…';
       try {
+        var stripe = await getStripeClient();
         var res = await fetch('/api/stripe/launch-checkout', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ tier: tier }),
         });
         var data = await res.json();
-        if (!res.ok || !data.url) throw new Error(data.error || 'Checkout failed');
-        window.location.href = data.url;
+        if (!res.ok || !data.clientSecret) throw new Error(data.error || 'Checkout failed');
+
+        openModal();
+        activeCheckout = await stripe.initEmbeddedCheckout({ clientSecret: data.clientSecret });
+        activeCheckout.mount('#checkout-container');
       } catch (err) {
+        closeModal();
+        alert("Something went wrong starting checkout. Please email hello@icrestiq.com and we'll get you sorted.");
+      } finally {
         btn.disabled = false;
         btn.textContent = label;
-        alert("Something went wrong starting checkout. Please email hello@icrestiq.com and we'll get you sorted.");
       }
     });
   });
+})();
 </script>
 </body>
 </html>
