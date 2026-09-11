@@ -14,7 +14,11 @@ export default function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end()
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' })
 
-  const key = process.env.VITE_STRIPE_PUBLISHABLE_KEY
+  // The Vercel env var value has a stray trailing newline baked into it
+  // (confirmed by fetching this endpoint directly) — Stripe.js rejects a
+  // key with any embedded whitespace, so trim defensively rather than
+  // relying on the Vercel dashboard value being edited to remove it.
+  const key = (process.env.VITE_STRIPE_PUBLISHABLE_KEY || '').trim()
   if (!key) return res.status(500).json({ error: 'Publishable key not configured' })
 
   return res.status(200).json({ key })
