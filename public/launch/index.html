@@ -557,6 +557,10 @@
 
         openModal();
         activeCheckout = await stripe.initEmbeddedCheckout({ clientSecret: data.clientSecret });
+        // Embedded Checkout refuses to mount into a non-empty element —
+        // container starts with a "Loading checkout…" placeholder <div>
+        // inside it, which counts as a child node and must be cleared first.
+        container.innerHTML = '';
         activeCheckout.mount('#checkout-container');
       } catch (err) {
         console.error('Checkout error:', err);
