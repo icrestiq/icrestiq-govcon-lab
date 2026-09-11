@@ -83,11 +83,11 @@
   .layout{display:grid;gap:28px;padding:44px 0 8px;
     grid-template-columns:1fr;grid-template-areas:"pricing" "content"}
   .content{grid-area:content}
-  .pricing-rail{grid-area:pricing}
+  .pricing-rail{grid-area:pricing;position:sticky;top:12px;align-self:start}
   @media (min-width:901px){
     .layout{gap:48px;padding:56px 0 8px;
       grid-template-columns:1fr 360px;grid-template-areas:"content pricing"}
-    .pricing-rail{position:sticky;top:24px;align-self:start}
+    .pricing-rail{top:24px}
   }
 
   .content section{padding:0 0 40px}
@@ -126,6 +126,13 @@
   .guarantee .eyebrow{color:var(--gold-dim)}
   .guarantee p{color:var(--text-2);margin-top:10px}
   .guarantee b{color:var(--navy)}
+
+  /* ── flagship CTA card (content column, under the tiers
+     graphic — the graphic itself no longer covers the
+     flagship package) ─────────────────────────────────── */
+  .flagship-cta{background:var(--navy);border:1px solid var(--gold);border-radius:12px;
+    padding:24px;margin-top:16px}
+  .flagship-cta p{color:#C6CEDD;margin-top:8px}
 
   /* ── standout callout card ─────────────────────────── */
   .callout-card{border:1.5px solid var(--gold);border-radius:12px;padding:22px 24px;
@@ -504,7 +511,14 @@
 
       <!-- ══ PRICING TIERS GRAPHIC ════════════════════════════ -->
       <section>
-        <img src="/launch/pricing-tiers-graphic.png" alt="GovCon Lab pricing tiers: Quick Scan $97, Bid-Match Report $197, Bid-Match + Strategy Call $397, and the GovCon Launch Package $1,497" width="1200" height="1724" loading="lazy" style="width:100%;height:auto;border-radius:12px;display:block" />
+        <img src="/launch/pricing-tiers-graphic.jpg" alt="GovCon Lab pricing tiers: Quick Scan $97, Bid-Match Report $197, and Bid-Match + Strategy Call $397" width="1000" height="750" loading="lazy" style="width:100%;height:auto;border-radius:12px;display:block" />
+
+        <div class="flagship-cta">
+          <div class="eyebrow" style="color:var(--gold)">★ Flagship — Done For You</div>
+          <h3 style="color:#fff;margin-top:6px">Want the full GovCon Launch Package?</h3>
+          <p>SAM.gov audit, capability statement, NAICS + set-aside map, 20 matched opportunities, walkthrough call, and 30 days of support — <b style="color:#fff">$1,497</b> <span style="text-decoration:line-through;color:#8895AC">$1,997</span>, charter pricing for the first 5 clients.</p>
+          <a class="btn" style="margin-top:16px;display:inline-block" href="https://calendly.com/hello-icrestiq">Book a Free Call →</a>
+        </div>
       </section>
 
       <!-- ══ FAQ ════════════════════════════════════════════ -->
