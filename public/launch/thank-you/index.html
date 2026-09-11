@@ -24,7 +24,8 @@
   body{font-family:var(--body);color:var(--navy);background:var(--surface);line-height:1.6;
        -webkit-font-smoothing:antialiased}
   a{color:inherit;text-decoration:none}
-  .wrap{width:100%;max-width:720px;margin:0 auto;padding:0 22px}
+  .wrap{width:100%;max-width:1040px;margin:0 auto;padding:0 22px}
+  .banner-inner{max-width:640px}
   .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;
            color:var(--gold-dim)}
   h1{font-family:var(--display);font-weight:700;font-size:clamp(26px,5vw,36px);line-height:1.2;
@@ -54,6 +55,13 @@
   .tier-pill{display:inline-block;margin-top:14px;font-family:var(--mono);font-size:11.5px;
     letter-spacing:.05em;text-transform:uppercase;color:var(--navy);background:var(--gold);
     border-radius:100px;padding:5px 13px}
+
+  /* ── two-column layout: timeline left, form right ──── */
+  .layout{display:grid;gap:32px;padding:40px 0;grid-template-columns:1fr}
+  @media (min-width:860px){
+    .layout{grid-template-columns:320px 1fr;gap:56px;align-items:start}
+    .timeline-col{position:sticky;top:24px}
+  }
 
   /* ── timeline ───────────────────────────────────────── */
   .timeline{display:grid;gap:0;margin-top:18px}
@@ -115,59 +123,62 @@
 <!-- ══ SUCCESS BANNER ═══════════════════════════════════════ -->
 <header class="banner">
   <div class="wrap">
-    <div class="check">
-      <svg viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+    <div class="banner-inner">
+      <div class="check">
+        <svg viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+      </div>
+      <div class="eyebrow" style="color:var(--gold)">Payment Confirmed</div>
+      <h1>You're in.</h1>
+      <p class="sub">Fill out the quick form on the right so we can start your research right away — the more detail you give us, the sharper your matches will be.</p>
+      <span class="tier-pill" id="tierPill">Your order</span>
     </div>
-    <div class="eyebrow" style="color:var(--gold)">Payment Confirmed</div>
-    <h1>You're in.</h1>
-    <p class="sub">Fill out the quick form below so we can start your research right away — the more detail you give us, the sharper your matches will be.</p>
-    <span class="tier-pill" id="tierPill">Your order</span>
   </div>
 </header>
 
 <div class="wrap">
+  <div class="layout">
 
-  <!-- ══ TIMELINE ═══════════════════════════════════════════ -->
-  <section>
-    <h2>What happens next</h2>
-    <div class="timeline">
-      <div class="tstep">
-        <div class="tnum">1</div>
-        <div class="tstx">
-          <h3>Review your business profile</h3>
-          <p>I review your intake answers, identify your NAICS codes, and check your set-aside eligibility.</p>
+    <!-- ══ TIMELINE ═══════════════════════════════════════════ -->
+    <section class="timeline-col">
+      <h2>What happens next</h2>
+      <div class="timeline">
+        <div class="tstep">
+          <div class="tnum">1</div>
+          <div class="tstx">
+            <h3>Review your business profile</h3>
+            <p>I review your intake answers, identify your NAICS codes, and check your set-aside eligibility.</p>
+          </div>
+        </div>
+        <div class="tstep">
+          <div class="tnum">2</div>
+          <div class="tstx">
+            <h3>Research live SAM.gov &amp; DIBBS data</h3>
+            <p>I search current federal solicitations matched to your industry, size, certifications, and geography.</p>
+          </div>
+        </div>
+        <div class="tstep">
+          <div class="tnum">3</div>
+          <div class="tstx">
+            <h3>Score every match bid or no-bid</h3>
+            <p>Each opportunity gets a verdict with a plain-English reason, plus set-aside flags where you have an edge.</p>
+          </div>
+        </div>
+        <div class="tstep">
+          <div class="tnum">4</div>
+          <div class="tstx">
+            <h3>Deliver your PDF report</h3>
+            <p>You receive a clean, actionable report with links to every solicitation so you can act immediately.</p>
+          </div>
         </div>
       </div>
-      <div class="tstep">
-        <div class="tnum">2</div>
-        <div class="tstx">
-          <h3>Research live SAM.gov &amp; DIBBS data</h3>
-          <p>I search current federal solicitations matched to your industry, size, certifications, and geography.</p>
-        </div>
-      </div>
-      <div class="tstep">
-        <div class="tnum">3</div>
-        <div class="tstx">
-          <h3>Score every match bid or no-bid</h3>
-          <p>Each opportunity gets a verdict with a plain-English reason, plus set-aside flags where you have an edge.</p>
-        </div>
-      </div>
-      <div class="tstep">
-        <div class="tnum">4</div>
-        <div class="tstx">
-          <h3>Deliver your PDF report</h3>
-          <p>You receive a clean, actionable report with links to every solicitation so you can act immediately.</p>
-        </div>
-      </div>
-    </div>
-  </section>
+    </section>
 
-  <!-- ══ INTAKE FORM ══════════════════════════════════════════ -->
-  <section class="divider" style="border-top:1px solid var(--border)">
-    <h2>Tell us about your business</h2>
-    <p style="margin-top:8px">Six quick questions — takes about 3 minutes.</p>
+    <!-- ══ INTAKE FORM ══════════════════════════════════════════ -->
+    <section class="form-col">
+      <h2>Tell us about your business</h2>
+      <p style="margin-top:8px">Six quick questions — takes about 3 minutes.</p>
 
-    <form id="intakeForm" style="margin-top:26px">
+      <form id="intakeForm" style="margin-top:26px">
 
       <div class="field">
         <label for="sells">1. What does your business sell?</label>
@@ -223,8 +234,9 @@
       <h2>Got it — thank you.</h2>
       <p>Your answers are on their way to us. We'll email you as your report comes together on the timeline above. Questions in the meantime? <a href="mailto:hello@icrestiq.com" style="text-decoration:underline">hello@icrestiq.com</a></p>
     </div>
-  </section>
+    </section>
 
+  </div>
 </div>
 
 <footer>
