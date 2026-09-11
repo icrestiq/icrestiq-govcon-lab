@@ -97,6 +97,17 @@
   .stat-callout{font-family:var(--display);font-weight:700;color:var(--gold-dim)}
   .kicker{font-family:var(--display);font-weight:600;color:var(--navy);font-size:18px;margin-top:18px}
 
+  /* ── sample report preview ─────────────────────────── */
+  .sample-report{display:flex;gap:24px;align-items:center;background:var(--void);
+    border:1px solid var(--border);border-radius:12px;padding:22px;margin-top:16px}
+  .sample-report img{width:150px;flex-shrink:0;border-radius:6px;
+    box-shadow:0 10px 28px rgba(27,42,74,.22);display:block}
+  .sample-report .tx{flex:1;min-width:0}
+  @media (max-width:520px){
+    .sample-report{flex-direction:column;text-align:center;padding:20px}
+    .sample-report img{width:130px}
+  }
+
   /* ── numbered offer list ────────────────────────────── */
   .offer{display:flex;gap:16px;padding:20px 0;border-bottom:1px solid var(--border)}
   .offer:last-of-type{border-bottom:0}
@@ -142,6 +153,38 @@
   .tier-card{background:#fff;border:1px solid var(--border);border-radius:12px;
     padding:20px;margin-bottom:16px}
   .tier-card.popular{background:#FFFDF6;border:1.5px solid var(--gold)}
+
+  /* ── tier selector (radio-tab pattern, no JS) ─────────
+     Radios are visually hidden but keyboard/click-focusable via
+     their labels; :checked + general-sibling selectors reveal the
+     matching tab highlight and panel. ── */
+  .selector-radio{position:absolute;opacity:0;width:1px;height:1px;overflow:hidden}
+  .selector-tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}
+  .selector-tab{display:flex;flex-direction:column;align-items:center;gap:3px;
+    border:1.5px solid var(--border);border-radius:8px;padding:10px 6px;cursor:pointer;
+    background:#fff;text-align:center;transition:border-color .15s,background .15s}
+  .selector-tab-name{font-family:var(--display);font-weight:600;font-size:12px;color:var(--navy)}
+  .selector-tab-price{font-family:var(--mono);font-size:13px;color:var(--muted)}
+  .selector-tab-flagship{grid-column:1 / -1}
+  .selector-radio:focus-visible + .selector-tabs,
+  .selector-radio:focus-visible ~ .selector-tabs{outline:2px solid var(--gold-dim)}
+
+  #selTier1:checked ~ .selector-tabs label[for="selTier1"],
+  #selTier2:checked ~ .selector-tabs label[for="selTier2"],
+  #selTier3:checked ~ .selector-tabs label[for="selTier3"],
+  #selFlagship:checked ~ .selector-tabs label[for="selFlagship"]{
+    border-color:var(--gold);background:#FFFDF6}
+  #selTier1:checked ~ .selector-tabs label[for="selTier1"] .selector-tab-price,
+  #selTier2:checked ~ .selector-tabs label[for="selTier2"] .selector-tab-price,
+  #selTier3:checked ~ .selector-tabs label[for="selTier3"] .selector-tab-price,
+  #selFlagship:checked ~ .selector-tabs label[for="selFlagship"] .selector-tab-price{
+    color:var(--gold-dim)}
+
+  .selector-panel{display:none}
+  #selTier1:checked ~ .selector-panels #panelTier1,
+  #selTier2:checked ~ .selector-panels #panelTier2,
+  #selTier3:checked ~ .selector-panels #panelTier3,
+  #selFlagship:checked ~ .selector-panels #panelFlagship{display:block}
   .tier-badge{display:inline-block;font-family:var(--mono);font-size:10px;letter-spacing:.1em;
     text-transform:uppercase;color:var(--navy);background:var(--gold);border-radius:100px;
     padding:3px 10px;margin-bottom:10px}
@@ -237,67 +280,98 @@
 <div class="wrap">
   <div class="layout">
 
-    <!-- ══ PRICING RAIL ═════════════════════════════════════ -->
+    <!-- ══ PRICING RAIL ═════════════════════════════════════
+         Pure-CSS radio-tab selector (same no-JS-for-UI approach
+         as the FAQ's native accordion markup) — click a tier
+         button, its panel and Continue/Book button come up. ── -->
     <aside class="pricing-rail" id="pricing">
       <div class="rail-head">
-        <h2>Pick your starting point</h2>
-        <p>Buy instantly below, or book a free call for the full package.</p>
+        <h2>Select service tier</h2>
+        <p>Click a tier to see what's included.</p>
       </div>
 
-      <div class="tier-card">
-        <div class="tier-name">Tier 1 · Quick Scan</div>
-        <div class="tier-price">$97</div>
-        <ul class="tier-list">
-          <li>7 hand-matched open federal solicitations</li>
-          <li>One-line bid/no-bid verdict on each</li>
-          <li>Delivery in 3 days</li>
-        </ul>
-        <p class="tier-best"><b>Best for:</b> owners who are just curious what's out there.</p>
-        <button class="btn block buy-btn" data-tier="quick-scan" data-label="Buy Now — $97 →">Buy Now — $97 →</button>
-      </div>
+      <div class="tier-selector">
+        <input type="radio" name="tierSelect" id="selTier1" class="selector-radio" checked>
+        <input type="radio" name="tierSelect" id="selTier2" class="selector-radio">
+        <input type="radio" name="tierSelect" id="selTier3" class="selector-radio">
+        <input type="radio" name="tierSelect" id="selFlagship" class="selector-radio">
 
-      <div class="tier-card popular">
-        <span class="tier-badge">Most Popular</span>
-        <div class="tier-name">Tier 2 · Bid-Match Report</div>
-        <div class="tier-price">$197</div>
-        <ul class="tier-list">
-          <li>15 hand-matched open federal solicitations</li>
-          <li>Bid/no-bid scoring with plain-English reasons</li>
-          <li>Set-aside flags (small / disadvantaged / veteran / women-owned)</li>
-          <li>Delivery in 5 days</li>
-          <li>1 round of revisions (swap up to 3 matches)</li>
-        </ul>
-        <p class="tier-best"><b>Best for:</b> businesses getting serious about bidding in 60–90 days.</p>
-        <button class="btn block buy-btn" data-tier="bid-match-report" data-label="Buy Now — $197 →">Buy Now — $197 →</button>
-      </div>
+        <div class="selector-tabs">
+          <label for="selTier1" class="selector-tab">
+            <span class="selector-tab-name">Quick Scan</span>
+            <span class="selector-tab-price">$97</span>
+          </label>
+          <label for="selTier2" class="selector-tab">
+            <span class="selector-tab-name">Bid-Match Report</span>
+            <span class="selector-tab-price">$197</span>
+          </label>
+          <label for="selTier3" class="selector-tab">
+            <span class="selector-tab-name">+ Strategy Call</span>
+            <span class="selector-tab-price">$397</span>
+          </label>
+          <label for="selFlagship" class="selector-tab selector-tab-flagship">
+            <span class="selector-tab-name">★ Launch Package</span>
+            <span class="selector-tab-price">$1,497</span>
+          </label>
+        </div>
 
-      <div class="tier-card">
-        <div class="tier-name">Tier 3 · Bid-Match + Strategy Call</div>
-        <div class="tier-price">$397</div>
-        <ul class="tier-list">
-          <li>Everything in the Bid-Match Report</li>
-          <li>Set-aside eligibility check (8(a), HUBZone, SDVOSB, WOSB)</li>
-          <li>30-minute video walkthrough with your matches and action plan</li>
-          <li>Delivery in 5 days</li>
-        </ul>
-        <p class="tier-best"><b>Best for:</b> owners who want the shortlist and someone to talk it through with.</p>
-        <button class="btn block buy-btn" data-tier="bid-match-strategy" data-label="Buy Now — $397 →">Buy Now — $397 →</button>
-      </div>
+        <div class="selector-panels">
+          <div class="selector-panel tier-card" id="panelTier1">
+            <div class="tier-name">Tier 1 · Quick Scan</div>
+            <div class="tier-price">$97</div>
+            <ul class="tier-list">
+              <li>7 hand-matched open federal solicitations</li>
+              <li>One-line bid/no-bid verdict on each</li>
+              <li>Delivery in 3 days</li>
+            </ul>
+            <p class="tier-best"><b>Best for:</b> owners who are just curious what's out there.</p>
+            <button class="btn block buy-btn" data-tier="quick-scan" data-label="Continue — $97 →">Continue — $97 →</button>
+          </div>
 
-      <div class="tier-card flagship">
-        <div class="tier-name">★ Flagship — Done For You</div>
-        <div class="tier-price"><span class="tier-strike">$1,997</span>$1,497 <small>one-time</small></div>
-        <span class="tier-spots">5 spots remaining</span>
-        <ul class="tier-list">
-          <li>SAM.gov registration &amp; audit</li>
-          <li>Capability statement</li>
-          <li>NAICS + set-aside map</li>
-          <li>20 hand-matched opportunities</li>
-          <li>Walkthrough call</li>
-          <li>30 days of support</li>
-        </ul>
-        <a class="btn block" href="https://calendly.com/hello-icrestiq">Book Your Free Fit Call →</a>
-        <p class="tier-payoff">One contract — even a small one — typically pays for this many times over.</p>
+          <div class="selector-panel tier-card popular" id="panelTier2">
+            <span class="tier-badge">Most Popular</span>
+            <div class="tier-name">Tier 2 · Bid-Match Report</div>
+            <div class="tier-price">$197</div>
+            <ul class="tier-list">
+              <li>15 hand-matched open federal solicitations</li>
+              <li>Bid/no-bid scoring with plain-English reasons</li>
+              <li>Set-aside flags (small / disadvantaged / veteran / women-owned)</li>
+              <li>Delivery in 5 days</li>
+              <li>1 round of revisions (swap up to 3 matches)</li>
+            </ul>
+            <p class="tier-best"><b>Best for:</b> businesses getting serious about bidding in 60–90 days.</p>
+            <button class="btn block buy-btn" data-tier="bid-match-report" data-label="Continue — $197 →">Continue — $197 →</button>
+          </div>
+
+          <div class="selector-panel tier-card" id="panelTier3">
+            <div class="tier-name">Tier 3 · Bid-Match + Strategy Call</div>
+            <div class="tier-price">$397</div>
+            <ul class="tier-list">
+              <li>Everything in the Bid-Match Report</li>
+              <li>Set-aside eligibility check (8(a), HUBZone, SDVOSB, WOSB)</li>
+              <li>30-minute video walkthrough with your matches and action plan</li>
+              <li>Delivery in 5 days</li>
+            </ul>
+            <p class="tier-best"><b>Best for:</b> owners who want the shortlist and someone to talk it through with.</p>
+            <button class="btn block buy-btn" data-tier="bid-match-strategy" data-label="Continue — $397 →">Continue — $397 →</button>
+          </div>
+
+          <div class="selector-panel tier-card flagship" id="panelFlagship">
+            <div class="tier-name">★ Flagship — Done For You</div>
+            <div class="tier-price"><span class="tier-strike">$1,997</span>$1,497 <small>one-time</small></div>
+            <span class="tier-spots">5 spots remaining</span>
+            <ul class="tier-list">
+              <li>SAM.gov registration &amp; audit</li>
+              <li>Capability statement</li>
+              <li>NAICS + set-aside map</li>
+              <li>20 hand-matched opportunities</li>
+              <li>Walkthrough call</li>
+              <li>30 days of support</li>
+            </ul>
+            <a class="btn block" href="https://calendly.com/hello-icrestiq">Book Your Free Fit Call →</a>
+            <p class="tier-payoff">One contract — even a small one — typically pays for this many times over.</p>
+          </div>
+        </div>
       </div>
 
       <p class="rail-note">Secure checkout via Stripe. Questions first? <a href="mailto:hello@icrestiq.com" style="text-decoration:underline">Email us</a>.</p>
@@ -312,6 +386,22 @@
         <p style="margin-top:14px">SAM.gov — the government's contracting portal — is a maze built for insiders. Most small business owners open it once, get overwhelmed, and never come back.</p>
         <p style="margin-top:14px">Meanwhile, <span class="stat-callout">over $170 billion</span> in federal contracts went to small businesses last year alone. Set-aside programs (8(a), HUBZone, women-owned, veteran-owned) <em>reserve</em> contracts specifically for businesses like yours — but only if you know how to find them and show up correctly.</p>
         <p class="kicker">You're not losing to bigger competitors. You're losing to confusion.</p>
+      </section>
+
+      <!-- ══ SAMPLE REPORT ════════════════════════════════════ -->
+      <section>
+        <h2>See an actual sample report</h2>
+        <p style="margin-top:10px">Not just a pitch — here's a real Bid-Match Report we've produced (names and identifying details anonymized).</p>
+        <div class="sample-report">
+          <a href="/launch/sample-bid-match-report.pdf" target="_blank" rel="noopener noreferrer">
+            <img src="/launch/sample-report-thumb.png" alt="Sample Bid-Match Report cover page" loading="lazy" />
+          </a>
+          <div class="tx">
+            <h3>Bid-Match Report — Sample</h3>
+            <p style="margin-top:6px">8 pages. Hand-matched solicitations, bid/no-bid scoring, and set-aside flags for a real (anonymized) small business.</p>
+            <a class="btn-outline" style="margin-top:14px;display:inline-block" href="/launch/sample-bid-match-report.pdf" download="GovCon-Lab-Sample-Bid-Match-Report.pdf">Download Sample Report (PDF) →</a>
+          </div>
+        </div>
       </section>
 
       <!-- ══ WHAT'S IN THE FULL PACKAGE ═══════════════════════ -->
