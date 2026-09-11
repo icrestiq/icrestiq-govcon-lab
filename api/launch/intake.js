@@ -42,7 +42,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Missing sessionId or answers' })
     }
 
-    const required = ['sells', 'location', 'naics', 'certifications', 'samGov']
+    const required = ['contactEmail', 'contactPhone', 'sells', 'location', 'naics', 'certifications', 'samGov']
     for (const field of required) {
       if (!answers[field] || !String(answers[field]).trim()) {
         return res.status(400).json({ error: `Missing required field: ${field}` })
@@ -71,9 +71,12 @@ export default async function handler(req, res) {
         `New intake form submitted on the /launch thank-you page.`,
         ``,
         `Tier: ${tierLabel}`,
-        `Customer email: ${session.customer_details?.email || 'unknown'}`,
-        `Customer name: ${session.customer_details?.name || 'unknown'}`,
+        `Stripe billing email: ${session.customer_details?.email || 'unknown'}`,
+        `Stripe billing name: ${session.customer_details?.name || 'unknown'}`,
         `Stripe session: ${session.id}`,
+        ``,
+        `Contact email: ${answers.contactEmail}`,
+        `Contact phone: ${answers.contactPhone}`,
         ``,
         `1) What does your business sell?`,
         answers.sells,

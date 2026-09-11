@@ -176,9 +176,19 @@
     <!-- ══ INTAKE FORM ══════════════════════════════════════════ -->
     <section class="form-col">
       <h2>Tell us about your business</h2>
-      <p style="margin-top:8px">Six quick questions — takes about 3 minutes.</p>
+      <p style="margin-top:8px">A couple contact details, then six quick questions — takes about 3 minutes.</p>
 
       <form id="intakeForm" style="margin-top:26px">
+
+      <div class="field">
+        <label for="contactEmail">Best email to reach you</label>
+        <input type="email" id="contactEmail" name="contactEmail" required />
+      </div>
+
+      <div class="field">
+        <label for="contactPhone">Best phone number to reach you</label>
+        <input type="tel" id="contactPhone" name="contactPhone" required />
+      </div>
 
       <div class="field">
         <label for="sells">1. What does your business sell?</label>
@@ -289,6 +299,8 @@
     var samGov = form.querySelector('input[name="samGov"]:checked');
 
     var answers = {
+      contactEmail: form.contactEmail.value.trim(),
+      contactPhone: form.contactPhone.value.trim(),
       sells: form.sells.value.trim(),
       location: form.location.value.trim(),
       naics: form.naics.value.trim(),
@@ -297,7 +309,7 @@
       exclusions: form.exclusions.value.trim(),
     };
 
-    if (!answers.sells || !answers.location || !answers.naics || !answers.samGov) {
+    if (!answers.contactEmail || !answers.contactPhone || !answers.sells || !answers.location || !answers.naics || !answers.samGov) {
       showMsg('Please fill out all required questions.', 'error');
       return;
     }
