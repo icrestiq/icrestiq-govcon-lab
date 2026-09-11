@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>You're In — GovCon Lab</title>
+<meta name="robots" content="noindex,nofollow" />
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --navy:#1B2A4A; --navy-light:#2C4070; --gold:#C9A84C; --gold-dim:#B8963E;
+    --surface:#FFFFFF; --void:#F4F5F7; --text-2:#4A5568; --muted:#8A94A6;
+    --border:#DDE1EA; --border-lit:#C8CEDB; --green:#276749; --green-bg:#F0FFF4;
+    --red:#C53030;
+    --display:"Space Grotesk",system-ui,sans-serif;
+    --body:"Inter",system-ui,sans-serif;
+    --mono:"IBM Plex Mono",ui-monospace,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{-webkit-text-size-adjust:100%}
+  body{font-family:var(--body);color:var(--navy);background:var(--surface);line-height:1.6;
+       -webkit-font-smoothing:antialiased}
+  a{color:inherit;text-decoration:none}
+  .wrap{width:100%;max-width:720px;margin:0 auto;padding:0 22px}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+           color:var(--gold-dim)}
+  h1{font-family:var(--display);font-weight:700;font-size:clamp(26px,5vw,36px);line-height:1.2;
+     letter-spacing:-.01em}
+  h2{font-family:var(--display);font-weight:600;font-size:clamp(19px,3.4vw,24px);line-height:1.28;
+     color:var(--navy)}
+  .sub{color:var(--text-2);font-size:16.5px}
+  p{color:var(--text-2)}
+  section{padding:40px 0}
+  .divider{border-bottom:1px solid var(--border)}
+
+  nav.top{border-bottom:1px solid var(--border);padding:16px 0}
+  .brandrow{display:flex;align-items:center;gap:9px}
+  .mark{width:28px;height:28px;border-radius:5px;background:var(--gold);color:var(--navy);
+        font-family:var(--display);font-weight:700;font-size:13px;display:grid;place-items:center;flex-shrink:0}
+  .brandname{font-family:var(--display);font-weight:600;font-size:15px;color:var(--navy)}
+
+  /* ── success banner ────────────────────────────────── */
+  .banner{background:var(--navy);color:#fff;padding:40px 0;position:relative;overflow:hidden}
+  .banner::after{content:"";position:absolute;inset:auto 0 0 0;height:3px;
+               background:linear-gradient(90deg,var(--gold) 0%,var(--gold-dim) 55%,transparent 100%)}
+  .check{width:52px;height:52px;border-radius:50%;background:rgba(201,168,76,.15);
+    border:1.5px solid var(--gold);display:grid;place-items:center;margin-bottom:16px}
+  .check svg{width:26px;height:26px}
+  .banner h1{color:#fff;margin:0 0 10px}
+  .banner .sub{color:#C6CEDD}
+  .tier-pill{display:inline-block;margin-top:14px;font-family:var(--mono);font-size:11.5px;
+    letter-spacing:.05em;text-transform:uppercase;color:var(--navy);background:var(--gold);
+    border-radius:100px;padding:5px 13px}
+
+  /* ── timeline ───────────────────────────────────────── */
+  .timeline{display:grid;gap:0;margin-top:18px}
+  .tstep{display:flex;gap:16px;padding:18px 0;border-bottom:1px solid var(--border)}
+  .tstep:last-child{border-bottom:0}
+  .tnum{flex:0 0 34px;width:34px;height:34px;border-radius:50%;background:var(--navy);color:var(--gold);
+    font-family:var(--display);font-weight:700;font-size:14px;display:grid;place-items:center}
+  .tstx h3{font-family:var(--display);font-weight:600;font-size:16px;color:var(--navy);margin-bottom:4px}
+  .tstx p{font-size:14.5px}
+
+  /* ── form ───────────────────────────────────────────── */
+  .field{margin-bottom:22px}
+  .field label{display:block;font-family:var(--display);font-weight:600;font-size:15px;
+    color:var(--navy);margin-bottom:6px}
+  .field .hint{font-size:13px;color:var(--muted);margin-bottom:8px}
+  .field textarea, .field input[type="text"]{
+    width:100%;font-family:var(--body);font-size:15px;color:var(--navy);
+    border:1.5px solid var(--border);border-radius:8px;padding:11px 13px;background:#fff;
+    resize:vertical}
+  .field textarea:focus, .field input[type="text"]:focus{outline:none;border-color:var(--gold-dim)}
+  .checks, .radios{display:flex;flex-wrap:wrap;gap:10px 18px;margin-top:2px}
+  .checks label, .radios label{display:flex;align-items:center;gap:7px;font-size:14.5px;
+    color:var(--text-2);font-weight:normal;cursor:pointer}
+  .checks input, .radios input{width:16px;height:16px;accent-color:var(--gold-dim)}
+  .optional{font-family:var(--mono);font-size:10.5px;color:var(--muted);letter-spacing:.05em;
+    text-transform:uppercase;margin-left:8px}
+
+  .btn{display:inline-block;font-family:var(--display);font-weight:600;font-size:16px;
+    padding:16px 26px;border:0;border-radius:8px;background:var(--gold);color:var(--navy);
+    cursor:pointer;text-align:center;transition:background .15s ease}
+  .btn:hover{background:#D8B958}
+  .btn:disabled{opacity:.6;cursor:default}
+  .btn.block{display:block;width:100%}
+
+  .form-msg{font-size:14px;margin-top:14px;padding:12px 14px;border-radius:8px}
+  .form-msg.error{background:#FFF5F5;color:var(--red);border:1px solid #FED7D7}
+  .form-msg.warn{background:#FFFBEB;color:#8A6D1F;border:1px solid #FBE4A6}
+
+  .done-card{border:1.5px solid var(--gold);border-radius:12px;padding:28px 26px;background:#FFFDF6;
+    text-align:center}
+  .done-card h2{margin-bottom:8px}
+
+  footer{border-top:1px solid var(--border);padding:28px 0 34px;text-align:center}
+  footer .lk{font-size:13.5px;color:var(--text-2)}
+  footer .cp{font-family:var(--mono);font-size:10.5px;color:var(--muted);margin-top:10px}
+</style>
+</head>
+<body>
+
+<nav class="top">
+  <div class="wrap">
+    <a class="brandrow" href="/">
+      <div class="mark">iQ</div>
+      <div class="brandname">GovCon Lab</div>
+    </a>
+  </div>
+</nav>
+
+<!-- ══ SUCCESS BANNER ═══════════════════════════════════════ -->
+<header class="banner">
+  <div class="wrap">
+    <div class="check">
+      <svg viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+    </div>
+    <div class="eyebrow" style="color:var(--gold)">Payment Confirmed</div>
+    <h1>You're in.</h1>
+    <p class="sub">Fill out the quick form below so we can start your research right away — the more detail you give us, the sharper your matches will be.</p>
+    <span class="tier-pill" id="tierPill">Your order</span>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- ══ TIMELINE ═══════════════════════════════════════════ -->
+  <section>
+    <h2>What happens next</h2>
+    <div class="timeline">
+      <div class="tstep">
+        <div class="tnum">1</div>
+        <div class="tstx">
+          <h3>Review your business profile</h3>
+          <p>I review your intake answers, identify your NAICS codes, and check your set-aside eligibility.</p>
+        </div>
+      </div>
+      <div class="tstep">
+        <div class="tnum">2</div>
+        <div class="tstx">
+          <h3>Research live SAM.gov &amp; DIBBS data</h3>
+          <p>I search current federal solicitations matched to your industry, size, certifications, and geography.</p>
+        </div>
+      </div>
+      <div class="tstep">
+        <div class="tnum">3</div>
+        <div class="tstx">
+          <h3>Score every match bid or no-bid</h3>
+          <p>Each opportunity gets a verdict with a plain-English reason, plus set-aside flags where you have an edge.</p>
+        </div>
+      </div>
+      <div class="tstep">
+        <div class="tnum">4</div>
+        <div class="tstx">
+          <h3>Deliver your PDF report</h3>
+          <p>You receive a clean, actionable report with links to every solicitation so you can act immediately.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ INTAKE FORM ══════════════════════════════════════════ -->
+  <section class="divider" style="border-top:1px solid var(--border)">
+    <h2>Tell us about your business</h2>
+    <p style="margin-top:8px">Six quick questions — takes about 3 minutes.</p>
+
+    <form id="intakeForm" style="margin-top:26px">
+
+      <div class="field">
+        <label for="sells">1. What does your business sell?</label>
+        <p class="hint">Describe your products or services in your own words.</p>
+        <textarea id="sells" name="sells" rows="3" required></textarea>
+      </div>
+
+      <div class="field">
+        <label for="location">2. Where are you located, and where can you perform work?</label>
+        <p class="hint">Local, regional, or nationwide?</p>
+        <textarea id="location" name="location" rows="2" required></textarea>
+      </div>
+
+      <div class="field">
+        <label for="naics">3. Do you know your NAICS code(s)?</label>
+        <p class="hint">If not, just type "no" — I'll identify them for you.</p>
+        <input type="text" id="naics" name="naics" required />
+      </div>
+
+      <div class="field">
+        <label>4. Do you hold any set-aside certifications?</label>
+        <p class="hint">Select all that apply.</p>
+        <div class="checks" id="certifications">
+          <label><input type="checkbox" name="cert" value="8(a)" /> 8(a)</label>
+          <label><input type="checkbox" name="cert" value="HUBZone" /> HUBZone</label>
+          <label><input type="checkbox" name="cert" value="SDVOSB" /> SDVOSB</label>
+          <label><input type="checkbox" name="cert" value="WOSB" /> WOSB</label>
+          <label><input type="checkbox" name="cert" value="None" /> None</label>
+          <label><input type="checkbox" name="cert" value="Not sure" /> Not sure</label>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>5. Are you registered in SAM.gov?</label>
+        <div class="radios" id="samGov">
+          <label><input type="radio" name="samGov" value="Yes" required /> Yes</label>
+          <label><input type="radio" name="samGov" value="No" /> No</label>
+          <label><input type="radio" name="samGov" value="Not sure" /> Not sure</label>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="exclusions">6. Anything to exclude? <span class="optional">Optional</span></label>
+        <p class="hint">Contract sizes, agencies, or locations you don't want.</p>
+        <textarea id="exclusions" name="exclusions" rows="2"></textarea>
+      </div>
+
+      <button type="submit" class="btn block" id="submitBtn">Submit My Answers →</button>
+      <div id="formMsg"></div>
+    </form>
+
+    <div class="done-card" id="doneCard" style="display:none">
+      <h2>Got it — thank you.</h2>
+      <p>Your answers are on their way to us. We'll email you as your report comes together on the timeline above. Questions in the meantime? <a href="mailto:hello@icrestiq.com" style="text-decoration:underline">hello@icrestiq.com</a></p>
+    </div>
+  </section>
+
+</div>
+
+<footer>
+  <div class="wrap">
+    <div class="lk">Keith Atkinson · hello@icrestiq.com · GovConLab.com</div>
+    <div class="cp">iCrestiQ LLC · Easley, SC · © 2026</div>
+  </div>
+</footer>
+
+<script>
+  window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
+</script>
+<script defer src="/_vercel/insights/script.js"></script>
+
+<script>
+(function () {
+  var params = new URLSearchParams(window.location.search);
+  var sessionId = params.get('session_id');
+  var tier = params.get('tier');
+
+  var TIER_LABELS = {
+    'quick-scan': 'Quick Scan — $97',
+    'bid-match-report': 'Bid-Match Report — $197',
+    'bid-match-strategy': 'Bid-Match Report + Strategy Call — $397',
+  };
+  var pill = document.getElementById('tierPill');
+  if (tier && TIER_LABELS[tier]) pill.textContent = TIER_LABELS[tier];
+
+  var form = document.getElementById('intakeForm');
+  var msgEl = document.getElementById('formMsg');
+  var submitBtn = document.getElementById('submitBtn');
+  var doneCard = document.getElementById('doneCard');
+
+  function showMsg(text, kind) {
+    msgEl.className = 'form-msg ' + kind;
+    msgEl.textContent = text;
+  }
+
+  if (!sessionId) {
+    showMsg("We couldn't confirm your order from this link. If you already paid, please email hello@icrestiq.com with your receipt and we'll get your intake sorted manually.", 'warn');
+    submitBtn.disabled = true;
+  }
+
+  form.addEventListener('submit', async function (e) {
+    e.preventDefault();
+    if (!sessionId) return;
+
+    var certs = Array.prototype.slice.call(form.querySelectorAll('input[name="cert"]:checked'))
+      .map(function (el) { return el.value; }).join(', ');
+    var samGov = form.querySelector('input[name="samGov"]:checked');
+
+    var answers = {
+      sells: form.sells.value.trim(),
+      location: form.location.value.trim(),
+      naics: form.naics.value.trim(),
+      certifications: certs || '(none selected)',
+      samGov: samGov ? samGov.value : '',
+      exclusions: form.exclusions.value.trim(),
+    };
+
+    if (!answers.sells || !answers.location || !answers.naics || !answers.samGov) {
+      showMsg('Please fill out all required questions.', 'error');
+      return;
+    }
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Submitting…';
+    msgEl.textContent = '';
+    msgEl.className = '';
+
+    try {
+      var res = await fetch('/api/launch/intake', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId: sessionId, answers: answers }),
+      });
+      var data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Submission failed');
+
+      form.style.display = 'none';
+      doneCard.style.display = 'block';
+    } catch (err) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Submit My Answers →';
+      showMsg(err.message || "Something went wrong. Please email hello@icrestiq.com instead.", 'error');
+    }
+  });
+})();
+</script>
+</body>
+</html>

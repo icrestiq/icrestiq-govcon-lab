@@ -29,6 +29,10 @@
       "destination": "/launch/index.html"
     },
     {
+      "source": "/launch/thank-you",
+      "destination": "/launch/thank-you/index.html"
+    },
+    {
       "source": "/sample",
       "destination": "/sample/index.html"
     },
