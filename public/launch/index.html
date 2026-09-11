@@ -77,17 +77,20 @@
   .micro.center{text-align:center}
 
   /* ── two-column layout: story left, pricing right ─────
-     Mobile-first: pricing rail appears BEFORE the long-form
-     content (grid-template-areas), so a visitor who never
-     scrolls past the fold still sees prices and can buy. ── */
+     Mobile: plain static stack, pricing LAST (after all the
+     content) — a sticky/early card on a narrow screen ends up
+     covering the page's own text instead of just sitting beside
+     it, so mobile deliberately does not replicate desktop's
+     sticky-sidebar behavior. Desktop: pricing becomes a real
+     sticky sidebar next to the content column. ── */
   .layout{display:grid;gap:28px;padding:44px 0 8px;
-    grid-template-columns:1fr;grid-template-areas:"pricing" "content"}
+    grid-template-columns:1fr;grid-template-areas:"content" "pricing"}
   .content{grid-area:content}
-  .pricing-rail{grid-area:pricing;position:sticky;top:12px;align-self:start}
+  .pricing-rail{grid-area:pricing;position:static}
   @media (min-width:901px){
     .layout{gap:48px;padding:56px 0 8px;
       grid-template-columns:1fr 360px;grid-template-areas:"content pricing"}
-    .pricing-rail{top:24px}
+    .pricing-rail{position:sticky;top:24px;align-self:start}
   }
 
   .content section{padding:0 0 40px}
