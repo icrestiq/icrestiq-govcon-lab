@@ -19,6 +19,8 @@ const PRODUCT_CONTENT = {
   // digital/download branch, which would show a "Download Your File Now"
   // button that fails since there's nothing to download.
   'bid-match-report': { name: 'Bid-Match Report',                      type: 'service' },
+  'quick-scan':        { name: 'GovCon Quick Scan',                    type: 'service' },
+  'bid-match-strategy': { name: 'Bid-Match Report + Strategy Call',     type: 'service' },
 }
 
 export default function CheckoutSuccess() {

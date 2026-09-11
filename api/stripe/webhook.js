@@ -4,6 +4,7 @@
 
 import Stripe from 'stripe'
 import { createClient } from '@supabase/supabase-js'
+import nodemailer from 'nodemailer'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY)
 
@@ -12,6 +13,16 @@ const supabase = createClient(
   process.env.VITE_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
+
+// Same Gmail SMTP transport as api/notify-report.js — reused here to alert
+// Keith about /launch guest orders (see the launch_package branch below).
+const mailTransporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.GMAIL_USER,
+    pass: process.env.GMAIL_APP_PASSWORD,
+  },
+})
 
 // Maps each Stripe Price ID to the membership_tier value this app's
 // existing database constraint actually allows: free, member, pro,
@@ -84,6 +95,39 @@ export default async function handler(req, res) {
           }
 
           console.log(`Suggested Bid paid, generation triggered: ${bidRequestId}`)
+          break
+        }
+
+        // /launch self-serve tiers (Quick Scan, Bid-Match Report, Bid-Match
+        // + Strategy Call) — guest checkout, no Supabase account involved,
+        // so there's no userId to attach an orders/user_purchases row to
+        // and fulfillment is manual (a real person does the research).
+        // Just alert Keith by email so he can start the work.
+        if (session.metadata?.feature === 'launch_package') {
+          const { tier } = session.metadata
+          try {
+            await mailTransporter.sendMail({
+              from: process.env.GMAIL_USER,
+              to: process.env.ADMIN_ALERT_EMAIL || process.env.GMAIL_USER,
+              subject: `New /launch order — ${tier} ($${(session.amount_total / 100).toFixed(2)})`,
+              text: [
+                `A new order came in on the /launch landing page.`,
+                ``,
+                `Tier: ${tier}`,
+                `Amount: $${(session.amount_total / 100).toFixed(2)}`,
+                `Customer email: ${session.customer_details?.email || 'unknown'}`,
+                `Customer name: ${session.customer_details?.name || 'unknown'}`,
+                ``,
+                `Stripe session: ${session.id}`,
+                `Payment intent: ${session.payment_intent}`,
+              ].join('\n'),
+            })
+          } catch (mailErr) {
+            // Don't fail the webhook over an email hiccup — the charge
+            // already succeeded and is visible in the Stripe dashboard.
+            console.error('Failed to send /launch order notification email:', mailErr.message, { sessionId: session.id })
+          }
+          console.log(`Launch package order paid: ${tier} — session ${session.id}`)
           break
         }
 
