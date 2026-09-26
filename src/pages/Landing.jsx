@@ -7,7 +7,6 @@ import MemberCount from '../components/MemberCount'
 import PlatformStats from '../components/PlatformStats'
 import Testimonials from '../components/Testimonials'
 import RecentWins from '../components/RecentWins'
-import DigestSignup from '../components/DigestSignup'
 import FoundingSpotsCounter, { useFoundingSpotsRemaining } from '../components/FoundingSpotsCounter'
 import ProofSection from '../components/ProofSection'
 import SampleOutputStrip from '../components/SampleOutputStrip'
@@ -81,7 +80,7 @@ const NICHES = [
 // those already-true bullets get surfaced here, not the underlying price/period/name
 // data, so the two pages can't drift out of sync on the numbers that matter.
 const PRICING_SUMMARY = {
-  'Free Tier': [TIERS[0].features[1], TIERS[0].features[3], TIERS[0].features[0]],
+  'Free Tier': [TIERS[0].features[1], TIERS[0].features[2], TIERS[0].features[0]],
   'Lab Member': [TIERS[1].features[1], TIERS[1].features[2], TIERS[1].features[4]],
 }
 const FOUNDING_SUMMARY = ['Lifetime access to everything', 'Private Founding Members chat room', 'First 25 spots only']
@@ -359,8 +358,6 @@ export default function Landing() {
           </Link>
         </div>
       </section>
-
-      <DigestSignup />
 
       {/* Contact + Footer */}
       <section className={styles.contact}>
