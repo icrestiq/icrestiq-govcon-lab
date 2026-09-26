@@ -3,11 +3,11 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>GovCon Lab — 5 free GovCon tools + Monday's list of federal solicitations</title>
-<meta name="description" content="Get 5 free GovCon tools — compliance matrix, SAM.gov/UEI checklist, DIBBS/DLA guide, capability statement template, accounting starter sheet — plus my Monday list of real federal product solicitations. Free, no card." />
+<title>GovCon Lab — Government Contracting Made Accessible</title>
+<meta name="description" content="Take the free 90-second quiz and get 5 free GovCon tools — compliance matrix, SAM.gov/UEI checklist, DIBBS/DLA guide, capability statement template, accounting starter sheet — then see inside GovCon Lab. Free, no card." />
 <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-<meta property="og:title" content="5 free GovCon tools — plus my Monday list of federal solicitations" />
-<meta property="og:description" content="Real DIBBS and SAM.gov product solicitations, sent every Monday by an operator who actually quotes them. Sign up and get 5 free tools right away." />
+<meta property="og:title" content="GovCon Lab — Government Contracting Made Accessible" />
+<meta property="og:description" content="Take the 90-second quiz, get 5 free GovCon tools, and see inside GovCon Lab — the community, playbooks and live opportunity matching for product-based federal contracting." />
 <meta property="og:type" content="website" />
 <meta property="og:url" content="https://www.govconlab.com/go" />
 <meta name="robots" content="index,follow" />
@@ -355,8 +355,7 @@
     <div class="quiz-screen" data-screen="email" hidden>
       <div class="q-eyebrow">Your Result Is Ready</div>
       <h1 class="q-h1">Almost there.</h1>
-      <p class="q-sub">Enter your email to get your result — PLUS 5 free GovCon tools and a spot on
-        our weekly RFQ report.</p>
+      <p class="q-sub">Enter your email to get your result — PLUS 5 free GovCon tools.</p>
       <form id="quizEmailForm" novalidate style="margin-top:18px">
         <!-- Honeypot: visually hidden and out of tab order so real visitors
              never see or fill it. Any bot that blindly fills every input
@@ -391,8 +390,7 @@
         <li>You don't have to go all-in to get your first honest answer.</li>
         <li>Every serious contractor you'll ever meet started exactly where you are now.</li>
       </ul>
-      <div class="quiz-confirm">Check your inbox — your 5 free GovCon tools are on the way, and
-        you're now on our Weekly RFQ Report list.</div>
+      <div class="quiz-confirm">Check your inbox — your 5 free GovCon tools are on the way.</div>
       <div class="quiz-cta-row">
         <a class="quiz-btn" href="https://class.govconlab.com?utm_source=link_in_bio&utm_medium=social&utm_content=quiz_side_hustler">Start with the free GovCon Mastery course →</a>
       </div>
@@ -415,8 +413,7 @@
         <li>The learning curve is real, but shorter than you think once you're inside a system built for it.</li>
         <li>You're past the "should I even try this" stage — the real question now is how fast you scale it.</li>
       </ul>
-      <div class="quiz-confirm">Check your inbox — your 5 free GovCon tools are on the way, and
-        you're now on our Weekly RFQ Report list.</div>
+      <div class="quiz-confirm">Check your inbox — your 5 free GovCon tools are on the way.</div>
       <div class="quiz-cta-row">
         <a class="quiz-btn" href="/membership?utm_source=link_in_bio&utm_medium=social&utm_content=quiz_growing">Join GovCon Lab — $47/mo →</a>
       </div>
@@ -439,8 +436,7 @@
         <li>The people who move fastest here treat this like a real business line from day one, not an experiment.</li>
         <li>Founding is worth a hard look if you want more than one niche — the math tends to favor going bigger.</li>
       </ul>
-      <div class="quiz-confirm">Check your inbox — your 5 free GovCon tools are on the way, and
-        you're now on our Weekly RFQ Report list.</div>
+      <div class="quiz-confirm">Check your inbox — your 5 free GovCon tools are on the way.</div>
       <div class="quiz-cta-row">
         <a class="quiz-btn" href="/membership?utm_source=link_in_bio&utm_medium=social&utm_content=quiz_pro">Join GovCon Lab — $47/mo →</a>
         <a class="quiz-btn outline" href="/store/founding-member?utm_source=link_in_bio&utm_medium=social&utm_content=quiz_founding">Become a Founding Member — $497 one-time →</a>
@@ -691,7 +687,8 @@
   // Posts to this app's own /api/quiz/subscribe rather than ConvertKit
   // directly — that endpoint holds the real CONVERTKIT_API_KEY server-side
   // (the same one api/convertkit/subscribe.js and api/digest/confirm.js
-  // already use) and applies the weekly-rfq-report tag itself, so no key
+  // already use) and applies the quiz tags itself (no weekly-rfq-report —
+  // the digest is a paid-member perk), so no key
   // and no numeric tag ID ever need to live in this page's source.
   async function subscribeToKit(email, firstName, result, company) {
     var res = await fetch('/api/quiz/subscribe', {
