@@ -66,7 +66,7 @@ function confirmEmailCopy(confirmUrl) {
     text: [
       `Thanks for taking the "Is Government Contracting Right For You?" quiz.`,
       ``,
-      `One thing first: we only send your 5 free GovCon tools — and add you to Monday's digest of real federal solicitations — once you've confirmed this email address. Click below to verify.`,
+      `One thing first: we only send your 5 free GovCon tools once you've confirmed this email address. Click below to verify.`,
       ``,
       confirmUrl,
       ``,
