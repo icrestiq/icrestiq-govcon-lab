@@ -21,7 +21,6 @@ export const TIERS = [
       'GovCon Mastery Foundation Course (23 lessons)',
       'Public community feed — read only',
       'Sample playbook chapter',
-      'Weekly GovCon intel email',
       'Access to merch store',
     ],
     cta: 'Get Started Free',
@@ -100,7 +99,7 @@ export const FOUNDING = {
 const FEATURE_MATRIX = [
   { label: 'GovCon Mastery Foundation Course', free: 'Sample chapter', lab: 'Full library', founding: 'Full library + future drops' },
   { label: 'Community chat rooms', free: 'Read-only', lab: 'All 6 rooms', founding: 'All 6 rooms' },
-  { label: 'Weekly GovCon intel email', free: true, lab: true, founding: true },
+  { label: 'Weekly RFQ Opportunity Digest', free: false, lab: true, founding: true },
   { label: 'Matched Opportunities — live SAM.gov matching', free: false, lab: true, founding: true },
   { label: 'Suggested Bid (price range, supplier leads, RFQ drafts)', free: false, lab: '$2 / opportunity', founding: '$1 / opportunity' },
   { label: 'Sourcing Pipeline CRM (Companies, Contacts, Deals)', free: false, lab: true, founding: true },
