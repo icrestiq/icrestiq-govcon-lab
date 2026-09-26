@@ -216,7 +216,9 @@ export default async function handler(req, res) {
     try {
       const tags = ['govcon-lab', 'digest-subscriber', `digest-source-${data.source || 'unknown'}`]
       if (data.source === 'go-quiz') {
-        tags.push('quiz-taker', 'weekly-rfq-report')
+        // Weekly digest is a paid-member perk — quiz takers get the 5 free
+        // tools only, not the weekly-rfq-report tag.
+        tags.push('quiz-taker')
         if (data.quiz_result) {
           tags.push(`quiz-result-${String(data.quiz_result).toLowerCase().replace(/_/g, '-')}`)
         }
